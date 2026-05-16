@@ -55,6 +55,9 @@ coverage.html
 *.pem
 rootCA*.pem
 
+# ── AI assistant tooling ──────────────────────────────────────────────────────
+.claude/
+
 # ── Editor ────────────────────────────────────────────────────────────────────
 .vscode/
 !.vscode/extensions.json
