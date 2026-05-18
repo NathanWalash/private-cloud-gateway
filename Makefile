@@ -38,9 +38,19 @@ test: ## Run all tests (not yet implemented)
 	@exit 1
 
 .PHONY: lint
-lint: ## Run format and lint checks (not yet implemented)
-	@echo "lint is not yet implemented. Linting will be added in Milestone 1."
-	@exit 1
+lint: lint-md lint-sh lint-yaml ## Run all lint checks
+
+.PHONY: lint-md
+lint-md: ## Lint markdown files (requires markdownlint-cli2: npm i -g markdownlint-cli2)
+	markdownlint-cli2 "**/*.md"
+
+.PHONY: lint-sh
+lint-sh: ## Lint shell scripts (requires shellcheck)
+	shellcheck scripts/*.sh
+
+.PHONY: lint-yaml
+lint-yaml: ## Lint YAML files (requires yamllint: pip install yamllint)
+	yamllint -c .yamllint.yml blueprints/ .github/workflows/
 
 # ── Docs ──────────────────────────────────────────────────────────────────────
 

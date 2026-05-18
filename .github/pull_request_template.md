@@ -6,8 +6,8 @@
 
 <!-- Steps to verify the change works correctly. Be specific enough that someone unfamiliar with the code can follow them. -->
 
-1. 
-2. 
+- Step 1
+- Step 2
 
 ## Checklist
 
