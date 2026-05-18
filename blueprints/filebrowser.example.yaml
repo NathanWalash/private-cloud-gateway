@@ -1,0 +1,31 @@
+id: filebrowser
+name: File Browser
+description: Private browser-based file manager
+icon: folder
+category: storage
+
+route:
+  subdomain: files
+  internal_port: 8080
+
+container:
+  image: filebrowser/filebrowser:v2.27-alpine
+  environment:
+    - FB_DATABASE=/database/filebrowser.db
+  volumes:
+    - /var/lib/cloud-core/apps/filebrowser/files:/srv
+    - /var/lib/cloud-core/apps/filebrowser/database:/database
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: true
+  paths:
+    - /var/lib/cloud-core/apps/filebrowser/files
+    - /var/lib/cloud-core/apps/filebrowser/database

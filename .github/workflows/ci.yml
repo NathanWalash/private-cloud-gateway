@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  repo-check:
+    name: Repository structure check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required files are present
+        run: |
+          required=(
+            README.md
+            ROADMAP.md
+            CONTRIBUTING.md
+            SECURITY.md
+            .gitignore
+            .env.example
+            Makefile
+            docs/dev-local.md
+            docs/git-workflow.md
+            .github/pull_request_template.md
+          )
+          missing=()
+          for f in "${required[@]}"; do
+            if [ ! -f "$f" ]; then
+              missing+=("$f")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required files:"
+            printf '  %s\n' "${missing[@]}"
+            exit 1
+          fi
+          echo "All required files present."
+
+  # Placeholder jobs — will be enabled as code is added in Milestone 1:
+  #
+  # go-build:
+  #   name: Go build and test
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-go@v5
+  #       with:
+  #         go-version: "1.22"
+  #     - run: go build ./...
+  #     - run: go test ./...
+  #
+  # node-build:
+  #   name: Node build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "20"
+  #     - run: npm ci
+  #       working-directory: apps/web
+  #     - run: npm run build
+  #       working-directory: apps/web
