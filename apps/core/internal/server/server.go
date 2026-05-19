@@ -35,7 +35,7 @@ func New(db *sql.DB, secret []byte, loginURL, cookieDomain string) *Server {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok\n"))
+		_, _ = w.Write([]byte("ok\n"))
 	})
 
 	// Dashboard root — requires a valid session.
@@ -46,7 +46,7 @@ func New(db *sql.DB, secret []byte, loginURL, cookieDomain string) *Server {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(`<!DOCTYPE html><html><body style="background:#0f1117;color:#e2e8f0;font-family:system-ui;padding:2rem">
+		_, _ = w.Write([]byte(`<!DOCTYPE html><html><body style="background:#0f1117;color:#e2e8f0;font-family:system-ui;padding:2rem">
 <h1>Private Cloud Gateway</h1><p>Dashboard coming in Milestone 2.</p>
 <p><a href="/api/auth/logout" style="color:#6366f1">Sign out</a></p>
 </body></html>`))

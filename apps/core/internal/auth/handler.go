@@ -30,7 +30,7 @@ func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
 		errMsg = `<p class="error">Invalid email or password.</p>`
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, loginPageHTML, errMsg)
+	_, _ = fmt.Fprintf(w, loginPageHTML, errMsg)
 }
 
 // Login validates credentials, sets the session cookie, and redirects.
@@ -101,7 +101,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 // Logout clears the session cookie and invalidates the server-side session.
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(cookieName); err == nil {
-		deleteSession(h.db, cookie.Value)
+		_ = deleteSession(h.db, cookie.Value)
 		auditLog(h.db, "logout", "", "")
 		slog.Info("logout", "ip", realIP(r))
 	}
