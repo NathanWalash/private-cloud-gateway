@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"log/slog"
 	"os"
 
@@ -60,6 +62,10 @@ func main() {
 	// Caddy manager — for dynamic route registration.
 	cm := caddy.New(cfg.caddyAdmin, cfg.cookieDomain, cfg.loginURL)
 
+	// Re-register Caddy routes for all apps that were running before restart.
+	// Routes are lost when Caddy or Core restarts; this ensures they are always in sync.
+	reregisterRoutes(database, cm)
+
 	srv := server.New(
 		database,
 		[]byte(cfg.sessionSecret),
@@ -115,4 +121,33 @@ func mustGetenv(key string) string {
 		os.Exit(1)
 	}
 	return v
+}
+
+// reregisterRoutes re-registers Caddy routes for all apps in the DB.
+// Called on startup so routes survive Core or Caddy restarts.
+func reregisterRoutes(database *sql.DB, cm *caddy.Manager) {
+	rows, err := database.QueryContext(context.Background(),
+		"SELECT subdomain, container_name, internal_port FROM apps WHERE status = 'running'")
+	if err != nil {
+		slog.Warn("reregister routes: db query failed", "err", err)
+		return
+	}
+	defer rows.Close()
+
+	var count int
+	for rows.Next() {
+		var subdomain, containerName string
+		var internalPort int
+		if err := rows.Scan(&subdomain, &containerName, &internalPort); err != nil {
+			continue
+		}
+		if err := cm.RegisterApp(context.Background(), subdomain, containerName, internalPort); err != nil {
+			slog.Warn("reregister route failed", "subdomain", subdomain, "err", err)
+		} else {
+			count++
+		}
+	}
+	if count > 0 {
+		slog.Info("caddy routes re-registered", "count", count)
+	}
 }

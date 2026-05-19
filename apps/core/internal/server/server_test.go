@@ -319,3 +319,29 @@ func TestLogout_ClearsCookieAndInvalidatesSession(t *testing.T) {
 		t.Errorf("verify after logout: got %d, want 302 (session should be gone)", verifyResp.StatusCode)
 	}
 }
+
+// ── App install (no Docker) ───────────────────────────────────────────────────
+
+// TestInstall_Returns503WhenDockerUnavailable verifies that calling the install
+// endpoint without a Docker manager returns 503 rather than panicking.
+// This was a real production bug: nil Manager caused a panic instead of an error.
+func TestInstall_Returns503WhenDockerUnavailable(t *testing.T) {
+	ts := newTestServer(t) // server.New passes nil for docker manager
+	defer ts.Close()
+	cookie := loginAndGetCookie(t, ts)
+
+	body := strings.NewReader(`{"blueprint_id":"test-app"}`)
+	req, _ := http.NewRequestWithContext(context.Background(), "POST", ts.URL+"/api/apps/install", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+
+	resp, err := noRedirect().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("install without docker: got %d, want 503", resp.StatusCode)
+	}
+}
