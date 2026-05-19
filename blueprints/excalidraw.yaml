@@ -1,0 +1,29 @@
+id: excalidraw
+name: Excalidraw
+description: Virtual whiteboard for sketching diagrams, wireframes, and ideas. Collaborative, hand-drawn style, no account needed.
+icon: "✏️"
+category: utilities
+
+route:
+  subdomain: draw
+  internal_port: 80
+
+container:
+  image: excalidraw/excalidraw:latest
+  environment: []
+  volumes: []
+
+lifecycle:
+  policy: scale-to-zero
+  sleep_after_minutes: 30
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: false
+
+resources:
+  memory_limit: 256m

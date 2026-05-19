@@ -1,0 +1,31 @@
+id: stirling-pdf
+name: Stirling PDF
+description: Merge, split, compress, convert, and edit PDFs. Over 50 PDF tools in one place.
+icon: "📄"
+category: utilities
+
+route:
+  subdomain: pdf
+  internal_port: 8080
+
+container:
+  image: frooodle/s-pdf:latest
+  environment:
+    - DOCKER_ENABLE_SECURITY=false
+    - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
+  volumes: []
+
+lifecycle:
+  policy: scale-to-zero
+  sleep_after_minutes: 15
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 30
+
+backup:
+  enabled: false
+
+resources:
+  memory_limit: 1g

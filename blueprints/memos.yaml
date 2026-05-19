@@ -1,0 +1,31 @@
+id: memos
+name: Memos
+description: Lightweight self-hosted notes and micro-journal. Quick capture for thoughts, tasks, and links with a clean timeline view.
+icon: "💭"
+category: productivity
+
+route:
+  subdomain: memos
+  internal_port: 5230
+
+container:
+  image: neosmemo/memos:stable
+  environment: []
+  volumes:
+    - /var/lib/cloud-core/apps/memos/data:/var/opt/memos
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: true
+  paths:
+    - /var/lib/cloud-core/apps/memos/data
+
+resources:
+  memory_limit: 256m

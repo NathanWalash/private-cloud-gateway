@@ -1,0 +1,31 @@
+id: uptime-kuma
+name: Uptime Kuma
+description: Self-hosted uptime monitor for websites, APIs, TCP ports, DNS, ping, and containers. Get notified when anything goes down.
+icon: "📡"
+category: monitoring
+
+route:
+  subdomain: status
+  internal_port: 3001
+
+container:
+  image: louislam/uptime-kuma:1
+  environment: []
+  volumes:
+    - /var/lib/cloud-core/apps/uptime-kuma/data:/app/data
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 15
+
+backup:
+  enabled: true
+  paths:
+    - /var/lib/cloud-core/apps/uptime-kuma/data
+
+resources:
+  memory_limit: 256m

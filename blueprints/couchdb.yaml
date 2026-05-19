@@ -1,0 +1,33 @@
+id: couchdb
+name: CouchDB
+description: Database backend for Obsidian LiveSync. Install this, then connect your Obsidian vault using the Self-hosted LiveSync plugin to sync across all your devices.
+icon: "🛋️"
+category: storage
+
+route:
+  subdomain: couchdb
+  internal_port: 5984
+
+container:
+  image: couchdb:latest
+  environment:
+    - COUCHDB_USER=admin
+    - COUCHDB_PASSWORD=changeme
+  volumes:
+    - /var/lib/cloud-core/apps/couchdb/data:/opt/couchdb/data
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: true
+  paths:
+    - /var/lib/cloud-core/apps/couchdb/data
+
+resources:
+  memory_limit: 256m
