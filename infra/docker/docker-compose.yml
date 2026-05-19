@@ -24,9 +24,10 @@ services:
 
   # ── Go Core ───────────────────────────────────────────────────────────────
   # Auth, session verification, Docker lifecycle, blueprints, backups.
+  # Built from the repo root Dockerfile which includes the Vite web app.
   core:
     build:
-      context: ../../apps/core
+      context: ../../
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
