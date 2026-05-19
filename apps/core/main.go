@@ -13,8 +13,8 @@ func main() {
 		dbPath:            getenv("CLOUD_CORE_DATABASE_PATH", "./data/cloud-core.db"),
 		sessionSecret:     mustGetenv("CLOUD_CORE_SESSION_SECRET"),
 		port:              getenv("CLOUD_CORE_PORT", "8080"),
-		loginURL:          getenv("CLOUD_CORE_LOGIN_URL", "http://home.localhost/login"),
-		cookieDomain:      getenv("CLOUD_CORE_COOKIE_DOMAIN", "localhost"),
+		loginURL:          getenv("CLOUD_CORE_LOGIN_URL", "http://home.localtest.me/login"),
+		cookieDomain:      getenv("CLOUD_CORE_COOKIE_DOMAIN", "localtest.me"),
 		bootstrapEmail:    os.Getenv("CLOUD_CORE_BOOTSTRAP_EMAIL"),
 		bootstrapPassword: os.Getenv("CLOUD_CORE_BOOTSTRAP_PASSWORD"),
 	}

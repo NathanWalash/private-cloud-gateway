@@ -49,6 +49,11 @@ func New(db *sql.DB, secret []byte, loginURL, cookieDomain string) *Server {
 	return &Server{mux: mux}
 }
 
+// Handler returns the HTTP handler — used by tests with httptest.NewServer.
+func (s *Server) Handler() http.Handler {
+	return s.mux
+}
+
 // ListenAndServe starts the HTTP server on addr.
 func (s *Server) ListenAndServe(addr string) error {
 	return http.ListenAndServe(addr, s.mux)
