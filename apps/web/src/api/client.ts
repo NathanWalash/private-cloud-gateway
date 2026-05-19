@@ -103,4 +103,17 @@ export const api = {
 
   uninstallApp: (id: number): Promise<void> =>
     request(`/api/apps/${id}`, { method: 'DELETE' }),
+
+  backup: {
+    list: (): Promise<BackupFile[]> => request('/api/backup/list'),
+    create: (): Promise<{ name: string; size: number }> =>
+      request('/api/backup/create', { method: 'POST' }),
+    safeEscapeUrl: '/api/backup/safe-escape',
+  },
+}
+
+export interface BackupFile {
+  name: string
+  size: number
+  created_at: string
 }

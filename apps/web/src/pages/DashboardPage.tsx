@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Globe, Plus, LogOut, Package, Archive, Sun, Sunset, Moon } from 'lucide-react'
+import { Globe, Plus, LogOut, Package, Sun, Sunset, Moon } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { api, App, Blueprint } from '../api/client'
 import AppCard from '../components/AppCard'
 import StatusWidget from '../components/StatusWidget'
+import BackupWidget from '../components/BackupWidget'
 import InstallDialog from '../components/InstallDialog'
 
 export default function DashboardPage() {
@@ -131,13 +132,7 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Status</h2>
             <StatusWidget />
-            <div className="card p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Archive className="w-3.5 h-3.5 text-slate-600" />
-                <h3 className="text-sm font-medium text-slate-500">Backups</h3>
-              </div>
-              <p className="text-xs text-slate-600">Coming in Milestone 4.</p>
-            </div>
+            <BackupWidget />
           </div>
         </div>
       </main>
