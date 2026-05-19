@@ -3,12 +3,11 @@ FROM golang:1.22-alpine AS builder
 
 WORKDIR /build
 
-# Copy all source first so go mod tidy can analyse imports and generate go.sum.
-# Once go.sum is committed, this can be split into a separate download step for
-# better layer caching (COPY go.mod go.sum ./ → RUN go mod download → COPY . .).
-COPY . .
+# go.sum is committed — download deps first for better layer caching.
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN go mod tidy
+COPY . .
 
 # ── Test stage ────────────────────────────────────────────────────────────────
 FROM builder AS tester
