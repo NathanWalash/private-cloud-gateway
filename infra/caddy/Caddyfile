@@ -1,0 +1,60 @@
+# Private Cloud Gateway — local development Caddyfile
+#
+# This config uses HTTP only. Caddy auto-HTTPS is disabled for local dev.
+# For local HTTPS with mkcert, see docs/dev-local.md.
+#
+# Production Caddyfile (with HTTPS + wildcard certs) will be added in Milestone 5.
+
+{
+	# HTTP only — no ACME cert requests in local dev.
+	auto_https off
+
+	# Admin API bound to localhost only. Never expose port 2019 publicly.
+	admin localhost:2019
+
+	# Quieter logs in dev (use `debug` for verbose output).
+	log {
+		level INFO
+	}
+}
+
+# ── Dashboard and authentication ─────────────────────────────────────────────
+# All traffic to home.localhost goes directly to the Go Core service.
+# This includes the login page, the dashboard root, and all /api/* routes.
+
+http://home.localhost {
+	reverse_proxy core:8080
+}
+
+# ── Protected app routes ──────────────────────────────────────────────────────
+# Every protected subdomain follows the same pattern:
+#   1. forward_auth asks Go Core to verify the session cookie
+#   2. On 200 → Caddy proxies to the app container
+#   3. On 401 → handle_errors redirects the browser to the login page
+
+http://files.localhost {
+	forward_auth core:8080 {
+		uri /api/auth/verify
+		copy_headers X-Auth-User-ID
+	}
+
+	reverse_proxy whoami:80
+
+	handle_errors 401 {
+		redir http://home.localhost/login 302
+	}
+}
+
+# Add more protected subdomains following the same pattern above.
+# Example for a future PDF app:
+#
+# http://pdf.localhost {
+#     forward_auth core:8080 {
+#         uri /api/auth/verify
+#         copy_headers X-Auth-User-ID
+#     }
+#     reverse_proxy stirling-pdf:8080
+#     handle_errors 401 {
+#         redir http://home.localhost/login 302
+#     }
+# }
