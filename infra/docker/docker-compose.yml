@@ -1,0 +1,74 @@
+name: private-cloud-gateway
+
+services:
+
+  # ── Caddy ─────────────────────────────────────────────────────────────────
+  # Public HTTPS gateway. The ONLY service that exposes host ports.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "127.0.0.1:2019:2019"   # Admin API — localhost only, never public
+    volumes:
+      - ../../infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - public
+      - private
+    depends_on:
+      core:
+        condition: service_healthy
+
+  # ── Go Core ───────────────────────────────────────────────────────────────
+  # Auth, session verification, Docker lifecycle, blueprints, backups.
+  core:
+    build:
+      context: ../../apps/core
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    volumes:
+      - core_data:/data
+      - core_backups:/backups
+    networks:
+      - private
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    expose:
+      - "8080"
+
+  # ── Whoami (Milestone 1 test app) ─────────────────────────────────────────
+  # A minimal HTTP server that echoes request headers.
+  # Used to verify that forward-auth is working and X-Auth-User-ID is forwarded.
+  # Replace with real apps in Milestone 3.
+  whoami:
+    image: traefik/whoami:latest
+    restart: unless-stopped
+    networks:
+      - private
+    expose:
+      - "80"
+
+networks:
+  # Public network: Caddy ↔ Core and Caddy ↔ Apps
+  public:
+    driver: bridge
+
+  # Private network: all app containers (never publicly routable)
+  private:
+    name: cloud_core_private
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
+  core_data:
+  core_backups:
