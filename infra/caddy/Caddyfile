@@ -30,7 +30,8 @@ http://home.localhost {
 # Every protected subdomain follows the same pattern:
 #   1. forward_auth asks Go Core to verify the session cookie
 #   2. On 200 → Caddy proxies to the app container
-#   3. On 401 → handle_errors redirects the browser to the login page
+#   3. On non-200 → Go Core returns a 302 redirect to the login page,
+#      which Caddy passes straight through to the browser
 
 http://files.localhost {
 	forward_auth core:8080 {
@@ -39,10 +40,6 @@ http://files.localhost {
 	}
 
 	reverse_proxy whoami:80
-
-	handle_errors 401 {
-		redir http://home.localhost/login 302
-	}
 }
 
 # Add more protected subdomains following the same pattern above.
@@ -54,7 +51,4 @@ http://files.localhost {
 #         copy_headers X-Auth-User-ID
 #     }
 #     reverse_proxy stirling-pdf:8080
-#     handle_errors 401 {
-#         redir http://home.localhost/login 302
-#     }
 # }
