@@ -3,6 +3,7 @@ package auth
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -15,28 +16,34 @@ const cookieName = "pcg_session"
 type Handler struct {
 	db           *sql.DB
 	loginURL     string
-	cookieDomain string // shared across all *.domain subdomains (e.g. "localhost" or "example.com")
+	cookieDomain string
 }
 
 func NewHandler(db *sql.DB, loginURL, cookieDomain string) *Handler {
 	return &Handler{db: db, loginURL: loginURL, cookieDomain: cookieDomain}
 }
 
-// LoginPage serves the minimal HTML login form.
+// LoginPage serves the HTML login form.
 func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	errMsg := ""
 	if r.URL.Query().Get("error") == "1" {
 		errMsg = `<p class="error">Invalid email or password.</p>`
 	}
-
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprintf(w, loginPageHTML, errMsg)
 }
 
-// Login handles form submission from the login page.
-// On success it sets the session cookie and redirects to /.
-// On failure it redirects back to /login?error=1.
+// Login validates credentials, sets the session cookie, and redirects.
+// Rate-limited to 10 attempts per IP per minute.
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	ip := realIP(r)
+
+	if !loginLimiter.allow(ip) {
+		slog.Warn("login rate limited", "ip", ip)
+		http.Error(w, "too many requests", http.StatusTooManyRequests)
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		http.Redirect(w, r, h.loginURL+"?error=1", http.StatusSeeOther)
 		return
@@ -51,16 +58,19 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		"SELECT id, password FROM users WHERE email = ?", email,
 	).Scan(&userID, &hash)
 	if err == sql.ErrNoRows {
+		slog.Info("login failed", "reason", "user not found", "ip", ip)
 		auditLog(h.db, "login.fail", email, "user not found")
 		http.Redirect(w, r, h.loginURL+"?error=1", http.StatusSeeOther)
 		return
 	}
 	if err != nil {
+		slog.Error("login db error", "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
+		slog.Info("login failed", "reason", "wrong password", "ip", ip)
 		auditLog(h.db, "login.fail", email, "wrong password")
 		http.Redirect(w, r, h.loginURL+"?error=1", http.StatusSeeOther)
 		return
@@ -68,6 +78,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	sessionID, err := createSession(h.db, userID)
 	if err != nil {
+		slog.Error("create session error", "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -76,21 +87,23 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     cookieName,
 		Value:    sessionID,
 		Path:     "/",
-		Domain:   h.cookieDomain, // shared across all *.cookieDomain subdomains
+		Domain:   h.cookieDomain,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(sessionTTL),
 	})
 
+	slog.Info("login success", "ip", ip)
 	auditLog(h.db, "login.success", email, "")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-// Logout clears the session and redirects to the login page.
+// Logout clears the session cookie and invalidates the server-side session.
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(cookieName); err == nil {
 		deleteSession(h.db, cookie.Value)
 		auditLog(h.db, "logout", "", "")
+		slog.Info("logout", "ip", realIP(r))
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -106,9 +119,9 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // Verify is the Caddy forward-auth endpoint.
-// Returns 200 + X-Auth-User-ID for valid sessions.
-// Returns 302 to loginURL for invalid/missing sessions — Caddy passes this redirect
-// straight through to the browser, which is simpler than relying on handle_errors.
+// Returns 200 + X-Auth-User-ID for a valid session.
+// Returns 302 to loginURL for an invalid or missing session — Caddy passes
+// this redirect straight through to the browser.
 func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
@@ -118,6 +131,7 @@ func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := validateSession(h.db, cookie.Value)
 	if err != nil {
+		slog.Error("verify session error", "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -126,12 +140,11 @@ func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Downstream services can use this header to identify the caller.
 	w.Header().Set("X-Auth-User-ID", fmt.Sprintf("%d", userID))
 	w.WriteHeader(http.StatusOK)
 }
 
-// RequireAuth wraps a handler and redirects to loginURL if no valid session exists.
+// RequireAuth wraps a handler, redirecting to /login if there is no valid session.
 // Used for routes served directly by Go Core (e.g. the dashboard root).
 func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
