@@ -79,28 +79,62 @@ jobs:
       - name: Lint YAML files
         run: yamllint -c .yamllint.yml blueprints/ .github/workflows/ infra/docker/
 
+  # ── Go lint ───────────────────────────────────────────────────────────────
+  go-lint:
+    name: Go lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: apps/core/go.sum
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: apps/core
+
+  # ── Go vulnerability scan ─────────────────────────────────────────────────
+  go-vuln:
+    name: Go vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: "1.22"
+          go-package: "./..."
+          work-dir: apps/core
+
   # ── Go Core tests ─────────────────────────────────────────────────────────
-  # Runs all Go tests inside Docker (no Go toolchain install needed).
-  # Uses the `tester` stage from the multi-stage Dockerfile.
   go-test:
     name: Go Core tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run Go Core tests
-        run: docker build --target tester -t pcg-core:test apps/core/
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: apps/core/go.sum
+
+      - name: Run tests
+        run: go test -v -race -count=1 ./...
+        working-directory: apps/core
 
   # ── Go Core build ─────────────────────────────────────────────────────────
-  # Builds the final runtime image. Runs after tests pass.
   go-build:
     name: Go Core build
     runs-on: ubuntu-latest
-    needs: go-test
+    needs: [go-lint, go-test]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Go Core runtime image
+      - name: Build Go Core Docker image
         run: docker build -t pcg-core:ci apps/core/
 
   # ── Node build (placeholder — enable when apps/web exists) ───────────────
