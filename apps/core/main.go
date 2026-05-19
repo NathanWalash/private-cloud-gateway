@@ -26,6 +26,7 @@ func main() {
 		bootstrapPassword: os.Getenv("CLOUD_CORE_BOOTSTRAP_PASSWORD"),
 		caddyAdmin:        getenv("CLOUD_CORE_CADDY_ADMIN", "caddy:2019"),
 		blueprintDir:      getenv("CLOUD_CORE_BLUEPRINT_DIR", "/blueprints"),
+		adminEmail:        os.Getenv("CLOUD_CORE_ADMIN_EMAIL"),
 	}
 
 	setupLogging(cfg.env)
@@ -61,7 +62,13 @@ func main() {
 		slog.Info("docker connected")
 	}
 
-	cm := caddy.New(cfg.caddyAdmin, cfg.cookieDomain, cfg.loginURL)
+	var cm *caddy.Manager
+	if cfg.env == "production" && cfg.adminEmail != "" {
+		cm = caddy.NewProduction(cfg.caddyAdmin, cfg.cookieDomain, cfg.adminEmail)
+		slog.Info("caddy running in production HTTPS mode", "domain", cfg.cookieDomain)
+	} else {
+		cm = caddy.New(cfg.caddyAdmin, cfg.cookieDomain, cfg.loginURL)
+	}
 
 	srv := server.New(
 		database,
@@ -106,6 +113,7 @@ type config struct {
 	bootstrapPassword string
 	caddyAdmin        string
 	blueprintDir      string
+	adminEmail        string // Let's Encrypt email (production only)
 }
 
 func getenv(key, fallback string) string {

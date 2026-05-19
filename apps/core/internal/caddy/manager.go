@@ -23,14 +23,28 @@ type AppRoute struct {
 type Manager struct {
 	adminAddr    string
 	cookieDomain string
+	https        bool   // production HTTPS mode
+	adminEmail   string // Let's Encrypt email (required for HTTPS mode)
 	client       *http.Client
 }
 
-// New creates a Manager targeting the given Caddy admin address (e.g. "caddy:2019").
+// New creates a Manager in local-dev mode (HTTP only, auto_https off).
 func New(adminAddr, cookieDomain, _ string) *Manager {
 	return &Manager{
 		adminAddr:    adminAddr,
 		cookieDomain: cookieDomain,
+		https:        false,
+		client:       &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+// NewProduction creates a Manager in production mode (HTTPS via Let's Encrypt).
+func NewProduction(adminAddr, cookieDomain, adminEmail string) *Manager {
+	return &Manager{
+		adminAddr:    adminAddr,
+		cookieDomain: cookieDomain,
+		https:        true,
+		adminEmail:   adminEmail,
 		client:       &http.Client{Timeout: 10 * time.Second},
 	}
 }
@@ -62,11 +76,28 @@ func (m *Manager) ReloadAll(ctx context.Context, apps []AppRoute) error {
 	return nil
 }
 
-// buildCaddyfile generates the complete Caddyfile for all installed apps.
+// buildCaddyfile generates the complete Caddyfile.
+// In dev mode: HTTP only, includes whoami test route.
+// In production mode: HTTPS via Let's Encrypt, no test routes.
 func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 	var sb strings.Builder
+	proto := "http"
 
-	sb.WriteString(`{
+	if m.https {
+		// Production: HTTPS with Let's Encrypt, admin API off public internet
+		sb.WriteString(fmt.Sprintf(`{
+	admin :2019
+	email %s
+	log {
+		level INFO
+	}
+}
+
+`, m.adminEmail))
+		proto = "https"
+	} else {
+		// Local dev: HTTP only, no cert requests
+		sb.WriteString(`{
 	auto_https off
 	admin :2019
 	log {
@@ -75,23 +106,24 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 }
 
 `)
+	}
 
 	// Dashboard and auth — always present.
-	sb.WriteString(fmt.Sprintf("http://home.%s {\n\treverse_proxy core:8080\n}\n\n", m.cookieDomain))
+	sb.WriteString(fmt.Sprintf("%s://home.%s {\n\treverse_proxy core:8080\n}\n\n", proto, m.cookieDomain))
 
-	// Test app — always present for local dev. Proves auth gate works without needing a blueprint installed.
-	// Remove in production Caddyfile (Milestone 5) when the whoami service won't exist.
-	sb.WriteString(fmt.Sprintf(
-		"http://files.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy whoami:80\n}\n\n",
-		m.cookieDomain,
-	))
+	if !m.https {
+		// Test app — local dev only. Proves auth gate without installing a blueprint.
+		sb.WriteString(fmt.Sprintf(
+			"http://files.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy whoami:80\n}\n\n",
+			m.cookieDomain,
+		))
+	}
 
-	// One block per installed app. Overrides the base whoami route if an app
-	// is installed on the same subdomain (e.g. installing filebrowser takes over files.*).
+	// One block per installed app.
 	for _, app := range apps {
 		sb.WriteString(fmt.Sprintf(
-			"http://%s.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy %s:%d\n}\n\n",
-			app.Subdomain, m.cookieDomain,
+			"%s://%s.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy %s:%d\n}\n\n",
+			proto, app.Subdomain, m.cookieDomain,
 			app.ContainerName, app.InternalPort,
 		))
 	}

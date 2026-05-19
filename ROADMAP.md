@@ -85,20 +85,21 @@ Success criteria:
 A fresh server can be restored from a backup archive.
 ```
 
-## Milestone 5: Oracle Cloud deployment
+## Milestone 5: Oracle Cloud deployment 🔜
 
 Goal: deploy to a fresh Oracle Cloud Ubuntu VM.
 
 Tasks:
 
-- [ ] Write install.sh.
-- [ ] Create production Docker Compose file.
-- [ ] Create production Caddy config.
-- [ ] Create systemd service.
-- [ ] Create firewall setup.
-- [ ] Document DNS setup.
-- [ ] Document persistent volume layout.
-- [ ] Test on fresh Oracle VM.
+- [x] Write `install.sh` — one-command installer for Ubuntu 22.04+.
+- [x] Create production Docker Compose (`docker-compose.prod.yml`).
+- [x] Create production Caddyfile with HTTPS + Let's Encrypt.
+- [x] Create systemd service (`pcg.service`).
+- [x] Create firewall setup script (UFW, ports 22/80/443 only).
+- [x] Document DNS setup (wildcard A records).
+- [x] Production HTTPS mode in Go Core (caddy.NewProduction).
+- [ ] End-to-end test on fresh Oracle VM.
+- [ ] GitHub release with versioned image.
 
 Success criteria:
 

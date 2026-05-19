@@ -1,0 +1,76 @@
+name: E2E Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "Admin email to test with"
+        required: true
+      password:
+        description: "Admin password to test with"
+        required: true
+        type: string
+
+# NOT triggered on push/PR — run manually via Actions tab after deploying.
+# Usage: Actions → E2E Tests → Run workflow
+
+jobs:
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env
+        run: |
+          cp .env.example .env
+          echo "CLOUD_CORE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
+          echo "CLOUD_CORE_BOOTSTRAP_EMAIL=${{ inputs.email }}" >> .env
+          echo "CLOUD_CORE_BOOTSTRAP_PASSWORD=${{ inputs.password }}" >> .env
+          echo "CLOUD_CORE_LOGIN_URL=http://home.localtest.me/login" >> .env
+          echo "CLOUD_CORE_COOKIE_DOMAIN=localtest.me" >> .env
+
+      - name: Add hosts entries
+        run: |
+          echo "127.0.0.1 home.localtest.me" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 files.localtest.me" | sudo tee -a /etc/hosts
+
+      - name: Start stack
+        run: docker compose -f infra/docker/docker-compose.yml up -d --build
+        timeout-minutes: 5
+
+      - name: Wait for stack healthy
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://home.localtest.me/healthz > /dev/null 2>&1; then
+              echo "Stack healthy after ${i}s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Stack did not become healthy"
+          docker compose -f infra/docker/docker-compose.yml logs core
+          exit 1
+
+      - name: Run shell E2E tests (unauthenticated)
+        run: bash scripts/e2e.sh
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: apps/core/go.sum
+
+      - name: Run Go E2E tests
+        run: |
+          go test -v -tags e2e -timeout 60s ./e2e/...
+        working-directory: apps/core
+        env:
+          E2E_BASE_URL: http://home.localtest.me
+          E2E_FILES_URL: http://files.localtest.me
+          E2E_EMAIL: ${{ inputs.email }}
+          E2E_PASSWORD: ${{ inputs.password }}
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f infra/docker/docker-compose.yml down -v
