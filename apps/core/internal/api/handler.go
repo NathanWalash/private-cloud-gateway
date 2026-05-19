@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -34,10 +33,3 @@ func (h *Handler) Apps(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte("[]"))
 }
 
-// jsonError writes a JSON error body with the given HTTP status.
-func jsonError(w http.ResponseWriter, msg string, code int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	b, _ := json.Marshal(map[string]string{"error": msg})
-	_, _ = w.Write(b)
-}
