@@ -190,18 +190,28 @@ func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// RequireAuth wraps a handler, redirecting to /login if no valid session.
-// Used for routes served directly by Go Core (e.g. the API).
+// RequireAuth wraps a handler, redirecting to /login (302) if no valid session.
+// Used to guard API endpoints and the dashboard root.
 func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(cookieName)
 		if err != nil {
-			h.loginError(w, r)
+			if isJSON(r) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			} else {
+				http.Redirect(w, r, "/login", http.StatusFound)
+			}
 			return
 		}
 		userID, err := validateSession(h.db, cookie.Value)
 		if err != nil || userID == 0 {
-			h.loginError(w, r)
+			if isJSON(r) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			} else {
+				http.Redirect(w, r, "/login", http.StatusFound)
+			}
 			return
 		}
 		next(w, r)

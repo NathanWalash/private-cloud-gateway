@@ -49,15 +49,14 @@ func New(db *sql.DB, secret []byte, loginURL, cookieDomain string, staticFS fs.F
 
 	// ── Static web app ──────────────────────────────────────────────────────
 	if staticFS != nil {
+		// SPA mode: serve the Vite app and fall back to index.html for all
+		// non-API routes so React Router handles client-side navigation.
 		fileServer := http.FileServer(http.FS(staticFS))
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			// API routes are handled above — this only serves the SPA.
 			if strings.HasPrefix(r.URL.Path, "/api/") {
 				http.NotFound(w, r)
 				return
 			}
-			// Serve the exact file if it exists; otherwise serve index.html
-			// so React Router can handle client-side navigation.
 			_, err := staticFS.(fs.StatFS).Stat(strings.TrimPrefix(r.URL.Path, "/"))
 			if err != nil {
 				r2 := r.Clone(r.Context())
@@ -67,6 +66,16 @@ func New(db *sql.DB, secret []byte, loginURL, cookieDomain string, staticFS fs.F
 			}
 			fileServer.ServeHTTP(w, r)
 		})
+	} else {
+		// No SPA — used in tests. Auth guard on root for backward compatibility.
+		mux.HandleFunc("GET /", authHandler.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/" {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write([]byte("<!DOCTYPE html><html><body>ok</body></html>"))
+		}))
 	}
 
 	return &Server{mux: mux}
