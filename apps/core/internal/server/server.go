@@ -14,6 +14,8 @@ import (
 
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/api"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/auth"
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/caddy"
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/docker"
 )
 
 // Server wraps the HTTP mux and holds shared dependencies.
@@ -23,34 +25,56 @@ type Server struct {
 
 // New wires up all routes and returns a ready Server.
 // staticFS is the embedded web app; pass nil to use the placeholder fallback.
-func New(db *sql.DB, secret []byte, loginURL, cookieDomain string, staticFS fs.FS) *Server {
+func New(
+	db *sql.DB,
+	secret []byte,
+	loginURL, cookieDomain string,
+	staticFS fs.FS,
+	dm *docker.Manager,
+	cm *caddy.Manager,
+	blueprintDir string,
+) *Server {
 	mux := http.NewServeMux()
 
 	authHandler := auth.NewHandler(db, loginURL, cookieDomain)
-	apiHandler := api.NewHandler(db, "0.1.0")
+	apiHandler := api.NewHandler(db, "0.2.0", dm, cm, blueprintDir, cookieDomain)
 
-	// ── Auth ────────────────────────────────────────────────────────────────
+	// ── Auth ─────────────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /login", authHandler.LoginPage)
 	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
 	mux.HandleFunc("POST /api/auth/logout", authHandler.Logout)
 	mux.HandleFunc("GET /api/auth/verify", authHandler.Verify)
 	mux.HandleFunc("GET /api/auth/me", authHandler.Me)
 
-	// ── API ─────────────────────────────────────────────────────────────────
+	// ── App management ────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/status", authHandler.RequireAuth(apiHandler.Status))
 	mux.HandleFunc("GET /api/apps", authHandler.RequireAuth(apiHandler.Apps))
+	mux.HandleFunc("POST /api/apps/install", authHandler.RequireAuth(apiHandler.Install))
+	mux.HandleFunc("GET /api/blueprints", authHandler.RequireAuth(apiHandler.Blueprints))
+	// Lifecycle — matched by prefix, handler extracts ID from path.
+	mux.HandleFunc("DELETE /api/apps/", authHandler.RequireAuth(apiHandler.Uninstall))
+	mux.HandleFunc("POST /api/apps/", authHandler.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/start"):
+			apiHandler.StartApp(w, r)
+		case strings.HasSuffix(r.URL.Path, "/stop"):
+			apiHandler.StopApp(w, r)
+		case strings.HasSuffix(r.URL.Path, "/restart"):
+			apiHandler.RestartApp(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
 
-	// ── Health check ────────────────────────────────────────────────────────
+	// ── Health check ─────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok\n"))
 	})
 
-	// ── Static web app ──────────────────────────────────────────────────────
+	// ── Static web app ────────────────────────────────────────────────────────
 	if staticFS != nil {
-		// SPA mode: serve the Vite app and fall back to index.html for all
-		// non-API routes so React Router handles client-side navigation.
 		fileServer := http.FileServer(http.FS(staticFS))
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/api/") {
@@ -67,7 +91,6 @@ func New(db *sql.DB, secret []byte, loginURL, cookieDomain string, staticFS fs.F
 			fileServer.ServeHTTP(w, r)
 		})
 	} else {
-		// No SPA — used in tests. Auth guard on root for backward compatibility.
 		mux.HandleFunc("GET /", authHandler.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path != "/" {
 				http.NotFound(w, r)
@@ -86,8 +109,7 @@ func (s *Server) Handler() http.Handler {
 	return s.mux
 }
 
-// ListenAndServe starts the HTTP server with timeouts and handles SIGINT/SIGTERM
-// for graceful shutdown.
+// ListenAndServe starts the HTTP server with timeouts and graceful shutdown.
 func (s *Server) ListenAndServe(addr string) error {
 	srv := &http.Server{
 		Addr:         addr,
