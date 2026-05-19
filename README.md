@@ -1,14 +1,14 @@
 # Private Cloud Gateway
 
 [![CI](https://github.com/NathanWalash/private-cloud-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/NathanWalash/private-cloud-gateway/actions/workflows/ci.yml)
-[![Go 1.22](https://img.shields.io/badge/Go-1.22-00ADD8?logo=go)](https://go.dev/)
+[![Go 1.24](https://img.shields.io/badge/Go-1.24-00ADD8?logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A private, login-protected cloud dashboard and Docker app gateway for a single owner.
 
 Every hosted app sits behind one login. Caddy is the only public entry point. A Go service verifies sessions, manages Docker app lifecycles, and handles backups. Apps run on a private Docker network and are never directly reachable from the internet.
 
-```
+```text
 Browser
   │
   ▼
@@ -67,7 +67,7 @@ See `.env.example` for the full list with defaults.
 
 ## Architecture
 
-```
+```text
 private-cloud-gateway/
 ├── apps/
 │   ├── core/        Go backend — auth, sessions, Docker lifecycle, backups

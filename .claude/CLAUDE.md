@@ -64,7 +64,8 @@ See `docs/git-workflow.md`.
 
 ## Next milestone
 
-**Milestone 2: Dashboard foundation**
+### Milestone 2: Dashboard foundation
+
 - `apps/web/` — Vite + TypeScript + Tailwind
 - Proper login page (replace Go Core inline HTML)
 - Dashboard layout: app cards, server status widgets

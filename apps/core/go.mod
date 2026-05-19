@@ -1,6 +1,6 @@
 module github.com/NathanWalash/private-cloud-gateway/apps/core
 
-go 1.22
+go 1.24
 
 require (
 	golang.org/x/crypto v0.25.0

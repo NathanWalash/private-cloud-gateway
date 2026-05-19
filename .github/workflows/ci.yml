@@ -88,7 +88,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.24"
           cache-dependency-path: apps/core/go.sum
 
       - name: golangci-lint
@@ -106,7 +106,7 @@ jobs:
 
       - uses: golang/govulncheck-action@v1
         with:
-          go-version-input: "1.22"
+          go-version-input: "stable"
           go-package: "./..."
           work-dir: apps/core
 
@@ -119,7 +119,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.24"
           cache-dependency-path: apps/core/go.sum
 
       - name: Run tests
