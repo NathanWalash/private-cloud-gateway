@@ -59,7 +59,7 @@ func deleteSession(db *sql.DB, sessionID string) error {
 
 func auditLog(db *sql.DB, action, actor, detail string) {
 	// Best-effort — never block the request path on audit failures.
-	db.Exec(
+	_, _ = db.Exec(
 		"INSERT INTO audit_log (action, actor, detail) VALUES (?, ?, ?)",
 		action, actor, detail,
 	)

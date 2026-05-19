@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,11 +13,11 @@ import (
 )
 
 const (
-	testEmail     = "test@example.com"
-	testPassword  = "testpassword123"
-	testSecret    = "test-secret-32-chars-for-testing!"
-	testLoginURL  = "http://home.localtest.me/login"
-	testDomain    = "localtest.me"
+	testEmail    = "test@example.com"
+	testPassword = "testpassword123"
+	testSecret   = "test-secret-32-chars-for-testing!"
+	testLoginURL = "http://home.localtest.me/login"
+	testDomain   = "localtest.me"
 )
 
 // newTestServer spins up a real in-memory stack: SQLite + migrations + bootstrap user.
@@ -37,8 +38,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(srv.Handler())
 }
 
-// noRedirect returns an http.Client that stops at the first redirect so tests
-// can inspect 3xx responses directly.
+// noRedirect returns an http.Client that stops at the first redirect.
 func noRedirect() *http.Client {
 	return &http.Client{
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
@@ -57,6 +57,7 @@ func loginAndGetCookie(t *testing.T, ts *httptest.Server) *http.Cookie {
 	if err != nil {
 		t.Fatalf("login request: %v", err)
 	}
+	defer resp.Body.Close()
 	for _, c := range resp.Cookies() {
 		if c.Name == "pcg_session" {
 			return c
@@ -71,7 +72,11 @@ func loginAndGetCookie(t *testing.T, ts *httptest.Server) *http.Cookie {
 func TestHealthz(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Close()
-	resp, _ := ts.Client().Get(ts.URL + "/healthz")
+	resp, err := ts.Client().Get(ts.URL + "/healthz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("GET /healthz: got %d, want 200", resp.StatusCode)
 	}
@@ -82,7 +87,11 @@ func TestHealthz(t *testing.T) {
 func TestLoginPageRendered(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Close()
-	resp, _ := ts.Client().Get(ts.URL + "/login")
+	resp, err := ts.Client().Get(ts.URL + "/login")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("GET /login: got %d, want 200", resp.StatusCode)
 	}
@@ -96,7 +105,11 @@ func TestLoginPageRendered(t *testing.T) {
 func TestRoot_RedirectsToLoginWhenUnauthenticated(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Close()
-	resp, _ := noRedirect().Get(ts.URL + "/")
+	resp, err := noRedirect().Get(ts.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusFound {
 		t.Errorf("GET / unauthenticated: got %d, want 302", resp.StatusCode)
 	}
@@ -109,9 +122,13 @@ func TestRoot_ServesContentWhenAuthenticated(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Close()
 	cookie := loginAndGetCookie(t, ts)
-	req, _ := http.NewRequest("GET", ts.URL+"/", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), "GET", ts.URL+"/", nil)
 	req.AddCookie(cookie)
-	resp, _ := ts.Client().Do(req)
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("GET / authenticated: got %d, want 200", resp.StatusCode)
 	}
@@ -122,7 +139,11 @@ func TestRoot_ServesContentWhenAuthenticated(t *testing.T) {
 func TestVerify_Redirects302WhenNoSession(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Close()
-	resp, _ := noRedirect().Get(ts.URL + "/api/auth/verify")
+	resp, err := noRedirect().Get(ts.URL + "/api/auth/verify")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusFound {
 		t.Errorf("verify unauthenticated: got %d, want 302 (not 401)", resp.StatusCode)
 	}
@@ -135,9 +156,13 @@ func TestVerify_Returns200WithUserIDWhenAuthenticated(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Close()
 	cookie := loginAndGetCookie(t, ts)
-	req, _ := http.NewRequest("GET", ts.URL+"/api/auth/verify", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), "GET", ts.URL+"/api/auth/verify", nil)
 	req.AddCookie(cookie)
-	resp, _ := noRedirect().Do(req)
+	resp, err := noRedirect().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("verify authenticated: got %d, want 200", resp.StatusCode)
 	}
@@ -151,10 +176,14 @@ func TestVerify_Returns200WithUserIDWhenAuthenticated(t *testing.T) {
 func TestLogin_SetsCookieWithCorrectAttributes(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Close()
-	resp, _ := noRedirect().PostForm(ts.URL+"/api/auth/login", url.Values{
+	resp, err := noRedirect().PostForm(ts.URL+"/api/auth/login", url.Values{
 		"email":    {testEmail},
 		"password": {testPassword},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusSeeOther {
 		t.Fatalf("login: got %d, want 303", resp.StatusCode)
 	}
@@ -181,10 +210,14 @@ func TestLogin_SetsCookieWithCorrectAttributes(t *testing.T) {
 func TestLogin_RedirectsToErrorOnWrongPassword(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Close()
-	resp, _ := noRedirect().PostForm(ts.URL+"/api/auth/login", url.Values{
+	resp, err := noRedirect().PostForm(ts.URL+"/api/auth/login", url.Values{
 		"email":    {testEmail},
 		"password": {"wrong"},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusSeeOther {
 		t.Errorf("wrong password: got %d, want 303", resp.StatusCode)
 	}
@@ -201,10 +234,14 @@ func TestLogin_RedirectsToErrorOnWrongPassword(t *testing.T) {
 func TestLogin_RedirectsToErrorOnUnknownEmail(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Close()
-	resp, _ := noRedirect().PostForm(ts.URL+"/api/auth/login", url.Values{
+	resp, err := noRedirect().PostForm(ts.URL+"/api/auth/login", url.Values{
 		"email":    {"nobody@example.com"},
 		"password": {"anything"},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
 	if !strings.Contains(resp.Header.Get("Location"), "error=1") {
 		t.Error("unknown email should redirect to login?error=1")
 	}
@@ -218,24 +255,32 @@ func TestLogout_ClearsCookieAndInvalidatesSession(t *testing.T) {
 	cookie := loginAndGetCookie(t, ts)
 
 	// Logout
-	req, _ := http.NewRequest("POST", ts.URL+"/api/auth/logout", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), "POST", ts.URL+"/api/auth/logout", nil)
 	req.AddCookie(cookie)
-	logoutResp, _ := noRedirect().Do(req)
+	logoutResp, err := noRedirect().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer logoutResp.Body.Close()
 	if logoutResp.StatusCode != http.StatusSeeOther {
 		t.Errorf("logout: got %d, want 303", logoutResp.StatusCode)
 	}
 
-	// Session cookie should be cleared (MaxAge -1 / Expires in past)
+	// Session cookie should be cleared (MaxAge -1)
 	for _, c := range logoutResp.Cookies() {
 		if c.Name == "pcg_session" && c.MaxAge >= 0 && !c.Expires.IsZero() {
 			t.Error("logout should clear pcg_session cookie")
 		}
 	}
 
-	// Old session should be invalid — verify must now redirect
-	req2, _ := http.NewRequest("GET", ts.URL+"/api/auth/verify", nil)
+	// Old session should now be invalid
+	req2, _ := http.NewRequestWithContext(context.Background(), "GET", ts.URL+"/api/auth/verify", nil)
 	req2.AddCookie(cookie)
-	verifyResp, _ := noRedirect().Do(req2)
+	verifyResp, err := noRedirect().Do(req2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer verifyResp.Body.Close()
 	if verifyResp.StatusCode != http.StatusFound {
 		t.Errorf("verify after logout: got %d, want 302 (session should be gone)", verifyResp.StatusCode)
 	}
