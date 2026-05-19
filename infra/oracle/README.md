@@ -19,7 +19,7 @@ curl -fsSL https://raw.githubusercontent.com/NathanWalash/private-cloud-gateway/
 Point your domain to the server IP with a wildcard — this means every new
 app subdomain works automatically without per-app DNS changes:
 
-```
+```text
 A     yourdomain.com      → SERVER_IP
 A     *.yourdomain.com    → SERVER_IP
 ```

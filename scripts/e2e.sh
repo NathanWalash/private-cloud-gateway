@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2015  # A && pass || fail is intentional — pass always returns 0
 # End-to-end tests for Private Cloud Gateway.
 # Runs against a live stack — not part of the standard unit test suite.
 #
