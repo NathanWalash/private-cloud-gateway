@@ -1,39 +1,30 @@
 # Private Cloud Gateway — local development Caddyfile
 #
-# This config uses HTTP only. Caddy auto-HTTPS is disabled for local dev.
-# For local HTTPS with mkcert, see docs/dev-local.md.
+# Uses localtest.me: a real domain with public wildcard DNS (*.localtest.me → 127.0.0.1).
+# No hosts file changes needed. Works in all browsers. Cookie domain sharing works correctly
+# because browsers treat localtest.me as a normal registrable domain.
 #
 # Production Caddyfile (with HTTPS + wildcard certs) will be added in Milestone 5.
 
 {
-	# HTTP only — no ACME cert requests in local dev.
 	auto_https off
-
-	# Admin API bound to localhost only. Never expose port 2019 publicly.
 	admin localhost:2019
-
-	# Quieter logs in dev (use `debug` for verbose output).
 	log {
 		level INFO
 	}
 }
 
-# ── Dashboard and authentication ─────────────────────────────────────────────
-# All traffic to home.localhost goes directly to the Go Core service.
-# This includes the login page, the dashboard root, and all /api/* routes.
+# ── Dashboard and authentication ──────────────────────────────────────────────
 
-http://home.localhost {
+http://home.localtest.me {
 	reverse_proxy core:8080
 }
 
 # ── Protected app routes ──────────────────────────────────────────────────────
-# Every protected subdomain follows the same pattern:
-#   1. forward_auth asks Go Core to verify the session cookie
-#   2. On 200 → Caddy proxies to the app container
-#   3. On non-200 → Go Core returns a 302 redirect to the login page,
-#      which Caddy passes straight through to the browser
+# Pattern: forward_auth verifies the session, then proxy to the app container.
+# On 200 → Caddy proxies. On non-200 → Go Core returns 302 to the login page.
 
-http://files.localhost {
+http://files.localtest.me {
 	forward_auth core:8080 {
 		uri /api/auth/verify
 		copy_headers X-Auth-User-ID
@@ -45,7 +36,7 @@ http://files.localhost {
 # Add more protected subdomains following the same pattern above.
 # Example for a future PDF app:
 #
-# http://pdf.localhost {
+# http://pdf.localtest.me {
 #     forward_auth core:8080 {
 #         uri /api/auth/verify
 #         copy_headers X-Auth-User-ID

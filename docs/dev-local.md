@@ -52,36 +52,30 @@ Do not commit `.env`. It is in `.gitignore`.
 
 ## Local subdomain routing
 
-Milestone 1 uses localhost subdomains such as `files.localhost` and `home.localhost`.
+The local dev stack uses `*.localtest.me` instead of `*.localhost`.
 
-Some browsers and systems handle `.localhost` subdomains automatically. If yours does not, add entries to your hosts file:
+`localtest.me` is a real domain with public wildcard DNS — `*.localtest.me` resolves to `127.0.0.1`
+via public DNS servers. No hosts file changes are needed, and it works correctly in all browsers.
 
-**macOS / Linux** — edit `/etc/hosts`:
+**Why not `*.localhost`?** Chrome and Firefox treat `localhost` as a Public Suffix (like `com`),
+so `Domain=localhost` cookies are blocked. A session cookie set on `home.localhost` will not be
+sent to `files.localhost`, breaking the auth gate.
 
-```text
-127.0.0.1 home.localhost
-127.0.0.1 files.localhost
-```
-
-**Windows** — edit `C:\Windows\System32\drivers\etc\hosts` as Administrator:
+Dev URLs:
 
 ```text
-127.0.0.1 home.localhost
-127.0.0.1 files.localhost
+http://home.localtest.me   → login page and dashboard
+http://files.localtest.me  → protected test app (whoami)
 ```
 
-## Local HTTPS (optional for Milestone 1)
+Make sure your `.env` has:
 
-Caddy can serve HTTPS locally using a locally trusted certificate from mkcert.
-
-Install mkcert and generate a wildcard cert:
-
-```bash
-mkcert -install
-mkcert "*.localhost" localhost 127.0.0.1
+```env
+CLOUD_CORE_LOGIN_URL=http://home.localtest.me/login
+CLOUD_CORE_COOKIE_DOMAIN=localtest.me
 ```
 
-The generated files can be referenced in the local Caddy config. This is optional for Milestone 1, which can run over HTTP.
+These are the defaults in `.env.example`.
 
 ## Running the stack
 
@@ -106,9 +100,9 @@ Milestone 1 is the first working version. Success means:
 
 ```text
 1. Docker Compose starts Caddy, the Go Core service, and one test app.
-2. Visiting files.localhost while logged out redirects to the login page.
+2. Visiting files.localtest.me while logged out redirects to the login page.
 3. Logging in creates a session cookie.
-4. Visiting files.localhost while logged in proxies to the test app container.
+4. Visiting files.localtest.me while logged in proxies to the test app container.
 5. The test app container has no exposed public host port.
 6. Caddy is the only public-facing service.
 ```
