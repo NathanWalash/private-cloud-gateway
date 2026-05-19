@@ -1,0 +1,32 @@
+id: shiori
+name: Shiori
+description: Simple bookmark manager. Save links, read later, full-text search.
+icon: "🔖"
+category: productivity
+
+route:
+  subdomain: bookmarks
+  internal_port: 8080
+
+container:
+  image: ghcr.io/go-shiori/shiori:latest
+  environment:
+    - SHIORI_DIR=/data
+  volumes:
+    - /var/lib/cloud-core/apps/shiori/data:/data
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: true
+  paths:
+    - /var/lib/cloud-core/apps/shiori/data
+
+resources:
+  memory_limit: 256m

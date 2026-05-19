@@ -1,0 +1,31 @@
+id: actual-budget
+name: Actual Budget
+description: Local-first personal finance and budgeting. Import bank transactions, track spending, plan budgets — your data never leaves your server.
+icon: "💰"
+category: finance
+
+route:
+  subdomain: budget
+  internal_port: 5006
+
+container:
+  image: actualbudget/actual-server:latest
+  environment: []
+  volumes:
+    - /var/lib/cloud-core/apps/actual-budget/data:/data
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: true
+  paths:
+    - /var/lib/cloud-core/apps/actual-budget/data
+
+resources:
+  memory_limit: 256m

@@ -1,0 +1,31 @@
+id: silverbullet
+name: SilverBullet
+description: Obsidian-style markdown notes in your browser. Backlinks, live queries, plugins. Your notes stay on your server.
+icon: "📝"
+category: productivity
+
+route:
+  subdomain: notes
+  internal_port: 3000
+
+container:
+  image: ghcr.io/silverbulletmd/silverbullet:latest
+  environment: []
+  volumes:
+    - /var/lib/cloud-core/apps/silverbullet/space:/space
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 15
+
+backup:
+  enabled: true
+  paths:
+    - /var/lib/cloud-core/apps/silverbullet/space
+
+resources:
+  memory_limit: 256m

@@ -1,0 +1,33 @@
+id: vaultwarden
+name: Vaultwarden
+description: Self-hosted Bitwarden-compatible password manager. Use the official Bitwarden apps and browser extensions with your own server.
+icon: "🔐"
+category: security
+
+route:
+  subdomain: vault
+  internal_port: 80
+
+container:
+  image: vaultwarden/server:latest
+  environment:
+    - WEBSOCKET_ENABLED=true
+    - SIGNUPS_ALLOWED=false
+  volumes:
+    - /var/lib/cloud-core/apps/vaultwarden/data:/data
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /alive
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: true
+  paths:
+    - /var/lib/cloud-core/apps/vaultwarden/data
+
+resources:
+  memory_limit: 256m

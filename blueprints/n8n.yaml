@@ -1,0 +1,35 @@
+id: n8n
+name: n8n
+description: Workflow automation. Connect apps, trigger on events, run code, and automate repetitive tasks. Like Zapier but self-hosted.
+icon: "⚡"
+category: automation
+
+route:
+  subdomain: n8n
+  internal_port: 5678
+
+container:
+  image: docker.n8n.io/n8nio/n8n:latest
+  environment:
+    - N8N_HOST=n8n.localtest.me
+    - N8N_PROTOCOL=http
+    - NODE_ENV=production
+    - WEBHOOK_URL=http://n8n.localtest.me/
+  volumes:
+    - /var/lib/cloud-core/apps/n8n/data:/home/node/.n8n
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /healthz
+  expected_status: 200
+  timeout_seconds: 30
+
+backup:
+  enabled: true
+  paths:
+    - /var/lib/cloud-core/apps/n8n/data
+
+resources:
+  memory_limit: 512m
