@@ -8,7 +8,9 @@
 
 {
 	auto_https off
-	admin localhost:2019
+	# Bind to all interfaces so Go Core can reach caddy:2019 on the Docker network.
+	# The 127.0.0.1:2019 host binding in docker-compose keeps it off the public internet.
+	admin :2019
 	log {
 		level INFO
 	}
