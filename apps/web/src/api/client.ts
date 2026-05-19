@@ -3,12 +3,24 @@ export interface User {
   email: string
 }
 
-export interface AppStatus {
+export interface App {
+  id: number
+  blueprint_id: string
+  name: string
+  icon: string
+  subdomain: string
+  url: string
+  status: 'running' | 'stopped' | 'starting' | 'missing'
+  internal_port: number
+  container_name: string
+}
+
+export interface Blueprint {
   id: string
   name: string
-  status: 'online' | 'offline' | 'starting' | 'sleeping'
-  url: string
+  description: string
   icon: string
+  category: string
 }
 
 export interface ServerStatus {
@@ -51,18 +63,36 @@ export { ApiError }
 export const api = {
   auth: {
     me: (): Promise<User> => request('/api/auth/me'),
-
     login: (email: string, password: string): Promise<{ status: string }> =>
       request('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       }),
-
     logout: (): Promise<{ status: string }> =>
       request('/api/auth/logout', { method: 'POST' }),
   },
 
   status: (): Promise<ServerStatus> => request('/api/status'),
 
-  apps: (): Promise<AppStatus[]> => request('/api/apps'),
+  apps: (): Promise<App[]> => request('/api/apps'),
+
+  blueprints: (): Promise<Blueprint[]> => request('/api/blueprints'),
+
+  installApp: (blueprintId: string): Promise<{ id: number; status: string }> =>
+    request('/api/apps/install', {
+      method: 'POST',
+      body: JSON.stringify({ blueprint_id: blueprintId }),
+    }),
+
+  startApp: (id: number): Promise<{ status: string }> =>
+    request(`/api/apps/${id}/start`, { method: 'POST' }),
+
+  stopApp: (id: number): Promise<{ status: string }> =>
+    request(`/api/apps/${id}/stop`, { method: 'POST' }),
+
+  restartApp: (id: number): Promise<{ status: string }> =>
+    request(`/api/apps/${id}/restart`, { method: 'POST' }),
+
+  uninstallApp: (id: number): Promise<void> =>
+    request(`/api/apps/${id}`, { method: 'DELETE' }),
 }

@@ -35,8 +35,14 @@ services:
     volumes:
       - core_data:/data
       - core_backups:/backups
+      # Docker socket — allows Core to manage app containers.
+      # This grants root-equivalent access; acceptable for a single-owner cloud.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Blueprints directory — YAML app definitions.
+      - ../../blueprints:/blueprints:ro
     networks:
       - private
+      - public   # needs public to reach Caddy admin API at caddy:2019
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
       interval: 10s
