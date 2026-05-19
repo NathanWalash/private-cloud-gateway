@@ -3,15 +3,13 @@ FROM golang:1.22-alpine AS builder
 
 WORKDIR /build
 
-# Resolve and cache dependencies before copying source so layer cache is
-# reused on code-only changes once go.sum exists in the repo.
-COPY go.mod ./
-# go.sum is optional at this stage — `go mod tidy` generates it on first build.
-COPY go.sum* ./
-RUN go mod download || go mod tidy
-
+# Copy all source first so go mod tidy can analyse imports and generate go.sum.
+# Once go.sum is committed, this can be split into a separate download step for
+# better layer caching (COPY go.mod go.sum ./ → RUN go mod download → COPY . .).
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o cloud-core .
+
+RUN go mod tidy && \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o cloud-core .
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM alpine:3.20
