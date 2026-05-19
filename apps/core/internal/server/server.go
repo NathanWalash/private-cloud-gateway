@@ -3,13 +3,16 @@ package server
 import (
 	"context"
 	"database/sql"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/api"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/auth"
 )
 
@@ -19,38 +22,52 @@ type Server struct {
 }
 
 // New wires up all routes and returns a ready Server.
-func New(db *sql.DB, secret []byte, loginURL, cookieDomain string) *Server {
+// staticFS is the embedded web app; pass nil to use the placeholder fallback.
+func New(db *sql.DB, secret []byte, loginURL, cookieDomain string, staticFS fs.FS) *Server {
 	mux := http.NewServeMux()
-	authHandler := auth.NewHandler(db, loginURL, cookieDomain)
 
-	// Auth routes
+	authHandler := auth.NewHandler(db, loginURL, cookieDomain)
+	apiHandler := api.NewHandler(db, "0.1.0")
+
+	// ── Auth ────────────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /login", authHandler.LoginPage)
 	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
 	mux.HandleFunc("POST /api/auth/logout", authHandler.Logout)
-
-	// Caddy forward-auth endpoint — called server-to-server, not by the browser.
 	mux.HandleFunc("GET /api/auth/verify", authHandler.Verify)
+	mux.HandleFunc("GET /api/auth/me", authHandler.Me)
 
-	// Health check — used by Docker HEALTHCHECK and load balancers.
+	// ── API ─────────────────────────────────────────────────────────────────
+	mux.HandleFunc("GET /api/status", authHandler.RequireAuth(apiHandler.Status))
+	mux.HandleFunc("GET /api/apps", authHandler.RequireAuth(apiHandler.Apps))
+
+	// ── Health check ────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok\n"))
 	})
 
-	// Dashboard root — requires a valid session.
-	// Replaced by the Vite app in Milestone 2.
-	mux.HandleFunc("GET /", authHandler.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(`<!DOCTYPE html><html><body style="background:#0f1117;color:#e2e8f0;font-family:system-ui;padding:2rem">
-<h1>Private Cloud Gateway</h1><p>Dashboard coming in Milestone 2.</p>
-<p><a href="/api/auth/logout" style="color:#6366f1">Sign out</a></p>
-</body></html>`))
-	}))
+	// ── Static web app ──────────────────────────────────────────────────────
+	if staticFS != nil {
+		fileServer := http.FileServer(http.FS(staticFS))
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			// API routes are handled above — this only serves the SPA.
+			if strings.HasPrefix(r.URL.Path, "/api/") {
+				http.NotFound(w, r)
+				return
+			}
+			// Serve the exact file if it exists; otherwise serve index.html
+			// so React Router can handle client-side navigation.
+			_, err := staticFS.(fs.StatFS).Stat(strings.TrimPrefix(r.URL.Path, "/"))
+			if err != nil {
+				r2 := r.Clone(r.Context())
+				r2.URL.Path = "/"
+				fileServer.ServeHTTP(w, r2)
+				return
+			}
+			fileServer.ServeHTTP(w, r)
+		})
+	}
 
 	return &Server{mux: mux}
 }

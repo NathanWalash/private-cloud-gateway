@@ -2,9 +2,11 @@ package auth
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -23,7 +25,7 @@ func NewHandler(db *sql.DB, loginURL, cookieDomain string) *Handler {
 	return &Handler{db: db, loginURL: loginURL, cookieDomain: cookieDomain}
 }
 
-// LoginPage serves the HTML login form.
+// LoginPage serves the HTML login form (used as a fallback if JS fails).
 func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	errMsg := ""
 	if r.URL.Query().Get("error") == "1" {
@@ -33,24 +35,59 @@ func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, loginPageHTML, errMsg)
 }
 
-// Login validates credentials, sets the session cookie, and redirects.
-// Rate-limited to 10 attempts per IP per minute.
+// Me returns the authenticated user's info.
+// GET /api/auth/me — returns 200+JSON when authenticated, 401 when not.
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie(cookieName)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	userID, err := validateSession(h.db, cookie.Value)
+	if err != nil {
+		slog.Error("me: validate session", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	if userID == 0 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	var email string
+	if err := h.db.QueryRow("SELECT email FROM users WHERE id = ?", userID).Scan(&email); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	b, _ := json.Marshal(map[string]any{"id": userID, "email": email})
+	_, _ = w.Write(b)
+}
+
+// Login handles login from either an HTML form (form-encoded) or the React app (JSON).
+// Form: redirects on success/failure. JSON: returns 200/401 with JSON body.
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	ip := realIP(r)
 
 	if !loginLimiter.allow(ip) {
 		slog.Warn("login rate limited", "ip", ip)
-		http.Error(w, "too many requests", http.StatusTooManyRequests)
+		if isJSON(r) {
+			w.Header().Set("Content-Type", "application/json")
+			http.Error(w, `{"error":"too many requests"}`, http.StatusTooManyRequests)
+		} else {
+			http.Error(w, "too many requests", http.StatusTooManyRequests)
+		}
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		http.Redirect(w, r, h.loginURL+"?error=1", http.StatusSeeOther)
+	email, password, ok := parseLoginBody(r)
+	if !ok {
+		if isJSON(r) {
+			http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+		} else {
+			http.Redirect(w, r, h.loginURL+"?error=1", http.StatusSeeOther)
+		}
 		return
 	}
-
-	email := r.FormValue("email")
-	password := r.FormValue("password")
 
 	var userID int64
 	var hash string
@@ -60,7 +97,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		slog.Info("login failed", "reason", "user not found", "ip", ip)
 		auditLog(h.db, "login.fail", email, "user not found")
-		http.Redirect(w, r, h.loginURL+"?error=1", http.StatusSeeOther)
+		h.loginError(w, r)
 		return
 	}
 	if err != nil {
@@ -72,7 +109,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
 		slog.Info("login failed", "reason", "wrong password", "ip", ip)
 		auditLog(h.db, "login.fail", email, "wrong password")
-		http.Redirect(w, r, h.loginURL+"?error=1", http.StatusSeeOther)
+		h.loginError(w, r)
 		return
 	}
 
@@ -95,10 +132,16 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("login success", "ip", ip)
 	auditLog(h.db, "login.success", email, "")
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+
+	if isJSON(r) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	} else {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
 }
 
-// Logout clears the session cookie and invalidates the server-side session.
+// Logout clears the session and redirects (form) or returns JSON (API).
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(cookieName); err == nil {
 		_ = deleteSession(h.db, cookie.Value)
@@ -115,13 +158,16 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 
-	http.Redirect(w, r, h.loginURL, http.StatusSeeOther)
+	if isJSON(r) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	} else {
+		http.Redirect(w, r, h.loginURL, http.StatusSeeOther)
+	}
 }
 
 // Verify is the Caddy forward-auth endpoint.
-// Returns 200 + X-Auth-User-ID for a valid session.
-// Returns 302 to loginURL for an invalid or missing session — Caddy passes
-// this redirect straight through to the browser.
+// Returns 200 + X-Auth-User-ID on valid session, 302 to loginURL otherwise.
 func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
@@ -144,22 +190,58 @@ func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// RequireAuth wraps a handler, redirecting to /login if there is no valid session.
-// Used for routes served directly by Go Core (e.g. the dashboard root).
+// RequireAuth wraps a handler, redirecting to /login if no valid session.
+// Used for routes served directly by Go Core (e.g. the API).
 func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(cookieName)
 		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
+			h.loginError(w, r)
 			return
 		}
 		userID, err := validateSession(h.db, cookie.Value)
 		if err != nil || userID == 0 {
-			http.Redirect(w, r, "/login", http.StatusFound)
+			h.loginError(w, r)
 			return
 		}
 		next(w, r)
 	}
+}
+
+// loginError returns 401 JSON or redirects to /login depending on the request type.
+func (h *Handler) loginError(w http.ResponseWriter, r *http.Request) {
+	if isJSON(r) {
+		w.Header().Set("Content-Type", "application/json")
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+	} else {
+		http.Redirect(w, r, h.loginURL+"?error=1", http.StatusSeeOther)
+	}
+}
+
+// isJSON reports whether the request expects a JSON response.
+func isJSON(r *http.Request) bool {
+	ct := r.Header.Get("Content-Type")
+	acc := r.Header.Get("Accept")
+	return strings.Contains(ct, "application/json") ||
+		strings.Contains(acc, "application/json")
+}
+
+// parseLoginBody reads email/password from either JSON or form body.
+func parseLoginBody(r *http.Request) (email, password string, ok bool) {
+	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+		var req struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			return "", "", false
+		}
+		return req.Email, req.Password, true
+	}
+	if err := r.ParseForm(); err != nil {
+		return "", "", false
+	}
+	return r.FormValue("email"), r.FormValue("password"), true
 }
 
 const loginPageHTML = `<!DOCTYPE html>

@@ -34,7 +34,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 		t.Fatalf("db.Bootstrap: %v", err)
 	}
 	t.Cleanup(func() { database.Close() })
-	srv := server.New(database, []byte(testSecret), testLoginURL, testDomain)
+	srv := server.New(database, []byte(testSecret), testLoginURL, testDomain, nil)
 	return httptest.NewServer(srv.Handler())
 }
 
