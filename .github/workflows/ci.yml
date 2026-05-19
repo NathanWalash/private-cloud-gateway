@@ -77,22 +77,21 @@ jobs:
         run: pip install yamllint
 
       - name: Lint YAML files
-        run: yamllint -c .yamllint.yml blueprints/ .github/workflows/
+        run: yamllint -c .yamllint.yml blueprints/ .github/workflows/ infra/docker/
 
-  # ── Placeholder jobs — enabled when code exists ──────────────────────────
-  #
-  # go-build:
-  #   name: Go build and test
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-go@v5
-  #       with:
-  #         go-version: "1.22"
-  #     - run: go build ./...
-  #       working-directory: apps/core
-  #     - run: go test ./...
-  #       working-directory: apps/core
+  # ── Go Core build ─────────────────────────────────────────────────────────
+  # Builds the Docker image for Go Core. This validates the Dockerfile,
+  # runs go mod tidy, and compiles the binary — catching any build errors.
+  go-build:
+    name: Go Core build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Go Core Docker image
+        run: docker build -t pcg-core:ci apps/core/
+
+  # ── Node build (placeholder — enable when apps/web exists) ───────────────
   #
   # node-build:
   #   name: Node build
