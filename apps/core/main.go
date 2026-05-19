@@ -4,7 +4,9 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/caddy"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/db"
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/docker"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/server"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/web"
 )
@@ -19,6 +21,8 @@ func main() {
 		cookieDomain:      getenv("CLOUD_CORE_COOKIE_DOMAIN", "localtest.me"),
 		bootstrapEmail:    os.Getenv("CLOUD_CORE_BOOTSTRAP_EMAIL"),
 		bootstrapPassword: os.Getenv("CLOUD_CORE_BOOTSTRAP_PASSWORD"),
+		caddyAdmin:        getenv("CLOUD_CORE_CADDY_ADMIN", "caddy:2019"),
+		blueprintDir:      getenv("CLOUD_CORE_BLUEPRINT_DIR", "/blueprints"),
 	}
 
 	setupLogging(cfg.env)
@@ -43,7 +47,30 @@ func main() {
 		}
 	}
 
-	srv := server.New(database, []byte(cfg.sessionSecret), cfg.loginURL, cfg.cookieDomain, web.FS())
+	// Docker manager — optional: logs a warning if Docker socket is unavailable.
+	var dm *docker.Manager
+	dm, err = docker.New()
+	if err != nil {
+		slog.Warn("docker unavailable — app install/lifecycle disabled", "err", err)
+	} else {
+		defer dm.Close()
+		slog.Info("docker connected")
+	}
+
+	// Caddy manager — for dynamic route registration.
+	cm := caddy.New(cfg.caddyAdmin, cfg.cookieDomain, cfg.loginURL)
+
+	srv := server.New(
+		database,
+		[]byte(cfg.sessionSecret),
+		cfg.loginURL,
+		cfg.cookieDomain,
+		web.FS(),
+		dm,
+		cm,
+		cfg.blueprintDir,
+	)
+
 	if err := srv.ListenAndServe(":" + cfg.port); err != nil {
 		slog.Error("server stopped", "err", err)
 		os.Exit(1)
@@ -70,6 +97,8 @@ type config struct {
 	cookieDomain      string
 	bootstrapEmail    string
 	bootstrapPassword string
+	caddyAdmin        string
+	blueprintDir      string
 }
 
 func getenv(key, fallback string) string {

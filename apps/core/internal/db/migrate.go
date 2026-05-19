@@ -30,6 +30,22 @@ CREATE TABLE IF NOT EXISTS audit_log (
 	detail     TEXT,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS apps (
+	id              INTEGER  PRIMARY KEY AUTOINCREMENT,
+	blueprint_id    TEXT     NOT NULL UNIQUE,
+	name            TEXT     NOT NULL,
+	icon            TEXT     NOT NULL DEFAULT '📦',
+	subdomain       TEXT     NOT NULL UNIQUE,
+	internal_port   INTEGER  NOT NULL,
+	image           TEXT     NOT NULL,
+	container_name  TEXT     NOT NULL UNIQUE,
+	status          TEXT     NOT NULL DEFAULT 'stopped',
+	created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_apps_status ON apps(status);
 `
 
 func Migrate(db *sql.DB) error {
