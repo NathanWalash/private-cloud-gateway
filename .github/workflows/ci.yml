@@ -126,32 +126,40 @@ jobs:
         run: go test -v -race -count=1 ./...
         working-directory: apps/core
 
-  # ── Go Core build ─────────────────────────────────────────────────────────
-  go-build:
-    name: Go Core build
+  # ── Node type-check and build ─────────────────────────────────────────────
+  node-build:
+    name: Web app build
     runs-on: ubuntu-latest
-    needs: [go-lint, go-test]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Go Core Docker image
-        run: docker build -t pcg-core:ci apps/core/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
-  # ── Node build (placeholder — enable when apps/web exists) ───────────────
-  #
-  # node-build:
-  #   name: Node build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "20"
-  #     - uses: actions/cache@v4
-  #       with:
-  #         path: apps/web/node_modules
-  #         key: node-${{ hashFiles('apps/web/package-lock.json') }}
-  #     - run: npm ci
-  #       working-directory: apps/web
-  #     - run: npm run build
-  #       working-directory: apps/web
+      - uses: actions/cache@v4
+        with:
+          path: apps/web/node_modules
+          key: node-${{ hashFiles('apps/web/package.json') }}
+          restore-keys: node-
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+        working-directory: apps/web
+
+      - name: Type-check and build
+        run: npm run build
+        working-directory: apps/web
+
+  # ── Full stack build (web + Go) ───────────────────────────────────────────
+  # Builds the production Docker image using the root Dockerfile.
+  # Requires both web build and Go checks to pass first.
+  go-build:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    needs: [go-lint, go-test, node-build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build production Docker image
+        run: docker build -t pcg:ci .

@@ -6,6 +6,7 @@ import (
 
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/db"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/server"
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/web"
 )
 
 func main() {
@@ -42,7 +43,7 @@ func main() {
 		}
 	}
 
-	srv := server.New(database, []byte(cfg.sessionSecret), cfg.loginURL, cfg.cookieDomain)
+	srv := server.New(database, []byte(cfg.sessionSecret), cfg.loginURL, cfg.cookieDomain, web.FS())
 	if err := srv.ListenAndServe(":" + cfg.port); err != nil {
 		slog.Error("server stopped", "err", err)
 		os.Exit(1)

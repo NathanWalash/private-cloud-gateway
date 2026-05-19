@@ -1,0 +1,16 @@
+# Development override — exposes Go Core on localhost:8080 so the Vite dev
+# server can proxy /api/* requests to it during frontend development.
+#
+# Usage:
+#   docker compose -f infra/docker/docker-compose.yml \
+#                  -f infra/docker/docker-compose.dev.yml up core
+#
+# Then in apps/web: pnpm dev
+# Open http://localhost:5173
+
+services:
+  core:
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      CLOUD_CORE_ENV: development

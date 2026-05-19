@@ -34,7 +34,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 		t.Fatalf("db.Bootstrap: %v", err)
 	}
 	t.Cleanup(func() { database.Close() })
-	srv := server.New(database, []byte(testSecret), testLoginURL, testDomain)
+	srv := server.New(database, []byte(testSecret), testLoginURL, testDomain, nil)
 	return httptest.NewServer(srv.Handler())
 }
 
@@ -131,6 +131,40 @@ func TestRoot_ServesContentWhenAuthenticated(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("GET / authenticated: got %d, want 200", resp.StatusCode)
+	}
+}
+
+// ── /api/auth/me ─────────────────────────────────────────────────────────────
+
+func TestMe_Returns401WhenUnauthenticated(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Close()
+	resp, err := noRedirect().Get(ts.URL + "/api/auth/me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("GET /api/auth/me unauthenticated: got %d, want 401", resp.StatusCode)
+	}
+}
+
+func TestMe_Returns200WithEmailWhenAuthenticated(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Close()
+	cookie := loginAndGetCookie(t, ts)
+	req, _ := http.NewRequestWithContext(context.Background(), "GET", ts.URL+"/api/auth/me", nil)
+	req.AddCookie(cookie)
+	resp, err := noRedirect().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("GET /api/auth/me authenticated: got %d, want 200", resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type: %q, want application/json", ct)
 	}
 }
 

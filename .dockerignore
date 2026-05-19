@@ -1,0 +1,22 @@
+# Dependencies — never send to Docker daemon
+apps/web/node_modules/
+
+# Runtime data — never bake secrets or local state into images
+.env
+data/
+backups/
+caddy/data/
+caddy/config/
+
+# Build artifacts
+apps/core/cloud-core
+apps/web/dist/
+
+# Development files
+**/*.log
+**/*.tmp
+.git/
+
+# Editor
+.vscode/
+.idea/
