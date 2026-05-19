@@ -57,7 +57,7 @@ func New(db *sql.DB, secret []byte, loginURL, cookieDomain string, staticFS fs.F
 				http.NotFound(w, r)
 				return
 			}
-			_, err := staticFS.(fs.StatFS).Stat(strings.TrimPrefix(r.URL.Path, "/"))
+			_, err := fs.Stat(staticFS, strings.TrimPrefix(r.URL.Path, "/"))
 			if err != nil {
 				r2 := r.Clone(r.Context())
 				r2.URL.Path = "/"
