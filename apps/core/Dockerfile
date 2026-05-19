@@ -8,8 +8,15 @@ WORKDIR /build
 # better layer caching (COPY go.mod go.sum ./ → RUN go mod download → COPY . .).
 COPY . .
 
-RUN go mod tidy && \
-    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o cloud-core .
+RUN go mod tidy
+
+# ── Test stage ────────────────────────────────────────────────────────────────
+FROM builder AS tester
+RUN CGO_ENABLED=0 go test -v -count=1 ./...
+
+# ── Release stage ─────────────────────────────────────────────────────────────
+FROM builder AS release
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o cloud-core .
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM alpine:3.20
@@ -17,7 +24,7 @@ FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
-COPY --from=builder /build/cloud-core .
+COPY --from=release /build/cloud-core .
 
 # Data directory — mount a volume here in production.
 RUN mkdir -p /data /backups

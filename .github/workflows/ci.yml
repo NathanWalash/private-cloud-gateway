@@ -79,16 +79,28 @@ jobs:
       - name: Lint YAML files
         run: yamllint -c .yamllint.yml blueprints/ .github/workflows/ infra/docker/
 
-  # ── Go Core build ─────────────────────────────────────────────────────────
-  # Builds the Docker image for Go Core. This validates the Dockerfile,
-  # runs go mod tidy, and compiles the binary — catching any build errors.
-  go-build:
-    name: Go Core build
+  # ── Go Core tests ─────────────────────────────────────────────────────────
+  # Runs all Go tests inside Docker (no Go toolchain install needed).
+  # Uses the `tester` stage from the multi-stage Dockerfile.
+  go-test:
+    name: Go Core tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Go Core Docker image
+      - name: Run Go Core tests
+        run: docker build --target tester -t pcg-core:test apps/core/
+
+  # ── Go Core build ─────────────────────────────────────────────────────────
+  # Builds the final runtime image. Runs after tests pass.
+  go-build:
+    name: Go Core build
+    runs-on: ubuntu-latest
+    needs: go-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Go Core runtime image
         run: docker build -t pcg-core:ci apps/core/
 
   # ── Node build (placeholder — enable when apps/web exists) ───────────────
