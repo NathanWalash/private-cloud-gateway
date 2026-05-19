@@ -1,26 +1,28 @@
 # Roadmap
 
-## Milestone 1: Local secured routing
+## Milestone 1: Local secured routing ✅
 
 Goal: prove that one login protects both the dashboard and app subdomains.
 
 Tasks:
 
-- [ ] Create Docker Compose dev environment.
-- [ ] Run Caddy locally.
-- [ ] Run Go Core locally.
-- [ ] Add SQLite database and migrations.
-- [ ] Add login endpoint.
-- [ ] Add session cookie.
-- [ ] Add Caddy forward-auth check.
-- [ ] Protect one test app behind auth.
-- [ ] Confirm unauthenticated requests redirect to login.
+- [x] Create Docker Compose dev environment.
+- [x] Run Caddy locally.
+- [x] Run Go Core (Go, SQLite, bcrypt, sessions).
+- [x] Add SQLite database and migrations.
+- [x] Add login endpoint with bcrypt password hashing.
+- [x] Add session cookie (HttpOnly, SameSite=Lax, cross-subdomain domain).
+- [x] Add Caddy forward-auth check.
+- [x] Protect one test app behind auth.
+- [x] Confirm unauthenticated requests redirect to login.
+- [x] Unit and integration test suite (13 tests, race detector).
+- [x] CI pipeline (lint, vuln scan, tests, Docker build).
 
 Success criteria:
 
 ```text
-files.localhost redirects to login when logged out.
-files.localhost opens the app when logged in.
+files.localtest.me redirects to login when logged out. ✅
+files.localtest.me opens the app when logged in. ✅
 ```
 
 ## Milestone 2: Dashboard foundation
