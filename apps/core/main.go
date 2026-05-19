@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"log/slog"
 	"os"
 
@@ -19,6 +21,7 @@ func main() {
 		port:              getenv("CLOUD_CORE_PORT", "8080"),
 		loginURL:          getenv("CLOUD_CORE_LOGIN_URL", "http://home.localtest.me/login"),
 		cookieDomain:      getenv("CLOUD_CORE_COOKIE_DOMAIN", "localtest.me"),
+		// Bootstrap vars are optional — the in-app setup wizard is preferred.
 		bootstrapEmail:    os.Getenv("CLOUD_CORE_BOOTSTRAP_EMAIL"),
 		bootstrapPassword: os.Getenv("CLOUD_CORE_BOOTSTRAP_PASSWORD"),
 		caddyAdmin:        getenv("CLOUD_CORE_CADDY_ADMIN", "caddy:2019"),
@@ -39,6 +42,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Bootstrap is only used if set in .env and no users exist yet.
+	// The in-app setup wizard is the preferred first-run path.
 	if cfg.bootstrapEmail != "" && cfg.bootstrapPassword != "" {
 		if err := db.Bootstrap(database, cfg.bootstrapEmail, cfg.bootstrapPassword); err != nil {
 			slog.Info("bootstrap skipped", "reason", err.Error())
@@ -47,7 +52,6 @@ func main() {
 		}
 	}
 
-	// Docker manager — optional: logs a warning if Docker socket is unavailable.
 	var dm *docker.Manager
 	dm, err = docker.New()
 	if err != nil {
@@ -57,7 +61,6 @@ func main() {
 		slog.Info("docker connected")
 	}
 
-	// Caddy manager — for dynamic route registration.
 	cm := caddy.New(cfg.caddyAdmin, cfg.cookieDomain, cfg.loginURL)
 
 	srv := server.New(
@@ -70,6 +73,10 @@ func main() {
 		cm,
 		cfg.blueprintDir,
 	)
+
+	// Re-register Caddy routes for all installed apps on every startup.
+	// Routes are lost when Caddy restarts; this keeps them in sync with the DB.
+	reregisterRoutes(database, cm)
 
 	if err := srv.ListenAndServe(":" + cfg.port); err != nil {
 		slog.Error("server stopped", "err", err)
@@ -115,4 +122,31 @@ func mustGetenv(key string) string {
 		os.Exit(1)
 	}
 	return v
+}
+
+// reregisterRoutes pushes all installed app routes to Caddy on startup.
+// This keeps routes in sync when Core or Caddy restarts.
+func reregisterRoutes(database *sql.DB, cm *caddy.Manager) {
+	rows, err := database.QueryContext(context.Background(),
+		"SELECT subdomain, container_name, internal_port FROM apps ORDER BY id")
+	if err != nil {
+		slog.Warn("reregister routes: db query failed", "err", err)
+		return
+	}
+	defer rows.Close()
+
+	var routes []caddy.AppRoute
+	for rows.Next() {
+		var r caddy.AppRoute
+		if err := rows.Scan(&r.Subdomain, &r.ContainerName, &r.InternalPort); err != nil {
+			continue
+		}
+		routes = append(routes, r)
+	}
+
+	if err := cm.ReloadAll(context.Background(), routes); err != nil {
+		slog.Warn("reregister routes: caddy reload failed", "err", err)
+		return
+	}
+	slog.Info("caddy routes synced on startup", "count", len(routes))
 }

@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const sessionTTL = 8 * time.Hour
@@ -55,6 +57,18 @@ func deleteSession(db *sql.DB, sessionID string) error {
 		return fmt.Errorf("delete session: %w", err)
 	}
 	return nil
+}
+
+func dbCreateUser(db *sql.DB, email, password, firstName, lastName string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	_, err = db.Exec(
+		"INSERT INTO users (email, password, first_name, last_name) VALUES (?, ?, ?, ?)",
+		email, string(hash), firstName, lastName,
+	)
+	return err
 }
 
 func auditLog(db *sql.DB, action, actor, detail string) {

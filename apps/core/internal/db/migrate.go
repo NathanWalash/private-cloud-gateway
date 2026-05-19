@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
 	id         INTEGER  PRIMARY KEY AUTOINCREMENT,
 	email      TEXT     NOT NULL UNIQUE COLLATE NOCASE,
 	password   TEXT     NOT NULL,
+	first_name TEXT     NOT NULL DEFAULT '',
+	last_name  TEXT     NOT NULL DEFAULT '',
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -51,6 +53,14 @@ CREATE INDEX IF NOT EXISTS idx_apps_status ON apps(status);
 func Migrate(db *sql.DB) error {
 	if _, err := db.Exec(schema); err != nil {
 		return fmt.Errorf("migrate: %w", err)
+	}
+	// Additive migrations — safe to run on existing DBs.
+	// SQLite returns "duplicate column name" if the column exists; we ignore that.
+	for _, col := range []string{
+		"ALTER TABLE users ADD COLUMN first_name TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE users ADD COLUMN last_name  TEXT NOT NULL DEFAULT ''",
+	} {
+		_, _ = db.Exec(col) // ignore error — column may already exist
 	}
 	return nil
 }

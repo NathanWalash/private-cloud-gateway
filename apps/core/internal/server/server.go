@@ -39,12 +39,14 @@ func New(
 	authHandler := auth.NewHandler(db, loginURL, cookieDomain)
 	apiHandler := api.NewHandler(db, "0.2.0", dm, cm, blueprintDir, cookieDomain)
 
-	// ── Auth ─────────────────────────────────────────────────────────────────
+	// ── Auth & setup ─────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /login", authHandler.LoginPage)
 	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
 	mux.HandleFunc("POST /api/auth/logout", authHandler.Logout)
 	mux.HandleFunc("GET /api/auth/verify", authHandler.Verify)
 	mux.HandleFunc("GET /api/auth/me", authHandler.Me)
+	mux.HandleFunc("GET /api/auth/setup", authHandler.NeedsSetup)
+	mux.HandleFunc("POST /api/auth/setup", authHandler.Setup)
 
 	// ── App management ────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/status", authHandler.RequireAuth(apiHandler.Status))

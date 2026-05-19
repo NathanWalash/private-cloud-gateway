@@ -64,7 +64,8 @@ export default function DashboardPage() {
           <GreetingIcon />
           <div>
             <h1 className="text-2xl font-semibold text-slate-100">
-              Good {getGreeting()}, <span className="text-slate-400">{user?.email.split('@')[0]}</span>
+              Good {getGreeting()},{' '}
+              <span className="text-slate-400">{user?.first_name || user?.email.split('@')[0]}</span>
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">Your private cloud is running.</p>
           </div>

@@ -2,6 +2,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -44,7 +45,6 @@ func NewHandler(db *sql.DB, version string, dm *docker.Manager, cm *caddy.Manage
 
 // ── Status ────────────────────────────────────────────────────────────────────
 
-// Status returns server uptime and version.
 // GET /api/status
 func (h *Handler) Status(w http.ResponseWriter, _ *http.Request) {
 	uptime := time.Since(h.startTime).Round(time.Second).String()
@@ -67,7 +67,6 @@ type AppRecord struct {
 	ContainerName string `json:"container_name"`
 }
 
-// Apps returns the list of installed apps.
 // GET /api/apps
 func (h *Handler) Apps(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(),
@@ -98,7 +97,6 @@ type InstallRequest struct {
 	BlueprintID string `json:"blueprint_id"`
 }
 
-// Install reads a blueprint from disk and installs the app.
 // POST /api/apps/install
 func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 	if h.docker == nil {
@@ -112,7 +110,6 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load blueprint from disk.
 	bpPath := filepath.Join(h.blueprintDir, req.BlueprintID+".yaml")
 	data, err := os.ReadFile(bpPath)
 	if err != nil {
@@ -126,7 +123,7 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check not already installed.
+	// Check not already installed in DB.
 	var existing int
 	_ = h.db.QueryRowContext(r.Context(),
 		"SELECT COUNT(*) FROM apps WHERE blueprint_id = ?", bp.ID).Scan(&existing)
@@ -135,29 +132,22 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Install Docker container.
+	// Remove any stale container with the same name before creating.
+	// This handles the case where a previous install partially succeeded.
+	_ = h.docker.Remove(r.Context(), bp.ContainerName())
+
 	if err := h.docker.Install(r.Context(), bp); err != nil {
 		slog.Error("docker install failed", "app", bp.ID, "err", err)
 		jsonErr(w, "docker install failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Start the container.
 	if err := h.docker.Start(r.Context(), bp.ContainerName()); err != nil {
 		slog.Error("docker start failed", "app", bp.ID, "err", err)
 		jsonErr(w, "start failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Register Caddy route.
-	if h.caddy != nil {
-		if err := h.caddy.RegisterApp(r.Context(), bp.Route.Subdomain, bp.ContainerName(), bp.Route.InternalPort); err != nil {
-			slog.Warn("caddy route registration failed", "app", bp.ID, "err", err)
-			// Non-fatal — app is running, route can be added manually.
-		}
-	}
-
-	// Record in DB.
 	icon := bp.Icon
 	if icon == "" {
 		icon = "📦"
@@ -177,12 +167,14 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 	id, _ := res.LastInsertId()
 	slog.Info("app installed", "app", bp.ID, "id", id)
 
+	// Reload Caddy with all app routes now including the new one.
+	h.reloadCaddy(r.Context())
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_, _ = fmt.Fprintf(w, `{"id":%d,"status":"running"}`, id)
 }
 
-// Uninstall stops and removes an app.
 // DELETE /api/apps/:id
 func (h *Handler) Uninstall(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
@@ -191,20 +183,18 @@ func (h *Handler) Uninstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var containerName, subdomain string
+	var containerName string
 	if err := h.db.QueryRowContext(r.Context(),
-		"SELECT container_name, subdomain FROM apps WHERE id = ?", id,
-	).Scan(&containerName, &subdomain); err != nil {
+		"SELECT container_name FROM apps WHERE id = ?", id,
+	).Scan(&containerName); err != nil {
 		jsonErr(w, "app not found", http.StatusNotFound)
 		return
 	}
 
-	if h.caddy != nil {
-		_ = h.caddy.DeregisterApp(r.Context(), subdomain)
-	}
-
-	if err := h.docker.Remove(r.Context(), containerName); err != nil {
-		slog.Warn("docker remove failed", "container", containerName, "err", err)
+	if h.docker != nil {
+		if err := h.docker.Remove(r.Context(), containerName); err != nil {
+			slog.Warn("docker remove failed", "container", containerName, "err", err)
+		}
 	}
 
 	if _, err := h.db.ExecContext(r.Context(), "DELETE FROM apps WHERE id = ?", id); err != nil {
@@ -213,31 +203,26 @@ func (h *Handler) Uninstall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("app uninstalled", "id", id, "container", containerName)
+
+	// Reload Caddy without the removed app's route.
+	h.reloadCaddy(r.Context())
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Start starts a stopped app container.
 // POST /api/apps/:id/start
 func (h *Handler) StartApp(w http.ResponseWriter, r *http.Request) {
-	h.lifecycleAction(w, r, "start", func(containerName string) error {
-		return h.docker.Start(r.Context(), containerName)
-	})
+	h.lifecycleAction(w, r, "start", func(cn string) error { return h.docker.Start(r.Context(), cn) })
 }
 
-// Stop stops a running app container.
 // POST /api/apps/:id/stop
 func (h *Handler) StopApp(w http.ResponseWriter, r *http.Request) {
-	h.lifecycleAction(w, r, "stop", func(containerName string) error {
-		return h.docker.Stop(r.Context(), containerName)
-	})
+	h.lifecycleAction(w, r, "stop", func(cn string) error { return h.docker.Stop(r.Context(), cn) })
 }
 
-// Restart restarts an app container.
 // POST /api/apps/:id/restart
 func (h *Handler) RestartApp(w http.ResponseWriter, r *http.Request) {
-	h.lifecycleAction(w, r, "restart", func(containerName string) error {
-		return h.docker.Restart(r.Context(), containerName)
-	})
+	h.lifecycleAction(w, r, "restart", func(cn string) error { return h.docker.Restart(r.Context(), cn) })
 }
 
 func (h *Handler) lifecycleAction(w http.ResponseWriter, r *http.Request, action string, fn func(string) error) {
@@ -266,13 +251,7 @@ func (h *Handler) lifecycleAction(w http.ResponseWriter, r *http.Request, action
 		return
 	}
 
-	// Determine new status.
-	status := map[string]string{
-		"start":   "running",
-		"stop":    "stopped",
-		"restart": "running",
-	}[action]
-
+	status := map[string]string{"start": "running", "stop": "stopped", "restart": "running"}[action]
 	_, _ = h.db.ExecContext(r.Context(),
 		"UPDATE apps SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", status, id)
 
@@ -281,7 +260,6 @@ func (h *Handler) lifecycleAction(w http.ResponseWriter, r *http.Request, action
 	_, _ = fmt.Fprintf(w, `{"status":%q}`, status)
 }
 
-// Blueprints lists available blueprints from the blueprints directory.
 // GET /api/blueprints
 func (h *Handler) Blueprints(w http.ResponseWriter, r *http.Request) {
 	entries, err := os.ReadDir(h.blueprintDir)
@@ -328,6 +306,48 @@ func (h *Handler) Blueprints(w http.ResponseWriter, r *http.Request) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// reloadCaddy queries all installed apps and reloads Caddy with the complete config.
+func (h *Handler) reloadCaddy(ctx context.Context) {
+	if h.caddy == nil {
+		return
+	}
+	routes, err := h.queryAppRoutes(ctx)
+	if err != nil {
+		slog.Warn("caddy reload: failed to query routes", "err", err)
+		return
+	}
+	if err := h.caddy.ReloadAll(ctx, routes); err != nil {
+		slog.Warn("caddy reload failed", "err", err)
+	} else {
+		slog.Info("caddy reloaded", "routes", len(routes))
+	}
+}
+
+// queryAppRoutes returns caddy.AppRoute for all apps in the DB.
+func (h *Handler) queryAppRoutes(ctx context.Context) ([]caddy.AppRoute, error) {
+	rows, err := h.db.QueryContext(ctx,
+		"SELECT subdomain, container_name, internal_port FROM apps ORDER BY id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var routes []caddy.AppRoute
+	for rows.Next() {
+		var r caddy.AppRoute
+		if err := rows.Scan(&r.Subdomain, &r.ContainerName, &r.InternalPort); err != nil {
+			continue
+		}
+		routes = append(routes, r)
+	}
+	return routes, nil
+}
+
+// QueryAppRoutes is the exported version used by main.go for startup route sync.
+func (h *Handler) QueryAppRoutes(ctx context.Context) ([]caddy.AppRoute, error) {
+	return h.queryAppRoutes(ctx)
+}
+
 func jsonOK(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(v); err != nil {
@@ -341,11 +361,8 @@ func jsonErr(w http.ResponseWriter, msg string, code int) {
 	_, _ = fmt.Fprintf(w, `{"error":%q}`, msg)
 }
 
-// pathID extracts the last path segment as an integer ID.
-// Works with patterns like /api/apps/42/start → 42.
 func pathID(r *http.Request) (int64, error) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	// Walk backwards to find the first integer segment.
 	for i := len(parts) - 1; i >= 0; i-- {
 		if id, err := strconv.ParseInt(parts[i], 10, 64); err == nil {
 			return id, nil

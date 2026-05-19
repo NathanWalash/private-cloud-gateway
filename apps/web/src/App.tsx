@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { api } from './api/client'
 import LoginPage from './pages/LoginPage'
+import SetupPage from './pages/SetupPage'
 import DashboardPage from './pages/DashboardPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -17,6 +20,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const [needsSetup, setNeedsSetup] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    api.auth.needsSetup()
+      .then(r => setNeedsSetup(r.needs_setup))
+      .catch(() => setNeedsSetup(false))
+  }, [])
+
+  if (needsSetup === null) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (needsSetup) {
+    return <SetupPage onComplete={() => setNeedsSetup(false)} />
+  }
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />

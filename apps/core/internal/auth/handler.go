@@ -35,7 +35,7 @@ func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, loginPageHTML, errMsg)
 }
 
-// Me returns the authenticated user's info.
+// Me returns the authenticated user's info including first/last name.
 // GET /api/auth/me — returns 200+JSON when authenticated, 401 when not.
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(cookieName)
@@ -53,14 +53,71 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var email string
-	if err := h.db.QueryRow("SELECT email FROM users WHERE id = ?", userID).Scan(&email); err != nil {
+	var email, firstName, lastName string
+	if err := h.db.QueryRow(
+		"SELECT email, first_name, last_name FROM users WHERE id = ?", userID,
+	).Scan(&email, &firstName, &lastName); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	b, _ := json.Marshal(map[string]any{"id": userID, "email": email})
+	b, _ := json.Marshal(map[string]any{
+		"id":         userID,
+		"email":      email,
+		"first_name": firstName,
+		"last_name":  lastName,
+	})
 	_, _ = w.Write(b)
+}
+
+// NeedsSetup returns whether the system has been configured yet.
+// GET /api/auth/setup
+func (h *Handler) NeedsSetup(w http.ResponseWriter, _ *http.Request) {
+	var count int
+	h.db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count) //nolint:errcheck
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = fmt.Fprintf(w, `{"needs_setup":%v}`, count == 0)
+}
+
+// Setup creates the first admin account. Only works when no users exist.
+// POST /api/auth/setup
+func (h *Handler) Setup(w http.ResponseWriter, r *http.Request) {
+	var count int
+	h.db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count) //nolint:errcheck
+	if count > 0 {
+		http.Error(w, `{"error":"already configured"}`, http.StatusConflict)
+		return
+	}
+
+	var req struct {
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+		return
+	}
+	if req.Email == "" || req.Password == "" || req.FirstName == "" {
+		http.Error(w, `{"error":"email, password, and first_name are required"}`, http.StatusBadRequest)
+		return
+	}
+	if len(req.Password) < 8 {
+		http.Error(w, `{"error":"password must be at least 8 characters"}`, http.StatusBadRequest)
+		return
+	}
+
+	if err := dbCreateUser(h.db, req.Email, req.Password, req.FirstName, req.LastName); err != nil {
+		slog.Error("setup: create user failed", "err", err)
+		http.Error(w, `{"error":"failed to create account"}`, http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("first admin created via setup wizard", "email", req.Email)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
 // Login handles login from either an HTML form (form-encoded) or the React app (JSON).

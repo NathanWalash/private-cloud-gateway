@@ -1,6 +1,8 @@
 export interface User {
   id: number
   email: string
+  first_name: string
+  last_name: string
 }
 
 export interface App {
@@ -63,6 +65,12 @@ export { ApiError }
 export const api = {
   auth: {
     me: (): Promise<User> => request('/api/auth/me'),
+    needsSetup: (): Promise<{ needs_setup: boolean }> => request('/api/auth/setup'),
+    setup: (email: string, password: string, firstName: string, lastName: string) =>
+      request('/api/auth/setup', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, first_name: firstName, last_name: lastName }),
+      }),
     login: (email: string, password: string): Promise<{ status: string }> =>
       request('/api/auth/login', {
         method: 'POST',
