@@ -13,9 +13,9 @@ type Server struct {
 }
 
 // New wires up all routes and returns a ready Server.
-func New(db *sql.DB, secret []byte, loginURL string) *Server {
+func New(db *sql.DB, secret []byte, loginURL, cookieDomain string) *Server {
 	mux := http.NewServeMux()
-	authHandler := auth.NewHandler(db, loginURL)
+	authHandler := auth.NewHandler(db, loginURL, cookieDomain)
 
 	// Auth routes
 	mux.HandleFunc("GET /login", authHandler.LoginPage)
@@ -32,8 +32,9 @@ func New(db *sql.DB, secret []byte, loginURL string) *Server {
 		w.Write([]byte("ok\n"))
 	})
 
-	// Dashboard root placeholder — will be replaced by the Vite app in Milestone 2.
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+	// Dashboard root — requires a valid session.
+	// Will be replaced by the Vite app in Milestone 2.
+	mux.HandleFunc("GET /", authHandler.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
@@ -43,7 +44,7 @@ func New(db *sql.DB, secret []byte, loginURL string) *Server {
 <h1>Private Cloud Gateway</h1><p>Dashboard coming in Milestone 2.</p>
 <p><a href="/api/auth/logout" style="color:#6366f1">Sign out</a></p>
 </body></html>`))
-	})
+	}))
 
 	return &Server{mux: mux}
 }

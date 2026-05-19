@@ -13,12 +13,13 @@ const cookieName = "pcg_session"
 
 // Handler provides HTTP handlers for login, logout, and Caddy forward-auth verify.
 type Handler struct {
-	db       *sql.DB
-	loginURL string
+	db           *sql.DB
+	loginURL     string
+	cookieDomain string // shared across all *.domain subdomains (e.g. "localhost" or "example.com")
 }
 
-func NewHandler(db *sql.DB, loginURL string) *Handler {
-	return &Handler{db: db, loginURL: loginURL}
+func NewHandler(db *sql.DB, loginURL, cookieDomain string) *Handler {
+	return &Handler{db: db, loginURL: loginURL, cookieDomain: cookieDomain}
 }
 
 // LoginPage serves the minimal HTML login form.
@@ -75,6 +76,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     cookieName,
 		Value:    sessionID,
 		Path:     "/",
+		Domain:   h.cookieDomain, // shared across all *.cookieDomain subdomains
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(sessionTTL),
@@ -95,6 +97,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		Name:     cookieName,
 		Value:    "",
 		Path:     "/",
+		Domain:   h.cookieDomain,
 		HttpOnly: true,
 		MaxAge:   -1,
 	})
@@ -103,12 +106,13 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // Verify is the Caddy forward-auth endpoint.
-// Returns 200 for valid sessions, 401 for invalid or missing sessions.
-// Caddy is expected to handle the 401 redirect via handle_errors in the Caddyfile.
+// Returns 200 + X-Auth-User-ID for valid sessions.
+// Returns 302 to loginURL for invalid/missing sessions — Caddy passes this redirect
+// straight through to the browser, which is simpler than relying on handle_errors.
 func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		http.Redirect(w, r, h.loginURL, http.StatusFound)
 		return
 	}
 
@@ -118,13 +122,31 @@ func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if userID == 0 {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		http.Redirect(w, r, h.loginURL, http.StatusFound)
 		return
 	}
 
 	// Downstream services can use this header to identify the caller.
 	w.Header().Set("X-Auth-User-ID", fmt.Sprintf("%d", userID))
 	w.WriteHeader(http.StatusOK)
+}
+
+// RequireAuth wraps a handler and redirects to loginURL if no valid session exists.
+// Used for routes served directly by Go Core (e.g. the dashboard root).
+func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie(cookieName)
+		if err != nil {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		userID, err := validateSession(h.db, cookie.Value)
+		if err != nil || userID == 0 {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		next(w, r)
+	}
 }
 
 const loginPageHTML = `<!DOCTYPE html>
