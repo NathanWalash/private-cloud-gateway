@@ -144,11 +144,11 @@ jobs:
           restore-keys: node-
 
       - name: Install dependencies
-        run: npm install -g pnpm && pnpm install --frozen-lockfile
+        run: npm install --legacy-peer-deps
         working-directory: apps/web
 
       - name: Type-check and build
-        run: pnpm build
+        run: npm run build
         working-directory: apps/web
 
   # ── Full stack build (web + Go) ───────────────────────────────────────────

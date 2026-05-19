@@ -11,7 +11,7 @@ cd apps/web && pnpm install && pnpm dev
 
 See [docs/dev-local.md](../../docs/dev-local.md) for Go Core setup.
 
-## The web app is the user-facing dashboard.
+## Responsibilities
 
 Responsibilities:
 
