@@ -146,7 +146,7 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 
 	// Register Caddy route.
 	if h.caddy != nil {
-		if err := h.caddy.RegisterApp(bp.Route.Subdomain, bp.ContainerName(), bp.Route.InternalPort); err != nil {
+		if err := h.caddy.RegisterApp(r.Context(), bp.Route.Subdomain, bp.ContainerName(), bp.Route.InternalPort); err != nil {
 			slog.Warn("caddy route registration failed", "app", bp.ID, "err", err)
 			// Non-fatal — app is running, route can be added manually.
 		}
@@ -195,7 +195,7 @@ func (h *Handler) Uninstall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.caddy != nil {
-		_ = h.caddy.DeregisterApp(subdomain)
+		_ = h.caddy.DeregisterApp(r.Context(), subdomain)
 	}
 
 	if err := h.docker.Remove(r.Context(), containerName); err != nil {

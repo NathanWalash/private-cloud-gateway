@@ -3,6 +3,7 @@ package caddy
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -35,7 +36,7 @@ type caddyRoute struct {
 
 // RegisterApp adds a forward-auth protected reverse-proxy route for the app.
 // The route is appended to Caddy's current route list via the Admin API.
-func (m *Manager) RegisterApp(subdomain, containerName string, internalPort int) error {
+func (m *Manager) RegisterApp(ctx context.Context, subdomain, containerName string, internalPort int) error {
 	host := fmt.Sprintf("%s.%s", subdomain, m.cookieDomain)
 	upstream := fmt.Sprintf("%s:%d", containerName, internalPort)
 
@@ -80,7 +81,7 @@ func (m *Manager) RegisterApp(subdomain, containerName string, internalPort int)
 	}
 
 	url := fmt.Sprintf("http://%s/config/apps/http/servers/srv0/routes/0", m.adminAddr)
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("build caddy request: %w", err)
 	}
@@ -99,11 +100,10 @@ func (m *Manager) RegisterApp(subdomain, containerName string, internalPort int)
 }
 
 // DeregisterApp removes the route for the given subdomain.
-func (m *Manager) DeregisterApp(subdomain string) error {
+func (m *Manager) DeregisterApp(ctx context.Context, subdomain string) error {
 	host := fmt.Sprintf("%s.%s", subdomain, m.cookieDomain)
 
-	// GET the current routes, find the index with this host, delete it.
-	routes, err := m.getRoutes()
+	routes, err := m.getRoutes(ctx)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func (m *Manager) DeregisterApp(subdomain string) error {
 	for i, route := range routes {
 		if routeMatchesHost(route, host) {
 			url := fmt.Sprintf("http://%s/config/apps/http/servers/srv0/routes/%d", m.adminAddr, i)
-			req, _ := http.NewRequest(http.MethodDelete, url, nil)
+			req, _ := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 			resp, err := m.client.Do(req)
 			if err != nil {
 				return fmt.Errorf("caddy admin delete: %w", err)
@@ -123,9 +123,10 @@ func (m *Manager) DeregisterApp(subdomain string) error {
 	return nil // route not found — already gone
 }
 
-func (m *Manager) getRoutes() ([]map[string]any, error) {
+func (m *Manager) getRoutes(ctx context.Context) ([]map[string]any, error) {
 	url := fmt.Sprintf("http://%s/config/apps/http/servers/srv0/routes", m.adminAddr)
-	resp, err := m.client.Get(url)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	resp, err := m.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("caddy get routes: %w", err)
 	}
