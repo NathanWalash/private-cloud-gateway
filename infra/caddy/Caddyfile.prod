@@ -1,0 +1,22 @@
+# Production Caddyfile — used only for initial Caddy startup.
+# Go Core immediately replaces this via /load with the complete dynamic config
+# (all installed app routes + home.* + HTTPS settings).
+#
+# Set CLOUD_CORE_ENV=production and CLOUD_CORE_ADMIN_EMAIL in .env.
+
+{
+	# Let's Encrypt will email this address about cert expiry.
+	email {$CLOUD_CORE_ADMIN_EMAIL}
+
+	# Admin API bound to all interfaces — Core reaches it via Docker network.
+	# Never expose port 2019 publicly (handled by firewall / no host binding).
+	admin :2019
+}
+
+# Dashboard — Caddy gets a cert for this automatically.
+https://home.{$CLOUD_CORE_COOKIE_DOMAIN} {
+	reverse_proxy core:8080
+}
+
+# Additional app routes are added dynamically by Go Core via the Admin API.
+# Each new app subdomain gets its own Let's Encrypt cert automatically.

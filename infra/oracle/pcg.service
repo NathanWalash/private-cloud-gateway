@@ -1,0 +1,28 @@
+[Unit]
+Description=Private Cloud Gateway
+Documentation=https://github.com/NathanWalash/private-cloud-gateway
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/pcg
+
+ExecStart=/usr/bin/docker compose -f infra/docker/docker-compose.prod.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f infra/docker/docker-compose.prod.yml down
+ExecReload=/usr/bin/docker compose -f infra/docker/docker-compose.prod.yml pull && \
+           /usr/bin/docker compose -f infra/docker/docker-compose.prod.yml up -d --remove-orphans
+
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+Restart=on-failure
+RestartSec=30
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
