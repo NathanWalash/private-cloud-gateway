@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Globe, Plus, LogOut, Package, Archive, Sun, Sunset, Moon } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { api, App, Blueprint } from '../api/client'
 import AppCard from '../components/AppCard'
@@ -15,13 +16,9 @@ export default function DashboardPage() {
   const [blueprints, setBlueprints] = useState<Blueprint[]>([])
 
   const loadApps = useCallback(async () => {
-    try {
-      setApps(await api.apps())
-    } catch {
-      // ignore
-    } finally {
-      setAppsLoading(false)
-    }
+    try { setApps(await api.apps()) }
+    catch { /* ignore */ }
+    finally { setAppsLoading(false) }
   }, [])
 
   useEffect(() => { void loadApps() }, [loadApps])
@@ -43,8 +40,8 @@ export default function DashboardPage() {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-accent/10 border border-accent/20 rounded-lg flex items-center justify-center text-sm">
-              🌐
+            <div className="w-7 h-7 bg-accent/10 border border-accent/20 rounded-lg flex items-center justify-center">
+              <Globe className="w-4 h-4 text-accent" strokeWidth={1.5} />
             </div>
             <span className="font-semibold text-sm text-slate-100">Private Cloud Gateway</span>
           </div>
@@ -52,41 +49,40 @@ export default function DashboardPage() {
             <span className="text-xs text-slate-500 hidden sm:block">{user?.email}</span>
             <button
               onClick={handleLogout}
-              className="text-xs text-slate-400 hover:text-slate-200 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-white/5"
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-white/5"
             >
+              <LogOut className="w-3.5 h-3.5" />
               Sign out
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {/* Welcome */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-slate-100">
-            Good {getGreeting()},{' '}
-            <span className="text-slate-400">{user?.email.split('@')[0]}</span>
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">Your private cloud is running.</p>
+        {/* Greeting */}
+        <div className="mb-8 flex items-center gap-3">
+          <GreetingIcon />
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-100">
+              Good {getGreeting()}, <span className="text-slate-400">{user?.email.split('@')[0]}</span>
+            </h1>
+            <p className="text-sm text-slate-500 mt-0.5">Your private cloud is running.</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Apps — 3/4 width */}
+          {/* Apps — 3/4 */}
           <div className="lg:col-span-3 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Apps</h2>
               <div className="flex items-center gap-3">
-                {apps.length > 0 && (
-                  <span className="text-xs text-slate-600">{apps.length} installed</span>
-                )}
+                {apps.length > 0 && <span className="text-xs text-slate-600">{apps.length} installed</span>}
                 <button
                   onClick={openInstall}
                   className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent-hover
-                             bg-accent/10 hover:bg-accent/20 border border-accent/20 px-3 py-1.5 rounded-lg
-                             transition-colors"
+                             bg-accent/10 hover:bg-accent/20 border border-accent/20 px-3 py-1.5 rounded-lg transition-colors"
                 >
-                  <span className="text-base leading-none">+</span>
+                  <Plus className="w-3.5 h-3.5" />
                   Install app
                 </button>
               </div>
@@ -106,17 +102,18 @@ export default function DashboardPage() {
 
             {!appsLoading && apps.length === 0 && (
               <div className="card p-10 text-center">
-                <div className="text-3xl mb-4">📦</div>
+                <Package className="w-10 h-10 text-slate-600 mx-auto mb-4" strokeWidth={1.5} />
                 <h3 className="text-sm font-medium text-slate-400 mb-1">No apps installed</h3>
                 <p className="text-xs text-slate-600 max-w-xs mx-auto mb-4">
                   Install apps from YAML blueprints. Each app gets its own protected subdomain.
                 </p>
                 <button
                   onClick={openInstall}
-                  className="text-xs font-medium text-accent hover:text-accent-hover
-                             bg-accent/10 hover:bg-accent/20 border border-accent/20
-                             px-4 py-2 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent-hover
+                             bg-accent/10 hover:bg-accent/20 border border-accent/20 px-4 py-2 rounded-lg
+                             transition-colors mx-auto"
                 >
+                  <Plus className="w-3.5 h-3.5" />
                   Install your first app
                 </button>
               </div>
@@ -124,9 +121,7 @@ export default function DashboardPage() {
 
             {!appsLoading && apps.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {apps.map(app => (
-                  <AppCard key={app.id} app={app} onStatusChange={loadApps} />
-                ))}
+                {apps.map(app => <AppCard key={app.id} app={app} onStatusChange={loadApps} />)}
               </div>
             )}
           </div>
@@ -135,10 +130,9 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Status</h2>
             <StatusWidget />
-
             <div className="card p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-2 rounded-full bg-slate-600" />
+              <div className="flex items-center gap-2 mb-3">
+                <Archive className="w-3.5 h-3.5 text-slate-600" />
                 <h3 className="text-sm font-medium text-slate-500">Backups</h3>
               </div>
               <p className="text-xs text-slate-600">Coming in Milestone 4.</p>
@@ -147,7 +141,6 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Install dialog */}
       {showInstall && (
         <InstallDialog
           blueprints={blueprints}
@@ -164,4 +157,12 @@ function getGreeting() {
   if (h < 12) return 'morning'
   if (h < 17) return 'afternoon'
   return 'evening'
+}
+
+function GreetingIcon() {
+  const h = new Date().getHours()
+  const cls = "w-7 h-7"
+  if (h < 12) return <Sun className={`${cls} text-amber-400`} strokeWidth={1.5} />
+  if (h < 17) return <Sunset className={`${cls} text-orange-400`} strokeWidth={1.5} />
+  return <Moon className={`${cls} text-blue-400`} strokeWidth={1.5} />
 }

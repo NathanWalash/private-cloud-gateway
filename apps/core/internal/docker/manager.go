@@ -18,7 +18,7 @@ import (
 
 const (
 	socketPath     = "/var/run/docker.sock"
-	apiVersion     = "v1.41"
+	apiVersion     = "v1.44" // Docker Desktop requires 1.44+; 1.41 is too old
 	privateNetwork = "cloud_core_private"
 )
 
