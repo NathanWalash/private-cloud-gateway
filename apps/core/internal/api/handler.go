@@ -101,6 +101,11 @@ type InstallRequest struct {
 // Install reads a blueprint from disk and installs the app.
 // POST /api/apps/install
 func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
+	if h.docker == nil {
+		jsonErr(w, "Docker is not available. Check that /var/run/docker.sock is mounted.", http.StatusServiceUnavailable)
+		return
+	}
+
 	var req InstallRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.BlueprintID == "" {
 		jsonErr(w, "blueprint_id is required", http.StatusBadRequest)
@@ -236,6 +241,11 @@ func (h *Handler) RestartApp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) lifecycleAction(w http.ResponseWriter, r *http.Request, action string, fn func(string) error) {
+	if h.docker == nil {
+		jsonErr(w, "Docker is not available", http.StatusServiceUnavailable)
+		return
+	}
+
 	id, err := pathID(r)
 	if err != nil {
 		jsonErr(w, "invalid id", http.StatusBadRequest)
