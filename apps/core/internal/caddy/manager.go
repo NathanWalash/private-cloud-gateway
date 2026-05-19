@@ -79,7 +79,15 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 	// Dashboard and auth — always present.
 	sb.WriteString(fmt.Sprintf("http://home.%s {\n\treverse_proxy core:8080\n}\n\n", m.cookieDomain))
 
-	// One block per installed app.
+	// Test app — always present for local dev. Proves auth gate works without needing a blueprint installed.
+	// Remove in production Caddyfile (Milestone 5) when the whoami service won't exist.
+	sb.WriteString(fmt.Sprintf(
+		"http://files.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy whoami:80\n}\n\n",
+		m.cookieDomain,
+	))
+
+	// One block per installed app. Overrides the base whoami route if an app
+	// is installed on the same subdomain (e.g. installing filebrowser takes over files.*).
 	for _, app := range apps {
 		sb.WriteString(fmt.Sprintf(
 			"http://%s.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy %s:%d\n}\n\n",
