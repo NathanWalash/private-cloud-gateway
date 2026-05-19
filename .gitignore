@@ -56,7 +56,9 @@ coverage.html
 rootCA*.pem
 
 # ── AI assistant tooling ──────────────────────────────────────────────────────
-.claude/
+# Ignore personal/local Claude settings but commit CLAUDE.md (shared project instructions)
+.claude/settings.local.json
+.claude/memory/
 
 # ── Editor ────────────────────────────────────────────────────────────────────
 .vscode/
