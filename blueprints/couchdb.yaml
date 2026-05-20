@@ -14,7 +14,7 @@ container:
     - COUCHDB_USER=admin
     - COUCHDB_PASSWORD=changeme
   volumes:
-    - /var/lib/cloud-core/apps/couchdb/data:/opt/couchdb/data
+    - pcg-couchdb-data:/opt/couchdb/data
 
 lifecycle:
   policy: always-on

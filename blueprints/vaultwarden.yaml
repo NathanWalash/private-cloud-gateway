@@ -14,7 +14,7 @@ container:
     - WEBSOCKET_ENABLED=true
     - SIGNUPS_ALLOWED=false
   volumes:
-    - /var/lib/cloud-core/apps/vaultwarden/data:/data
+    - pcg-vaultwarden-data:/data
 
 lifecycle:
   policy: always-on

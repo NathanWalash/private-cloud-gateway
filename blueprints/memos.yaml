@@ -12,7 +12,7 @@ container:
   image: neosmemo/memos:stable
   environment: []
   volumes:
-    - /var/lib/cloud-core/apps/memos/data:/var/opt/memos
+    - pcg-memos-data:/var/opt/memos
 
 lifecycle:
   policy: always-on

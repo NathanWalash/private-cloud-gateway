@@ -40,7 +40,11 @@ func New(
 	apiHandler := api.NewHandler(db, "0.2.0", dm, cm, blueprintDir, cookieDomain)
 
 	// ── Auth & setup ─────────────────────────────────────────────────────────
-	mux.HandleFunc("GET /login", authHandler.LoginPage)
+	// When SPA mode is active, /login is handled by React Router — serve index.html.
+	// Only serve the inline HTML login page when there is no SPA (tests/fallback).
+	if staticFS == nil {
+		mux.HandleFunc("GET /login", authHandler.LoginPage)
+	}
 	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
 	mux.HandleFunc("POST /api/auth/logout", authHandler.Logout)
 	mux.HandleFunc("GET /api/auth/verify", authHandler.Verify)

@@ -12,7 +12,7 @@ container:
   image: louislam/uptime-kuma:1
   environment: []
   volumes:
-    - /var/lib/cloud-core/apps/uptime-kuma/data:/app/data
+    - pcg-uptime-kuma-data:/app/data
 
 lifecycle:
   policy: always-on

@@ -71,7 +71,7 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">First name</label>
                 <input
                   type="text" required autoComplete="given-name"
-                  className="input-field" placeholder="Nathan"
+                  className="input-field" placeholder="John"
                   value={firstName} onChange={e => setFirstName(e.target.value)}
                 />
               </div>
@@ -79,7 +79,7 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">Last name</label>
                 <input
                   type="text" autoComplete="family-name"
-                  className="input-field" placeholder="Walsh"
+                  className="input-field" placeholder="Smith"
                   value={lastName} onChange={e => setLastName(e.target.value)}
                 />
               </div>

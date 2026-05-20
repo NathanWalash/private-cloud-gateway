@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Globe, Plus, LogOut, Package, Settings, Sun, Sunset, Moon } from 'lucide-react'
+import { Globe, Plus, Package, Settings, Sun, Sunset, Moon } from 'lucide-react'
+import ProfileDropdown from '../components/ProfileDropdown'
 import { useAuth } from '../hooks/useAuth'
 import { api, App, Blueprint } from '../api/client'
 import AppCard from '../components/AppCard'
 import StatusWidget from '../components/StatusWidget'
 import BackupWidget from '../components/BackupWidget'
 import MonitorWidget from '../components/MonitorWidget'
-import InstallDialog from '../components/InstallDialog'
+import MarketplaceDialog from '../components/MarketplaceDialog'
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [apps, setApps] = useState<App[]>([])
   const [appsLoading, setAppsLoading] = useState(true)
@@ -36,11 +37,6 @@ export default function DashboardPage() {
     setShowInstall(true)
   }
 
-  async function handleLogout() {
-    await logout()
-    navigate('/login', { replace: true })
-  }
-
   return (
     <div className="min-h-screen bg-surface">
       {/* Header */}
@@ -53,7 +49,6 @@ export default function DashboardPage() {
             <span className="font-semibold text-sm text-slate-100">Private Cloud Gateway</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 hidden sm:block">{user?.email}</span>
             <button
               type="button"
               onClick={() => navigate('/settings')}
@@ -62,14 +57,7 @@ export default function DashboardPage() {
             >
               <Settings className="w-3.5 h-3.5" />
             </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-white/5"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Sign out
-            </button>
+            <ProfileDropdown />
           </div>
         </div>
       </header>
@@ -95,6 +83,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-3">
                 {apps.length > 0 && <span className="text-xs text-slate-600">{apps.length} installed</span>}
                 <button
+                  type="button"
                   onClick={openInstall}
                   className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent-hover
                              bg-accent/10 hover:bg-accent/20 border border-accent/20 px-3 py-1.5 rounded-lg transition-colors"
@@ -125,6 +114,7 @@ export default function DashboardPage() {
                   Install apps from YAML blueprints. Each app gets its own protected subdomain.
                 </p>
                 <button
+                  type="button"
                   onClick={openInstall}
                   className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent-hover
                              bg-accent/10 hover:bg-accent/20 border border-accent/20 px-4 py-2 rounded-lg
@@ -154,7 +144,7 @@ export default function DashboardPage() {
       </main>
 
       {showInstall && (
-        <InstallDialog
+        <MarketplaceDialog
           blueprints={blueprints}
           onClose={() => setShowInstall(false)}
           onInstalled={() => { setShowInstall(false); void loadApps() }}
