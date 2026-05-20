@@ -133,5 +133,14 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 		))
 	}
 
+	// Catch-all: any unrecognised subdomain redirects to the home dashboard.
+	// This handles: apps not yet installed, typos, and Caddy redirecting /login
+	// to home.* for the React setup wizard to handle.
+	sb.WriteString(fmt.Sprintf(
+		"%s://*.%s {\n\tredir %s://home.%s{uri} temporary\n}\n\n",
+		proto, m.cookieDomain,
+		proto, m.cookieDomain,
+	))
+
 	return sb.String()
 }

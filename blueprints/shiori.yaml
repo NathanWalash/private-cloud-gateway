@@ -13,7 +13,7 @@ container:
   environment:
     - SHIORI_DIR=/data
   volumes:
-    - /var/lib/cloud-core/apps/shiori/data:/data
+    - pcg-shiori-data:/data
 
 lifecycle:
   policy: always-on

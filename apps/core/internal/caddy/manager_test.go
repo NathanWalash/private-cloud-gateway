@@ -47,6 +47,13 @@ func TestBuildCaddyfile_DevMode(t *testing.T) {
 	if strings.Count(config, "forward_auth") < 3 { // files + 2 apps
 		t.Errorf("expected at least 3 forward_auth blocks, got %d", strings.Count(config, "forward_auth"))
 	}
+	// Catch-all must redirect unknown subdomains to home
+	if !strings.Contains(config, "*.localtest.me") {
+		t.Error("dev Caddyfile missing catch-all wildcard block")
+	}
+	if !strings.Contains(config, "redir") {
+		t.Error("dev Caddyfile catch-all missing redir directive")
+	}
 }
 
 func TestBuildCaddyfile_ProductionMode(t *testing.T) {
@@ -74,6 +81,13 @@ func TestBuildCaddyfile_ProductionMode(t *testing.T) {
 	// No whoami test route in production
 	if strings.Contains(config, "whoami") {
 		t.Error("production Caddyfile must not contain whoami test route")
+	}
+	// Catch-all uses https and redirects to home
+	if !strings.Contains(config, "*.nathan.me") {
+		t.Error("production Caddyfile missing catch-all")
+	}
+	if !strings.Contains(config, "https://home.nathan.me") || !strings.Contains(config, "redir") {
+		t.Error("production Caddyfile catch-all must redir to https home")
 	}
 }
 

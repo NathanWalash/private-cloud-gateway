@@ -199,6 +199,28 @@ func (m *Manager) Status(ctx context.Context, containerName string) string {
 	}
 }
 
+// StatusAfterStart polls the container status for up to maxSeconds seconds.
+// Returns "running" if stable, "error" if it keeps restarting or exits immediately.
+func (m *Manager) StatusAfterStart(ctx context.Context, containerName string, maxSeconds int) string {
+	deadline := time.Now().Add(time.Duration(maxSeconds) * time.Second)
+	for time.Now().Before(deadline) {
+		time.Sleep(500 * time.Millisecond)
+		s := m.Status(ctx, containerName)
+		if s == "running" {
+			return "running"
+		}
+		if s == "stopped" || s == "missing" {
+			return "error"
+		}
+	}
+	// Still not running after timeout
+	s := m.Status(ctx, containerName)
+	if s == "running" {
+		return "running"
+	}
+	return "error"
+}
+
 // CopyFromContainer returns a tar stream of the given path inside the container.
 // The caller is responsible for closing the returned ReadCloser.
 func (m *Manager) CopyFromContainer(ctx context.Context, containerName, srcPath string) (io.ReadCloser, error) {

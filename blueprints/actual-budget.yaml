@@ -12,7 +12,7 @@ container:
   image: actualbudget/actual-server:latest
   environment: []
   volumes:
-    - /var/lib/cloud-core/apps/actual-budget/data:/data
+    - pcg-actual-budget-data:/data
 
 lifecycle:
   policy: always-on

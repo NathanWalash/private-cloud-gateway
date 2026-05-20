@@ -13,8 +13,8 @@ container:
   environment:
     - FB_DATABASE=/database/filebrowser.db
   volumes:
-    - /var/lib/cloud-core/apps/filebrowser/files:/srv
-    - /var/lib/cloud-core/apps/filebrowser/database:/database
+    - pcg-filebrowser-files:/srv
+    - pcg-filebrowser-db:/database
 
 lifecycle:
   policy: always-on

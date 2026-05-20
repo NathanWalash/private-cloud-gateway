@@ -148,15 +148,19 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Wait up to 5 seconds for the container to stay up — catches immediate crashes
+	// caused by permission errors, missing config, etc.
+	initialStatus := h.docker.StatusAfterStart(r.Context(), bp.ContainerName(), 5)
+
 	icon := bp.Icon
 	if icon == "" {
 		icon = "📦"
 	}
 	res, err := h.db.ExecContext(r.Context(),
 		`INSERT INTO apps (blueprint_id, name, icon, subdomain, internal_port, image, container_name, status)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, 'running')`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		bp.ID, bp.Name, icon, bp.Route.Subdomain, bp.Route.InternalPort,
-		bp.Container.Image, bp.ContainerName(),
+		bp.Container.Image, bp.ContainerName(), initialStatus,
 	)
 	if err != nil {
 		slog.Error("db insert app failed", "err", err)

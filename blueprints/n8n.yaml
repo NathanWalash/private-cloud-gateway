@@ -16,7 +16,7 @@ container:
     - NODE_ENV=production
     - WEBHOOK_URL=http://n8n.localtest.me/
   volumes:
-    - /var/lib/cloud-core/apps/n8n/data:/home/node/.n8n
+    - pcg-n8n-data:/home/node/.n8n
 
 lifecycle:
   policy: always-on

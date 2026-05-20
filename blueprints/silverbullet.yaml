@@ -12,7 +12,7 @@ container:
   image: ghcr.io/silverbulletmd/silverbullet:latest
   environment: []
   volumes:
-    - /var/lib/cloud-core/apps/silverbullet/space:/space
+    - pcg-silverbullet-space:/space
 
 lifecycle:
   policy: always-on
