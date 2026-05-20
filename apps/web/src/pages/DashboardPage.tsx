@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Globe, Plus, LogOut, Package, Sun, Sunset, Moon } from 'lucide-react'
+import { Globe, Plus, LogOut, Package, Settings, Sun, Sunset, Moon } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { api, App, Blueprint } from '../api/client'
 import AppCard from '../components/AppCard'
 import StatusWidget from '../components/StatusWidget'
 import BackupWidget from '../components/BackupWidget'
+import MonitorWidget from '../components/MonitorWidget'
 import InstallDialog from '../components/InstallDialog'
 
 export default function DashboardPage() {
@@ -22,7 +23,12 @@ export default function DashboardPage() {
     finally { setAppsLoading(false) }
   }, [])
 
-  useEffect(() => { void loadApps() }, [loadApps])
+  useEffect(() => {
+    void loadApps()
+    // Poll every 30s to stay in sync with server-side health polling
+    const id = setInterval(() => { void loadApps() }, 30_000)
+    return () => clearInterval(id)
+  }, [loadApps])
 
   async function openInstall() {
     const bps = await api.blueprints().catch(() => [])
@@ -46,9 +52,18 @@ export default function DashboardPage() {
             </div>
             <span className="font-semibold text-sm text-slate-100">Private Cloud Gateway</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500 hidden sm:block">{user?.email}</span>
             <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              className="text-slate-400 hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-white/5"
+              title="Settings"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
               onClick={handleLogout}
               className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-white/5"
             >
@@ -133,6 +148,7 @@ export default function DashboardPage() {
             <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Status</h2>
             <StatusWidget />
             <BackupWidget />
+            <MonitorWidget />
           </div>
         </div>
       </main>

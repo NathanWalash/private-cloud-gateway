@@ -104,6 +104,29 @@ export const api = {
   uninstallApp: (id: number): Promise<void> =>
     request(`/api/apps/${id}`, { method: 'DELETE' }),
 
+  appLogs: (id: number, tail = 150): Promise<{ lines: string }> =>
+    request(`/api/apps/${id}/logs?tail=${tail}`),
+
+  updateApp: (id: number): Promise<{ status: string }> =>
+    request(`/api/apps/${id}/update`, { method: 'POST' }),
+
+  settings: {
+    list: (): Promise<Array<{ key: string; value: string }>> => request('/api/settings'),
+    set: (key: string, value: string) =>
+      request(`/api/settings/${key}`, { method: 'PUT', body: JSON.stringify({ value }) }),
+  },
+
+  audit: (limit = 50) =>
+    request<Array<{ id: number; action: string; actor: string; detail: string; created_at: string }>>(
+      `/api/audit?limit=${limit}`
+    ),
+
+  monitors: {
+    list: () => request<Array<{ id: number; name: string; url: string; status: string; latency_ms: number | null; last_checked: string | null }>>('/api/monitors'),
+    create: (name: string, url: string) => request<{ id: number }>('/api/monitors', { method: 'POST', body: JSON.stringify({ name, url }) }),
+    remove: (id: number): Promise<void> => request(`/api/monitors/${id}`, { method: 'DELETE' }),
+  },
+
   backup: {
     list: (): Promise<BackupFile[]> => request('/api/backup/list'),
     create: (): Promise<{ name: string; size: number; volumes: number }> =>

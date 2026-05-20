@@ -63,7 +63,16 @@ func New(
 			apiHandler.StopApp(w, r)
 		case strings.HasSuffix(r.URL.Path, "/restart"):
 			apiHandler.RestartApp(w, r)
+		case strings.HasSuffix(r.URL.Path, "/update"):
+			apiHandler.UpdateApp(w, r)
 		default:
+			http.NotFound(w, r)
+		}
+	}))
+	mux.HandleFunc("GET /api/apps/", authHandler.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/logs") {
+			apiHandler.Logs(w, r)
+		} else {
 			http.NotFound(w, r)
 		}
 	}))
@@ -73,6 +82,14 @@ func New(
 	mux.HandleFunc("GET /api/backup/list", authHandler.RequireAuth(apiHandler.BackupList))
 	mux.HandleFunc("GET /api/backup/safe-escape", authHandler.RequireAuth(apiHandler.SafeEscape))
 	mux.HandleFunc("POST /api/backup/restore", authHandler.RequireAuth(apiHandler.BackupRestore))
+
+	// ── Settings, audit, monitors ─────────────────────────────────────────────
+	mux.HandleFunc("GET /api/settings", authHandler.RequireAuth(apiHandler.GetSettings))
+	mux.HandleFunc("PUT /api/settings/", authHandler.RequireAuth(apiHandler.PutSetting))
+	mux.HandleFunc("GET /api/audit", authHandler.RequireAuth(apiHandler.AuditLog))
+	mux.HandleFunc("GET /api/monitors", authHandler.RequireAuth(apiHandler.MonitorList))
+	mux.HandleFunc("POST /api/monitors", authHandler.RequireAuth(apiHandler.MonitorCreate))
+	mux.HandleFunc("DELETE /api/monitors/", authHandler.RequireAuth(apiHandler.MonitorDelete))
 
 	// ── Health check ─────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
