@@ -5,6 +5,7 @@ import { api } from './api/client'
 import LoginPage from './pages/LoginPage'
 import SetupPage from './pages/SetupPage'
 import DashboardPage from './pages/DashboardPage'
+import SettingsPage from './pages/SettingsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -48,6 +49,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
           </ProtectedRoute>
         }
       />

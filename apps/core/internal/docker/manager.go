@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/blueprint"
@@ -210,6 +211,91 @@ func (m *Manager) CopyFromContainer(ctx context.Context, containerName, srcPath 
 		return nil, fmt.Errorf("archive %s:%s returned %d", containerName, srcPath, resp.StatusCode)
 	}
 	return resp.Body, nil
+}
+
+// Logs returns the last n lines of stdout+stderr from the container.
+func (m *Manager) Logs(ctx context.Context, containerName string, tail int) (string, error) {
+	path := fmt.Sprintf("/containers/%s/logs?stdout=1&stderr=1&tail=%d&timestamps=1", containerName, tail)
+	resp, err := m.do(ctx, "GET", path, nil)
+	if err != nil {
+		return "", fmt.Errorf("logs %s: %w", containerName, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("logs %s: status %d", containerName, resp.StatusCode)
+	}
+	// Docker multiplexes stdout/stderr with an 8-byte header per chunk.
+	// We strip the headers and return plain text.
+	var sb strings.Builder
+	header := make([]byte, 8)
+	buf := make([]byte, 4096)
+	for {
+		if _, err := io.ReadFull(resp.Body, header); err != nil {
+			break
+		}
+		size := int(header[4])<<24 | int(header[5])<<16 | int(header[6])<<8 | int(header[7])
+		for size > 0 {
+			n := size
+			if n > len(buf) {
+				n = len(buf)
+			}
+			nr, err := resp.Body.Read(buf[:n])
+			if nr > 0 {
+				sb.Write(buf[:nr])
+				size -= nr
+			}
+			if err != nil {
+				goto done
+			}
+		}
+	}
+done:
+	return sb.String(), nil
+}
+
+// UpdateImage pulls the latest version of a container's image.
+// The container must be stopped and removed before calling Install again.
+func (m *Manager) UpdateImage(ctx context.Context, image string) error {
+	resp, err := m.do(ctx, "POST", "/images/create?fromImage="+image, nil)
+	if err != nil {
+		return fmt.Errorf("pull %s: %w", image, err)
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
+}
+
+// StatusAll returns a map of containerName → status for quick bulk polling.
+func (m *Manager) StatusAll(ctx context.Context) map[string]string {
+	resp, err := m.do(ctx, "GET", "/containers/json?all=1&filters=%7B%22label%22%3A%5B%22pcg.managed%3Dtrue%22%5D%7D", nil)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	var containers []struct {
+		Names  []string `json:"Names"`
+		State  string   `json:"State"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&containers); err != nil {
+		return nil
+	}
+
+	result := make(map[string]string, len(containers))
+	for _, c := range containers {
+		for _, name := range c.Names {
+			key := strings.TrimPrefix(name, "/")
+			switch c.State {
+			case "running":
+				result[key] = "running"
+			case "exited", "dead":
+				result[key] = "stopped"
+			default:
+				result[key] = c.State
+			}
+		}
+	}
+	return result
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

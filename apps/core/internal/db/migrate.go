@@ -48,6 +48,23 @@ CREATE TABLE IF NOT EXISTS apps (
 );
 
 CREATE INDEX IF NOT EXISTS idx_apps_status ON apps(status);
+
+CREATE TABLE IF NOT EXISTS settings (
+	key        TEXT PRIMARY KEY,
+	value      TEXT NOT NULL,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS monitors (
+	id           INTEGER  PRIMARY KEY AUTOINCREMENT,
+	name         TEXT     NOT NULL,
+	url          TEXT     NOT NULL UNIQUE,
+	status       TEXT     NOT NULL DEFAULT 'unknown',
+	status_code  INTEGER,
+	latency_ms   INTEGER,
+	last_checked DATETIME,
+	created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 `
 
 func Migrate(db *sql.DB) error {

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	apiPkg "github.com/NathanWalash/private-cloud-gateway/apps/core/internal/api"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/backup"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/blueprint"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/caddy"
@@ -89,6 +90,21 @@ func main() {
 
 	// Re-register Caddy routes for all installed apps on every startup.
 	reregisterRoutes(database, cm)
+
+	// Health polling — updates app status from Docker every 30 seconds.
+	if dm != nil {
+		go runHealthPolling(database, dm)
+		slog.Info("health polling enabled")
+	}
+
+	// Monitor polling — checks all registered URLs every 2 minutes.
+	go func() {
+		ticker := time.NewTicker(2 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			apiPkg.PollAllMonitors(database)
+		}
+	}()
 
 	// Start scheduled backup goroutine if CLOUD_CORE_BACKUP_SCHEDULE is set.
 	if cfg.backupSchedule != "" {
@@ -192,6 +208,38 @@ func runScheduledBackups(interval time.Duration, dbPath, blueprintDir string, dm
 		} else {
 			slog.Info("scheduled backup completed", "file", filepath.Base(destPath), "volumes", len(volumes))
 		}
+	}
+}
+
+// runHealthPolling updates app statuses from Docker on a 30-second loop.
+func runHealthPolling(database *sql.DB, dm *docker.Manager) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		statuses := dm.StatusAll(context.Background())
+		if len(statuses) == 0 {
+			continue
+		}
+		rows, err := database.QueryContext(context.Background(), "SELECT id, container_name FROM apps")
+		if err != nil {
+			continue
+		}
+		for rows.Next() {
+			var id int64
+			var name string
+			if rows.Scan(&id, &name) != nil {
+				continue
+			}
+			if status, ok := statuses[name]; ok {
+				database.ExecContext(context.Background(),
+					"UPDATE apps SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!=?",
+					status, id, status)
+			} else {
+				database.ExecContext(context.Background(),
+					"UPDATE apps SET status='missing', updated_at=CURRENT_TIMESTAMP WHERE id=?", id)
+			}
+		}
+		rows.Close()
 	}
 }
 

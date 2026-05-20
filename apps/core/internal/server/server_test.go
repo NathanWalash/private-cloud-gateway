@@ -2,6 +2,8 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -317,5 +319,85 @@ func TestLogout_ClearsCookieAndInvalidatesSession(t *testing.T) {
 	defer verifyResp.Body.Close()
 	if verifyResp.StatusCode != http.StatusFound {
 		t.Errorf("verify after logout: got %d, want 302 (session should be gone)", verifyResp.StatusCode)
+	}
+}
+
+// ── Setup endpoint ────────────────────────────────────────────────────────────
+
+func TestSetup_CreatesFirstUser(t *testing.T) {
+	// Fresh server with no users
+	database, err := db.Open(t.TempDir() + "/fresh.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Migrate(database)
+	t.Cleanup(func() { database.Close() })
+	srv := server.New(database, []byte(testSecret), testLoginURL, testDomain, nil, nil, nil, t.TempDir())
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	// Check needs_setup = true
+	resp, _ := noRedirect().Get(ts.URL + "/api/auth/setup")
+	rawB, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	b := string(rawB)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/auth/setup: %d", resp.StatusCode)
+	}
+	if !strings.Contains(b, `"needs_setup":true`) {
+		t.Errorf("expected needs_setup:true, got %s", b)
+	}
+
+	// Create account via JSON
+	setupBody := map[string]string{
+		"email": "new@example.com", "password": "newpassword123", "first_name": "Test",
+	}
+	setupResp := postJSON(t, ts, "/api/auth/setup", setupBody)
+	setupResp.Body.Close()
+	if setupResp.StatusCode != http.StatusCreated {
+		t.Fatalf("POST /api/auth/setup: got %d", setupResp.StatusCode)
+	}
+
+	// Now needs_setup = false
+	resp3, _ := noRedirect().Get(ts.URL + "/api/auth/setup")
+	rawB3, _ := io.ReadAll(resp3.Body)
+	resp3.Body.Close()
+	b3 := string(rawB3)
+	if !strings.Contains(b3, `"needs_setup":false`) {
+		t.Errorf("after setup, expected needs_setup:false, got %s", b3)
+	}
+}
+
+func postJSON(t *testing.T, ts *httptest.Server, path string, body map[string]string) *http.Response {
+	t.Helper()
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequestWithContext(context.Background(), "POST", ts.URL+path, strings.NewReader(string(b)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	resp, err := noRedirect().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp
+}
+
+// ── Rate limiter ──────────────────────────────────────────────────────────────
+
+func TestLoginRateLimit(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Close()
+
+	// Fire 11 wrong-password attempts — the 11th should be rate-limited (429)
+	for i := range 11 {
+		resp, _ := noRedirect().PostForm(ts.URL+"/api/auth/login", url.Values{
+			"email":    {testEmail},
+			"password": {"wrong"},
+		})
+		resp.Body.Close()
+		if i == 10 {
+			if resp.StatusCode != http.StatusTooManyRequests {
+				t.Errorf("attempt 11: expected 429 Too Many Requests, got %d", resp.StatusCode)
+			}
+		}
 	}
 }

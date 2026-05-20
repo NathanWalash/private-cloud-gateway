@@ -49,6 +49,11 @@ func NewProduction(adminAddr, cookieDomain, adminEmail string) *Manager {
 	}
 }
 
+// BuildCaddyfileForTest exposes buildCaddyfile for unit tests.
+func (m *Manager) BuildCaddyfileForTest(apps []AppRoute) string {
+	return m.buildCaddyfile(apps)
+}
+
 // ReloadAll generates a complete Caddyfile from the given app routes and tells
 // Caddy to reload. Always call this after any install or uninstall.
 func (m *Manager) ReloadAll(ctx context.Context, apps []AppRoute) error {
