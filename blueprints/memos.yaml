@@ -27,5 +27,8 @@ backup:
   paths:
     - /var/lib/cloud-core/apps/memos/data
 
+  container_paths:
+    - /var/opt/memos
+
 resources:
   memory_limit: 256m

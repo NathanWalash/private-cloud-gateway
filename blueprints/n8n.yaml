@@ -31,5 +31,8 @@ backup:
   paths:
     - /var/lib/cloud-core/apps/n8n/data
 
+  container_paths:
+    - /home/node/.n8n
+
 resources:
   memory_limit: 512m

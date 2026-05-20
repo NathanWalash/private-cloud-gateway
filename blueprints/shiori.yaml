@@ -28,5 +28,8 @@ backup:
   paths:
     - /var/lib/cloud-core/apps/shiori/data
 
+  container_paths:
+    - /data
+
 resources:
   memory_limit: 256m

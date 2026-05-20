@@ -105,8 +105,11 @@ CLOUD_CORE_SESSION_SECRET=$SESSION_SECRET
 CLOUD_CORE_CADDY_ADMIN=caddy:2019
 CLOUD_CORE_BLUEPRINT_DIR=/blueprints
 
-# Backup passphrase — change this to something secret before first backup
+# Backup passphrase — change to something secret before first backup
 CLOUD_CORE_BACKUP_PASSPHRASE=
+
+# Scheduled backups — e.g. "24h" for daily, empty to disable
+CLOUD_CORE_BACKUP_SCHEDULE=24h
 
 # Bootstrap (optional — use the setup wizard instead)
 # CLOUD_CORE_BOOTSTRAP_EMAIL=

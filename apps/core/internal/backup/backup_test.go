@@ -30,7 +30,7 @@ func TestCreate_Unencrypted(t *testing.T) {
 	dbPath, bpDir, backupDir := setupTestData(t)
 	dest := filepath.Join(backupDir, "backup.pcg-backup")
 
-	if err := backup.Create(dbPath, bpDir, dest, ""); err != nil {
+	if err := backup.Create(dbPath, bpDir, dest, "", nil, nil); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	info, err := os.Stat(dest)
@@ -48,8 +48,8 @@ func TestCreate_Encrypted_LargerThanPlain(t *testing.T) {
 	plain := filepath.Join(backupDir, "plain.pcg-backup")
 	enc := filepath.Join(backupDir, "enc.pcg-backup")
 
-	backup.Create(dbPath, bpDir, plain, "")
-	backup.Create(dbPath, bpDir, enc, "my-passphrase")
+	backup.Create(dbPath, bpDir, plain, "", nil, nil)
+	backup.Create(dbPath, bpDir, enc, "my-passphrase", nil, nil)
 
 	plainInfo, _ := os.Stat(plain)
 	encInfo, _ := os.Stat(enc)
@@ -64,8 +64,8 @@ func TestListBackups(t *testing.T) {
 	_, _, backupDir := setupTestData(t)
 	dbPath, bpDir, _ := setupTestData(t)
 
-	backup.Create(dbPath, bpDir, filepath.Join(backupDir, "first.pcg-backup"), "")
-	backup.Create(dbPath, bpDir, filepath.Join(backupDir, "second.pcg-backup"), "")
+	backup.Create(dbPath, bpDir, filepath.Join(backupDir, "first.pcg-backup"), "", nil, nil)
+	backup.Create(dbPath, bpDir, filepath.Join(backupDir, "second.pcg-backup"), "", nil, nil)
 
 	list, err := backup.ListBackups(backupDir)
 	if err != nil {

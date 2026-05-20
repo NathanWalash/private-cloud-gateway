@@ -198,6 +198,20 @@ func (m *Manager) Status(ctx context.Context, containerName string) string {
 	}
 }
 
+// CopyFromContainer returns a tar stream of the given path inside the container.
+// The caller is responsible for closing the returned ReadCloser.
+func (m *Manager) CopyFromContainer(ctx context.Context, containerName, srcPath string) (io.ReadCloser, error) {
+	resp, err := m.do(ctx, "GET", "/containers/"+containerName+"/archive?path="+srcPath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("archive %s:%s: %w", containerName, srcPath, err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("archive %s:%s returned %d", containerName, srcPath, resp.StatusCode)
+	}
+	return resp.Body, nil
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func (m *Manager) do(ctx context.Context, method, path string, body any) (*http.Response, error) {

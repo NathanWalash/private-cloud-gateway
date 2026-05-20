@@ -29,5 +29,8 @@ backup:
   paths:
     - /var/lib/cloud-core/apps/couchdb/data
 
+  container_paths:
+    - /opt/couchdb/data
+
 resources:
   memory_limit: 256m
