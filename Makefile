@@ -22,6 +22,14 @@ env: ## Copy .env.example to .env if .env does not exist
 
 # ── Development stack ─────────────────────────────────────────────────────────
 
+.PHONY: nuke
+nuke: ## Wipe ALL state (containers, volumes, images) and rebuild from scratch — use after PR merges
+	./scripts/dev-nuke.sh
+
+.PHONY: wipe
+wipe: ## Wipe ALL state without rebuilding
+	./scripts/dev-nuke.sh --wipe
+
 .PHONY: dev-up
 dev-up: ## Start the local development stack (builds images)
 	./scripts/dev-up.sh
