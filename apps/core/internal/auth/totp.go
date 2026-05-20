@@ -28,7 +28,7 @@ func (h *Handler) TOTPStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var secret *string
-	h.db.QueryRowContext(r.Context(), "SELECT totp_secret FROM users WHERE id=?", userID).Scan(&secret)
+	_ = h.db.QueryRowContext(r.Context(), "SELECT totp_secret FROM users WHERE id=?", userID).Scan(&secret)
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = fmt.Fprintf(w, `{"enabled":%v}`, secret != nil && *secret != "")
 }
@@ -49,7 +49,7 @@ func (h *Handler) TOTPSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var email string
-	h.db.QueryRowContext(r.Context(), "SELECT email FROM users WHERE id=?", userID).Scan(&email)
+	_ = h.db.QueryRowContext(r.Context(), "SELECT email FROM users WHERE id=?", userID).Scan(&email)
 
 	secret, err := totp.GenerateSecret()
 	if err != nil {
@@ -124,7 +124,7 @@ func (h *Handler) TOTPDisable(w http.ResponseWriter, r *http.Request) {
 
 	// Require a valid TOTP code to disable (prevents accidental disable)
 	var secret string
-	h.db.QueryRowContext(r.Context(), "SELECT COALESCE(totp_secret,'') FROM users WHERE id=?", userID).Scan(&secret)
+	_ = h.db.QueryRowContext(r.Context(), "SELECT COALESCE(totp_secret,'') FROM users WHERE id=?", userID).Scan(&secret)
 	if secret != "" && !totp.Verify(secret, req.Code, time.Now()) {
 		http.Error(w, `{"error":"invalid code"}`, http.StatusUnauthorized)
 		return
@@ -160,7 +160,7 @@ func (h *Handler) TOTPVerify(w http.ResponseWriter, r *http.Request) {
 
 	// Verify TOTP code
 	var secret string
-	h.db.QueryRowContext(r.Context(), "SELECT COALESCE(totp_secret,'') FROM users WHERE id=?", userID).Scan(&secret)
+	_ = h.db.QueryRowContext(r.Context(), "SELECT COALESCE(totp_secret,'') FROM users WHERE id=?", userID).Scan(&secret)
 	if !totp.Verify(secret, req.Code, time.Now()) {
 		http.Error(w, `{"error":"invalid code"}`, http.StatusUnauthorized)
 		return
