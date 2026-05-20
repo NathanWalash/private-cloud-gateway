@@ -170,6 +170,24 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if TOTP is enabled for this user.
+	var totpSecret string
+	h.db.QueryRowContext(r.Context(),
+		"SELECT COALESCE(totp_secret,'') FROM users WHERE id=?", userID).Scan(&totpSecret) //nolint:errcheck
+	if totpSecret != "" {
+		// Issue a short-lived token for the second factor step.
+		pending := &Handler{db: h.db, loginURL: h.loginURL, cookieDomain: h.cookieDomain}
+		token, err := storeTOTPPending(pending, userID)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprintf(w, `{"needs_totp":true,"totp_token":%q}`, token)
+		return
+	}
+
 	sessionID, err := createSession(h.db, userID)
 	if err != nil {
 		slog.Error("create session error", "err", err)

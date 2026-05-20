@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import {
   ExternalLink, Play, Square, RotateCcw, Trash2,
-  Loader2, Circle, Terminal, RefreshCw,
+  Loader2, Terminal, RefreshCw, AlertTriangle,
 } from 'lucide-react'
 import { App, api } from '../api/client'
+import AppIcon from './AppIcon'
 import LogsModal from './LogsModal'
 
 const statusConfig = {
-  running: { label: 'Running', color: 'text-emerald-400', dot: 'bg-emerald-400' },
-  stopped: { label: 'Stopped', color: 'text-slate-500', dot: 'bg-slate-600' },
-  starting: { label: 'Starting', color: 'text-amber-400', dot: 'bg-amber-400 animate-pulse' },
-  missing: { label: 'Missing', color: 'text-red-400', dot: 'bg-red-400' },
+  running: { label: 'Running',  color: 'text-emerald-400', dot: 'bg-emerald-400' },
+  stopped: { label: 'Stopped',  color: 'text-slate-500',   dot: 'bg-slate-600' },
+  starting:{ label: 'Starting', color: 'text-amber-400',   dot: 'bg-amber-400 animate-pulse' },
+  missing: { label: 'Missing',  color: 'text-slate-500',   dot: 'bg-slate-700' },
+  error:   { label: 'Error',    color: 'text-red-400',     dot: 'bg-red-500' },
 }
 
 interface AppCardProps {
@@ -21,28 +23,35 @@ interface AppCardProps {
 export default function AppCard({ app, onStatusChange }: AppCardProps) {
   const [busy, setBusy] = useState(false)
   const [showLogs, setShowLogs] = useState(false)
-  const status = statusConfig[app.status] ?? statusConfig.missing
+  const status = statusConfig[app.status as keyof typeof statusConfig] ?? statusConfig.missing
 
   async function action(fn: () => Promise<unknown>) {
     setBusy(true)
     try { await fn(); onStatusChange() }
-    catch { /* parent will refresh */ }
+    catch { /* parent refreshes */ }
     finally { setBusy(false) }
   }
 
   return (
     <>
-      <div className="card p-5 flex flex-col gap-3 hover:border-slate-600 transition-colors duration-150">
+      <div className={`card p-5 flex flex-col gap-3 hover:border-slate-600 transition-colors duration-150 ${
+        app.status === 'error' ? 'border-red-900/50 bg-red-950/10' : ''
+      }`}>
+        {/* Header row */}
         <div className="flex items-start justify-between">
           <div className="w-10 h-10 bg-accent/10 border border-accent/20 rounded-lg flex items-center justify-center">
-            <Circle className="w-5 h-5 text-accent/50" strokeWidth={1.5} />
+            <AppIcon appId={app.blueprint_id} className="w-5 h-5 text-accent/70" />
           </div>
           <span className={`flex items-center gap-1.5 text-xs font-medium ${status.color}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+            {app.status === 'error'
+              ? <AlertTriangle className="w-3 h-3" />
+              : <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+            }
             {status.label}
           </span>
         </div>
 
+        {/* Name + URL */}
         <div>
           <h3 className="font-medium text-slate-100">{app.name}</h3>
           <a
@@ -53,6 +62,13 @@ export default function AppCard({ app, onStatusChange }: AppCardProps) {
             <ExternalLink className="w-3 h-3 shrink-0" />
           </a>
         </div>
+
+        {/* Error message */}
+        {app.status === 'error' && (
+          <p className="text-xs text-red-400/80 bg-red-950/20 border border-red-900/30 rounded px-2 py-1.5">
+            Container exited on start. Check logs for details.
+          </p>
+        )}
 
         {/* Controls */}
         <div className="flex items-center gap-1 pt-1 border-t border-border flex-wrap">

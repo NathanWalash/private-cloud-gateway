@@ -12,7 +12,7 @@ export interface App {
   icon: string
   subdomain: string
   url: string
-  status: 'running' | 'stopped' | 'starting' | 'missing'
+  status: 'running' | 'stopped' | 'starting' | 'missing' | 'error'
   internal_port: number
   container_name: string
 }
@@ -71,13 +71,24 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ email, password, first_name: firstName, last_name: lastName }),
       }),
-    login: (email: string, password: string): Promise<{ status: string }> =>
+    login: (email: string, password: string): Promise<{ status: string; needs_totp?: boolean; totp_token?: string }> =>
       request('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       }),
     logout: (): Promise<{ status: string }> =>
       request('/api/auth/logout', { method: 'POST' }),
+    totp: {
+      status: (): Promise<{ enabled: boolean }> => request('/api/auth/totp/status'),
+      setup: (): Promise<{ secret: string; uri: string }> =>
+        request('/api/auth/totp/setup', { method: 'POST' }),
+      confirm: (secret: string, code: string): Promise<{ status: string }> =>
+        request('/api/auth/totp/confirm', { method: 'POST', body: JSON.stringify({ secret, code }) }),
+      disable: (code: string): Promise<{ status: string }> =>
+        request('/api/auth/totp/disable', { method: 'POST', body: JSON.stringify({ code }) }),
+      verify: (token: string, code: string): Promise<{ status: string }> =>
+        request('/api/auth/totp/verify', { method: 'POST', body: JSON.stringify({ token, code }) }),
+    },
   },
 
   status: (): Promise<ServerStatus> => request('/api/status'),

@@ -51,6 +51,13 @@ func New(
 	mux.HandleFunc("GET /api/auth/me", authHandler.Me)
 	mux.HandleFunc("GET /api/auth/setup", authHandler.NeedsSetup)
 	mux.HandleFunc("POST /api/auth/setup", authHandler.Setup)
+	// TOTP — no session required for verify (it IS the second auth step)
+	mux.HandleFunc("POST /api/auth/totp/verify", authHandler.TOTPVerify)
+	// TOTP management requires an active session
+	mux.HandleFunc("GET /api/auth/totp/status", authHandler.RequireAuth(authHandler.TOTPStatus))
+	mux.HandleFunc("POST /api/auth/totp/setup", authHandler.RequireAuth(authHandler.TOTPSetup))
+	mux.HandleFunc("POST /api/auth/totp/confirm", authHandler.RequireAuth(authHandler.TOTPConfirm))
+	mux.HandleFunc("POST /api/auth/totp/disable", authHandler.RequireAuth(authHandler.TOTPDisable))
 
 	// ── App management ────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/status", authHandler.RequireAuth(apiHandler.Status))
