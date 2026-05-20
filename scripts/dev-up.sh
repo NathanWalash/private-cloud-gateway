@@ -12,4 +12,5 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 echo "Starting Private Cloud Gateway dev stack..."
+echo "Tip: run ./scripts/dev-nuke.sh to wipe everything and start fresh after a PR merge."
 docker compose -f "$COMPOSE_FILE" up --build "$@"
