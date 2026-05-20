@@ -260,7 +260,8 @@ func mustGetenv(key string) string {
 }
 
 // reregisterRoutes pushes all installed app routes to Caddy on startup.
-// This keeps routes in sync when Core or Caddy restarts.
+// Retries with backoff because Caddy may not be DNS-resolvable immediately
+// when Core and Caddy start simultaneously (race condition in docker-compose).
 func reregisterRoutes(database *sql.DB, cm *caddy.Manager) {
 	rows, err := database.QueryContext(context.Background(),
 		"SELECT subdomain, container_name, internal_port FROM apps ORDER BY id")
@@ -279,9 +280,19 @@ func reregisterRoutes(database *sql.DB, cm *caddy.Manager) {
 		routes = append(routes, r)
 	}
 
-	if err := cm.ReloadAll(context.Background(), routes); err != nil {
-		slog.Warn("reregister routes: caddy reload failed", "err", err)
+	// Retry up to 6 times with increasing delays: 0, 2, 4, 8, 16, 30 seconds.
+	delays := []time.Duration{0, 2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second, 30 * time.Second}
+	for i, delay := range delays {
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+		if err := cm.ReloadAll(context.Background(), routes); err != nil {
+			if i == len(delays)-1 {
+				slog.Warn("reregister routes: all retries failed", "err", err)
+			}
+			continue
+		}
+		slog.Info("caddy routes synced on startup", "count", len(routes), "attempt", i+1)
 		return
 	}
-	slog.Info("caddy routes synced on startup", "count", len(routes))
 }

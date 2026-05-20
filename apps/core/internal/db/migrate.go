@@ -7,12 +7,19 @@ import (
 
 const schema = `
 CREATE TABLE IF NOT EXISTS users (
-	id         INTEGER  PRIMARY KEY AUTOINCREMENT,
-	email      TEXT     NOT NULL UNIQUE COLLATE NOCASE,
-	password   TEXT     NOT NULL,
-	first_name TEXT     NOT NULL DEFAULT '',
-	last_name  TEXT     NOT NULL DEFAULT '',
-	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	id          INTEGER  PRIMARY KEY AUTOINCREMENT,
+	email       TEXT     NOT NULL UNIQUE COLLATE NOCASE,
+	password    TEXT     NOT NULL,
+	first_name  TEXT     NOT NULL DEFAULT '',
+	last_name   TEXT     NOT NULL DEFAULT '',
+	totp_secret TEXT,
+	created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS totp_pending (
+	token      TEXT     PRIMARY KEY,
+	user_id    INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	expires_at DATETIME NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -74,8 +81,9 @@ func Migrate(db *sql.DB) error {
 	// Additive migrations — safe to run on existing DBs.
 	// SQLite returns "duplicate column name" if the column exists; we ignore that.
 	for _, col := range []string{
-		"ALTER TABLE users ADD COLUMN first_name TEXT NOT NULL DEFAULT ''",
-		"ALTER TABLE users ADD COLUMN last_name  TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE users ADD COLUMN first_name  TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE users ADD COLUMN last_name   TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE users ADD COLUMN totp_secret TEXT",
 	} {
 		_, _ = db.Exec(col) // ignore error — column may already exist
 	}

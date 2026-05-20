@@ -1,21 +1,12 @@
 import { useState } from 'react'
-import { X, Search, Package, Check, Loader2, AlertCircle } from 'lucide-react'
+import { X, Search, Check, Loader2, AlertCircle, Package } from 'lucide-react'
 import { Blueprint, api, ApiError } from '../api/client'
+import AppIcon from './AppIcon'
 
 interface MarketplaceDialogProps {
   blueprints: Blueprint[]
   onClose: () => void
   onInstalled: () => void
-}
-
-const CATEGORY_ICONS: Record<string, string> = {
-  storage: '💾',
-  utilities: '🛠',
-  productivity: '✍️',
-  monitoring: '📡',
-  security: '🔐',
-  finance: '💰',
-  automation: '⚡',
 }
 
 const CATEGORY_ORDER = ['storage', 'productivity', 'utilities', 'monitoring', 'security', 'finance', 'automation']
@@ -101,7 +92,7 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
                   activeCategory === cat ? 'text-accent font-medium bg-accent/10' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 }`}
               >
-                <span>{CATEGORY_ICONS[cat] ?? '📦'}</span>
+                <AppIcon category={cat} className="w-3.5 h-3.5" />
                 {cat}
               </button>
             ))}
@@ -129,7 +120,9 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2.5">
-                      <span className="text-2xl leading-none">{bp.icon || '📦'}</span>
+                      <div className="w-9 h-9 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
+                        <AppIcon appId={bp.id} category={bp.category} className="w-4.5 h-4.5 text-accent/70" />
+                      </div>
                       <div>
                         <p className="text-sm font-medium text-slate-200">{bp.name}</p>
                         <p className="text-xs text-slate-500 capitalize">{bp.category}</p>
