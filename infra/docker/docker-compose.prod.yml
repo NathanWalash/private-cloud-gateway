@@ -33,6 +33,11 @@ services:
   # ── Go Core ───────────────────────────────────────────────────────────────
   core:
     image: ghcr.io/nathanwalash/private-cloud-gateway:latest
+    # Falls back to building locally if the image is not yet in ghcr.io.
+    # Remove the `build:` block after tagging a release.
+    build:
+      context: /opt/pcg
+      dockerfile: Dockerfile
     restart: always
     env_file: /opt/pcg/.env
     environment:
