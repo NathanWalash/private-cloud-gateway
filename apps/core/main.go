@@ -3,9 +3,14 @@ package main
 import (
 	"context"
 	"database/sql"
+	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"time"
 
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/backup"
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/blueprint"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/caddy"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/db"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/docker"
@@ -27,6 +32,7 @@ func main() {
 		caddyAdmin:        getenv("CLOUD_CORE_CADDY_ADMIN", "caddy:2019"),
 		blueprintDir:      getenv("CLOUD_CORE_BLUEPRINT_DIR", "/blueprints"),
 		adminEmail:        os.Getenv("CLOUD_CORE_ADMIN_EMAIL"),
+		backupSchedule:    getenv("CLOUD_CORE_BACKUP_SCHEDULE", ""), // e.g. "24h", "12h" — empty disables
 	}
 
 	setupLogging(cfg.env)
@@ -82,8 +88,18 @@ func main() {
 	)
 
 	// Re-register Caddy routes for all installed apps on every startup.
-	// Routes are lost when Caddy restarts; this keeps them in sync with the DB.
 	reregisterRoutes(database, cm)
+
+	// Start scheduled backup goroutine if CLOUD_CORE_BACKUP_SCHEDULE is set.
+	if cfg.backupSchedule != "" {
+		interval, err := time.ParseDuration(cfg.backupSchedule)
+		if err != nil {
+			slog.Warn("invalid backup schedule, disabling", "value", cfg.backupSchedule)
+		} else {
+			go runScheduledBackups(interval, cfg.dbPath, cfg.blueprintDir, dm)
+			slog.Info("scheduled backups enabled", "interval", interval)
+		}
+	}
 
 	if err := srv.ListenAndServe(":" + cfg.port); err != nil {
 		slog.Error("server stopped", "err", err)
@@ -114,6 +130,69 @@ type config struct {
 	caddyAdmin        string
 	blueprintDir      string
 	adminEmail        string // Let's Encrypt email (production only)
+	backupSchedule    string // duration string, e.g. "24h"
+}
+
+// runScheduledBackups runs backups on a fixed interval until the process exits.
+func runScheduledBackups(interval time.Duration, dbPath, blueprintDir string, dm *docker.Manager) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		slog.Info("running scheduled backup...")
+
+		backupDir := os.Getenv("CLOUD_CORE_BACKUP_DIR")
+		if backupDir == "" {
+			backupDir = "/backups"
+		}
+		if err := os.MkdirAll(backupDir, 0o700); err != nil {
+			slog.Error("scheduled backup: cannot create dir", "err", err)
+			continue
+		}
+
+		passphrase := os.Getenv("CLOUD_CORE_BACKUP_PASSPHRASE")
+		destPath := filepath.Join(backupDir, backup.FileName(time.Now()))
+
+		// Collect volumes from running apps via blueprints directory
+		var volumes []backup.AppVolume
+		var vr backup.VolumeReader
+		if dm != nil {
+			entries, _ := os.ReadDir(blueprintDir)
+			for _, e := range entries {
+				if e.IsDir() {
+					continue
+				}
+				data, err := os.ReadFile(filepath.Join(blueprintDir, e.Name()))
+				if err != nil {
+					continue
+				}
+				bp, err := blueprint.Parse(data)
+				if err != nil || !bp.Backup.Enabled {
+					continue
+				}
+				containerName := bp.ContainerName()
+				status := dm.Status(context.Background(), containerName)
+				if status != "running" {
+					continue
+				}
+				for _, p := range bp.Backup.ContainerPaths {
+					volumes = append(volumes, backup.AppVolume{
+						AppID:         bp.ID,
+						ContainerName: containerName,
+						ContainerPath: p,
+					})
+				}
+			}
+			vr = func(cn, cp string) (io.ReadCloser, error) {
+				return dm.CopyFromContainer(context.Background(), cn, cp)
+			}
+		}
+
+		if err := backup.Create(dbPath, blueprintDir, destPath, passphrase, volumes, vr); err != nil {
+			slog.Error("scheduled backup failed", "err", err)
+		} else {
+			slog.Info("scheduled backup completed", "file", filepath.Base(destPath), "volumes", len(volumes))
+		}
+	}
 }
 
 func getenv(key, fallback string) string {

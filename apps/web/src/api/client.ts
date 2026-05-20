@@ -106,9 +106,22 @@ export const api = {
 
   backup: {
     list: (): Promise<BackupFile[]> => request('/api/backup/list'),
-    create: (): Promise<{ name: string; size: number }> =>
+    create: (): Promise<{ name: string; size: number; volumes: number }> =>
       request('/api/backup/create', { method: 'POST' }),
     safeEscapeUrl: '/api/backup/safe-escape',
+    restore: (file: File, passphrase?: string): Promise<{ status: string; message: string }> => {
+      const form = new FormData()
+      form.append('file', file)
+      if (passphrase) form.append('passphrase', passphrase)
+      return fetch('/api/backup/restore', {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      }).then(async r => {
+        if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => r.statusText))
+        return r.json() as Promise<{ status: string; message: string }>
+      })
+    },
   },
 }
 

@@ -72,6 +72,7 @@ func New(
 	mux.HandleFunc("POST /api/backup/create", authHandler.RequireAuth(apiHandler.BackupCreate))
 	mux.HandleFunc("GET /api/backup/list", authHandler.RequireAuth(apiHandler.BackupList))
 	mux.HandleFunc("GET /api/backup/safe-escape", authHandler.RequireAuth(apiHandler.SafeEscape))
+	mux.HandleFunc("POST /api/backup/restore", authHandler.RequireAuth(apiHandler.BackupRestore))
 
 	// ── Health check ─────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
