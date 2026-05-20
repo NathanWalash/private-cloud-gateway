@@ -206,7 +206,7 @@ func Restore(srcPath, passphrase, dbDest, blueprintsDest string) error {
 			}
 		case filepath.Dir(file.Name) == bpDir:
 			dst := filepath.Join(blueprintsDest, filepath.Base(file.Name))
-			writeToPath(rc, dst)
+			_ = writeToPath(rc, dst) // best-effort blueprint restore
 		}
 		rc.Close()
 	}
