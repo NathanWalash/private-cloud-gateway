@@ -281,7 +281,7 @@ func RunMonitorCheck(db *sql.DB, id int64, targetURL string) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
-		db.Exec("UPDATE monitors SET status='down', last_checked=CURRENT_TIMESTAMP WHERE id=?", id)
+		_, _ = db.Exec("UPDATE monitors SET status='down', last_checked=CURRENT_TIMESTAMP WHERE id=?", id)
 		return
 	}
 
@@ -303,7 +303,7 @@ func RunMonitorCheck(db *sql.DB, id int64, targetURL string) {
 			status = "down"
 		}
 	}
-	db.Exec(
+	_, _ = db.Exec(
 		"UPDATE monitors SET status=?, status_code=?, latency_ms=?, last_checked=CURRENT_TIMESTAMP WHERE id=?",
 		status, code, latency, id,
 	)

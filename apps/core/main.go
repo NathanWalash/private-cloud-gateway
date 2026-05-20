@@ -231,11 +231,11 @@ func runHealthPolling(database *sql.DB, dm *docker.Manager) {
 				continue
 			}
 			if status, ok := statuses[name]; ok {
-				database.ExecContext(context.Background(),
+				_, _ = database.ExecContext(context.Background(),
 					"UPDATE apps SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!=?",
 					status, id, status)
 			} else {
-				database.ExecContext(context.Background(),
+				_, _ = database.ExecContext(context.Background(),
 					"UPDATE apps SET status='missing', updated_at=CURRENT_TIMESTAMP WHERE id=?", id)
 			}
 		}
