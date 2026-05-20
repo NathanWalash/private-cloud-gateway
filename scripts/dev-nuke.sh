@@ -36,27 +36,21 @@ docker compose -f "$COMPOSE_FILE" down --volumes --remove-orphans 2>/dev/null ||
 
 # ── 2. Remove app containers installed by Go Core ─────────────────────────────
 echo "→ Removing pcg-* app containers..."
-CONTAINERS=$(docker ps -aq --filter "label=pcg.managed=true" 2>/dev/null || true)
-if [ -n "$CONTAINERS" ]; then
-  docker stop $CONTAINERS 2>/dev/null || true
-  docker rm  $CONTAINERS 2>/dev/null || true
-  echo "  Removed: $(echo "$CONTAINERS" | wc -w | tr -d ' ') container(s)"
-else
-  echo "  None found"
-fi
-
+docker ps -aq --filter "label=pcg.managed=true" 2>/dev/null \
+  | xargs -r docker stop 2>/dev/null || true
+docker ps -aq --filter "label=pcg.managed=true" 2>/dev/null \
+  | xargs -r docker rm  2>/dev/null || true
 # Also catch any pcg-* containers not labelled (e.g. from older runs)
-UNLABELLED=$(docker ps -aq --filter "name=pcg-" 2>/dev/null || true)
-if [ -n "$UNLABELLED" ]; then
-  docker stop $UNLABELLED 2>/dev/null || true
-  docker rm  $UNLABELLED 2>/dev/null || true
-fi
+docker ps -aq --filter "name=pcg-" 2>/dev/null \
+  | xargs -r docker stop 2>/dev/null || true
+docker ps -aq --filter "name=pcg-" 2>/dev/null \
+  | xargs -r docker rm  2>/dev/null || true
 
 # ── 3. Remove named volumes created for app data ──────────────────────────────
 echo "→ Removing pcg-* named volumes..."
 VOLUMES=$(docker volume ls -q --filter "name=pcg-" 2>/dev/null || true)
 if [ -n "$VOLUMES" ]; then
-  docker volume rm $VOLUMES 2>/dev/null || true
+  echo "$VOLUMES" | xargs -r docker volume rm 2>/dev/null || true
   echo "  Removed: $(echo "$VOLUMES" | wc -w | tr -d ' ') volume(s)"
 else
   echo "  None found"
