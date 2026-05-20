@@ -27,5 +27,8 @@ backup:
   paths:
     - /var/lib/cloud-core/apps/silverbullet/space
 
+  container_paths:
+    - /space
+
 resources:
   memory_limit: 256m

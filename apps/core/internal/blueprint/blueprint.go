@@ -46,8 +46,9 @@ type Health struct {
 }
 
 type Backup struct {
-	Enabled bool     `yaml:"enabled"`
-	Paths   []string `yaml:"paths"`
+	Enabled        bool     `yaml:"enabled"`
+	Paths          []string `yaml:"paths"`           // legacy host paths
+	ContainerPaths []string `yaml:"container_paths"` // paths inside the container to archive
 }
 
 type Resources struct {

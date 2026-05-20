@@ -27,5 +27,8 @@ backup:
   paths:
     - /var/lib/cloud-core/apps/uptime-kuma/data
 
+  container_paths:
+    - /app/data
+
 resources:
   memory_limit: 256m

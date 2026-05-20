@@ -27,5 +27,8 @@ backup:
   paths:
     - /var/lib/cloud-core/apps/actual-budget/data
 
+  container_paths:
+    - /data
+
 resources:
   memory_limit: 256m
