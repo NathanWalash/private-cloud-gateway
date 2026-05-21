@@ -91,9 +91,13 @@ func main() {
 	// Re-register Caddy routes for all installed apps on every startup.
 	reregisterRoutes(database, cm)
 
+	// Background context — cancelled when server shuts down, stopping all goroutines cleanly.
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	defer bgCancel()
+
 	// Health polling — updates app status from Docker every 30 seconds.
 	if dm != nil {
-		go runHealthPolling(database, dm)
+		go runHealthPolling(bgCtx, database, dm)
 		slog.Info("health polling enabled")
 	}
 
@@ -101,8 +105,28 @@ func main() {
 	go func() {
 		ticker := time.NewTicker(2 * time.Minute)
 		defer ticker.Stop()
-		for range ticker.C {
-			apiPkg.PollAllMonitors(database)
+		for {
+			select {
+			case <-bgCtx.Done():
+				return
+			case <-ticker.C:
+				apiPkg.PollAllMonitors(database)
+			}
+		}
+	}()
+
+	// Periodic cleanup of expired short-lived tokens and stale sessions.
+	go func() {
+		ticker := time.NewTicker(15 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-bgCtx.Done():
+				return
+			case <-ticker.C:
+				_, _ = database.Exec("DELETE FROM totp_pending WHERE expires_at < CURRENT_TIMESTAMP")
+				_, _ = database.Exec("DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP")
+			}
 		}
 	}()
 
@@ -112,7 +136,7 @@ func main() {
 		if err != nil {
 			slog.Warn("invalid backup schedule, disabling", "value", cfg.backupSchedule)
 		} else {
-			go runScheduledBackups(interval, cfg.dbPath, cfg.blueprintDir, dm)
+			go runScheduledBackups(bgCtx, interval, cfg.dbPath, cfg.blueprintDir, dm)
 			slog.Info("scheduled backups enabled", "interval", interval)
 		}
 	}
@@ -150,10 +174,16 @@ type config struct {
 }
 
 // runScheduledBackups runs backups on a fixed interval until the process exits.
-func runScheduledBackups(interval time.Duration, dbPath, blueprintDir string, dm *docker.Manager) {
+func runScheduledBackups(ctx context.Context, interval time.Duration, dbPath, blueprintDir string, dm *docker.Manager) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	for range ticker.C {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		{
 		slog.Info("running scheduled backup...")
 
 		backupDir := os.Getenv("CLOUD_CORE_BACKUP_DIR")
@@ -208,14 +238,21 @@ func runScheduledBackups(interval time.Duration, dbPath, blueprintDir string, dm
 		} else {
 			slog.Info("scheduled backup completed", "file", filepath.Base(destPath), "volumes", len(volumes))
 		}
+		} // end select case block
 	}
 }
 
 // runHealthPolling updates app statuses from Docker on a 30-second loop.
-func runHealthPolling(database *sql.DB, dm *docker.Manager) {
+func runHealthPolling(ctx context.Context, database *sql.DB, dm *docker.Manager) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	for range ticker.C {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		{
 		statuses := dm.StatusAll(context.Background())
 		if len(statuses) == 0 {
 			continue
@@ -240,6 +277,7 @@ func runHealthPolling(database *sql.DB, dm *docker.Manager) {
 			}
 		}
 		rows.Close()
+		} // end select case block
 	}
 }
 

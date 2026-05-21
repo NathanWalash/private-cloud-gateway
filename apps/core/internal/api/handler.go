@@ -99,14 +99,19 @@ type InstallRequest struct {
 
 // POST /api/apps/install
 func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
-	if h.docker == nil {
-		jsonErr(w, "Docker is not available. Check that /var/run/docker.sock is mounted.", http.StatusServiceUnavailable)
-		return
-	}
-
+	// Validate input FIRST — before any other check — to catch injection attempts early.
 	var req InstallRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.BlueprintID == "" {
 		jsonErr(w, "blueprint_id is required", http.StatusBadRequest)
+		return
+	}
+	if err := blueprint.ValidateBlueprintID(req.BlueprintID); err != nil {
+		jsonErr(w, "invalid blueprint_id", http.StatusBadRequest)
+		return
+	}
+
+	if h.docker == nil {
+		jsonErr(w, "Docker is not available. Check that /var/run/docker.sock is mounted.", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -119,7 +124,7 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 
 	bp, err := blueprint.Parse(data)
 	if err != nil {
-		jsonErr(w, "invalid blueprint: "+err.Error(), http.StatusBadRequest)
+		jsonErr(w, "invalid blueprint", http.StatusBadRequest)
 		return
 	}
 
@@ -138,13 +143,13 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.docker.Install(r.Context(), bp); err != nil {
 		slog.Error("docker install failed", "app", bp.ID, "err", err)
-		jsonErr(w, "docker install failed: "+err.Error(), http.StatusInternalServerError)
+		jsonErr(w, "app installation failed", http.StatusInternalServerError)
 		return
 	}
 
 	if err := h.docker.Start(r.Context(), bp.ContainerName()); err != nil {
 		slog.Error("docker start failed", "app", bp.ID, "err", err)
-		jsonErr(w, "start failed: "+err.Error(), http.StatusInternalServerError)
+		jsonErr(w, "failed to start container", http.StatusInternalServerError)
 		return
 	}
 
@@ -251,7 +256,7 @@ func (h *Handler) lifecycleAction(w http.ResponseWriter, r *http.Request, action
 
 	if err := fn(containerName); err != nil {
 		slog.Error("lifecycle action failed", "action", action, "container", containerName, "err", err)
-		jsonErr(w, action+" failed: "+err.Error(), http.StatusInternalServerError)
+		jsonErr(w, action+" failed", http.StatusInternalServerError)
 		return
 	}
 

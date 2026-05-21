@@ -62,7 +62,23 @@ func TestVerify_ClockSkew(t *testing.T) {
 	// Test that a slightly future/past time window is handled
 	// (skewSteps = 1 means ±30s tolerance)
 	now := time.Now()
-	// These just check no panics occur with boundary times
+	// These just check no panics occur with boundary times (±30s window)
 	totp.Verify(secret, "000000", now.Add(-29*time.Second))
 	totp.Verify(secret, "000000", now.Add(29*time.Second))
+}
+
+func TestVerify_RejectsShortSecret(t *testing.T) {
+	short := "JBSWY3DPEHPK3PXP" // 16 chars — below MinSecretLen
+	if totp.Verify(short, "000000", time.Now()) {
+		t.Error("short secret should always be rejected")
+	}
+	if totp.Verify("", "000000", time.Now()) {
+		t.Error("empty secret should be rejected")
+	}
+}
+
+func TestMinSecretLen_IsAdequate(t *testing.T) {
+	if totp.MinSecretLen < 32 {
+		t.Errorf("MinSecretLen %d is too small — must be >= 32 (160-bit security)", totp.MinSecretLen)
+	}
 }

@@ -140,9 +140,34 @@ func New(
 	return &Server{mux: mux}
 }
 
-// Handler returns the HTTP handler — used by tests with httptest.NewServer.
+// Handler returns the HTTP handler wrapped with security headers middleware.
 func (s *Server) Handler() http.Handler {
-	return s.mux
+	return securityHeaders(s.mux)
+}
+
+// securityHeaders adds standard defensive HTTP headers to every response.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		// Prevent clickjacking
+		h.Set("X-Frame-Options", "DENY")
+		// Prevent MIME type sniffing
+		h.Set("X-Content-Type-Options", "nosniff")
+		// Strict referrer policy
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		// Permissions policy — deny browser features we don't use
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		// Content security policy — SPA only loads from same origin
+		if r.Header.Get("Accept") != "" && !isAPIPath(r.URL.Path) {
+			h.Set("Content-Security-Policy",
+				"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isAPIPath(path string) bool {
+	return len(path) > 4 && path[:5] == "/api/"
 }
 
 // ListenAndServe starts the HTTP server with timeouts and graceful shutdown.
