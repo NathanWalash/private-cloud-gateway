@@ -82,8 +82,3 @@ func RunAppHealthChecks(db *sql.DB, blueprintDir string, notifier *notify.Servic
 	}
 }
 
-// AppHealthStatus returns the health field as part of the apps list.
-// Already included in AppRecord — this just ensures the DB column exists.
-func appendHealthToRecord(r *AppRecord, healthStatus string) {
-	r.HealthStatus = healthStatus
-}
