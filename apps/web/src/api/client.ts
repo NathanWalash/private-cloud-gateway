@@ -13,6 +13,7 @@ export interface App {
   subdomain: string
   url: string
   status: 'running' | 'stopped' | 'starting' | 'missing' | 'error'
+  health_status: 'healthy' | 'unhealthy' | 'unreachable' | 'unknown' | string
   internal_port: number
   container_name: string
 }
@@ -88,7 +89,16 @@ export const api = {
         request('/api/auth/totp/disable', { method: 'POST', body: JSON.stringify({ code }) }),
       verify: (token: string, code: string): Promise<{ status: string }> =>
         request('/api/auth/totp/verify', { method: 'POST', body: JSON.stringify({ token, code }) }),
+      backupCodes: (): Promise<{ total: number; unused: number }> =>
+        request('/api/auth/totp/backup-codes'),
+      generateBackupCodes: (): Promise<{ codes: string[]; warning: string }> =>
+        request('/api/auth/totp/backup-codes', { method: 'POST' }),
     },
+    changePassword: (currentPassword: string, newPassword: string) =>
+      request('/api/auth/password', {
+        method: 'POST',
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      }),
   },
 
   status: (): Promise<ServerStatus> => request('/api/status'),
@@ -117,6 +127,7 @@ export const api = {
 
   appLogs: (id: number, tail = 150): Promise<{ lines: string }> =>
     request(`/api/apps/${id}/logs?tail=${tail}`),
+  appLogsStreamUrl: (id: number, tail = 50) => `/api/apps/${id}/logs/stream?tail=${tail}`,
 
   updateApp: (id: number): Promise<{ status: string }> =>
     request(`/api/apps/${id}/update`, { method: 'POST' }),

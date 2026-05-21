@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Settings, Globe, Shield, Archive, ChevronLeft,
   Save, Loader2, CheckCircle, AlertCircle,
-  ShieldCheck, ShieldOff, Key,
+  ShieldCheck, ShieldOff, Key, Bell, Lock, Copy,
 } from 'lucide-react'
 import { api, ApiError } from '../api/client'
 
@@ -19,6 +19,12 @@ const FIELDS: SettingField[] = [
   { key: 'CLOUD_CORE_BACKUP_PASSPHRASE', label: 'Backup passphrase', description: 'AES-256 encryption passphrase for backups. Requires restart.', type: 'password', placeholder: '(leave blank for unencrypted)' },
 ]
 
+const TELEGRAM_FIELDS: SettingField[] = [
+  { key: 'TELEGRAM_BOT_TOKEN', label: 'Bot token', description: 'Get from @BotFather on Telegram.', type: 'password', placeholder: '123456:ABC-DEF...' },
+  { key: 'TELEGRAM_CHAT_ID', label: 'Chat ID', description: 'Your personal chat ID. Send /start to @userinfobot to find it.', type: 'text', placeholder: '123456789' },
+  { key: 'NOTIFY_EVENTS', label: 'Events to notify', description: '"all", "none", or comma-separated: monitor.down, app.crash, backup.done, login.success', type: 'text', placeholder: 'all' },
+]
+
 export default function SettingsPage() {
   const navigate = useNavigate()
   const [values, setValues] = useState<Record<string, string>>({})
@@ -32,6 +38,14 @@ export default function SettingsPage() {
   const [totpDisableCode, setTotpDisableCode] = useState('')
   const [totpBusy, setTotpBusy] = useState(false)
   const [totpMsg, setTotpMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [backupCodesUnused, setBackupCodesUnused] = useState<number | null>(null)
+  const [generatedCodes, setGeneratedCodes] = useState<string[] | null>(null)
+  // Password change state
+  const [pwCurrent, setPwCurrent] = useState('')
+  const [pwNew, setPwNew] = useState('')
+  const [pwConfirm, setPwConfirm] = useState('')
+  const [pwBusy, setPwBusy] = useState(false)
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
     api.settings.list().then(settings => {
@@ -41,6 +55,7 @@ export default function SettingsPage() {
     }).catch(() => {})
     api.audit(20).then(setAudit).catch(() => {})
     api.auth.totp.status().then(r => setTotpEnabled(r.enabled)).catch(() => {})
+    api.auth.totp.backupCodes().then(r => setBackupCodesUnused(r.unused)).catch(() => {})
   }, [])
 
   async function saveSetting(key: string, value: string) {
@@ -83,6 +98,28 @@ export default function SettingsPage() {
     } catch (err) {
       setTotpMsg({ ok: false, text: err instanceof ApiError ? err.message : 'Invalid code.' })
     } finally { setTotpBusy(false) }
+  }
+
+  async function genBackupCodes() {
+    setTotpBusy(true)
+    try {
+      const r = await api.auth.totp.generateBackupCodes()
+      setGeneratedCodes(r.codes)
+      setBackupCodesUnused(r.codes.length)
+    } finally { setTotpBusy(false) }
+  }
+
+  async function changePassword() {
+    if (pwNew !== pwConfirm) { setPwMsg({ ok: false, text: 'Passwords do not match.' }); return }
+    if (pwNew.length < 8) { setPwMsg({ ok: false, text: 'Password must be at least 8 characters.' }); return }
+    setPwBusy(true); setPwMsg(null)
+    try {
+      await api.auth.changePassword(pwCurrent, pwNew)
+      setPwMsg({ ok: true, text: 'Password changed. You will need to log in again.' })
+      setPwCurrent(''); setPwNew(''); setPwConfirm('')
+    } catch (err) {
+      setPwMsg({ ok: false, text: err instanceof ApiError ? err.message : 'Failed.' })
+    } finally { setPwBusy(false) }
   }
 
   return (
@@ -257,6 +294,113 @@ export default function SettingsPage() {
                 <span className="text-xs text-slate-600 shrink-0">{new Date(e.created_at).toLocaleString()}</span>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Telegram notifications */}
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <Bell className="w-4 h-4 text-slate-400" />
+            <h2 className="text-sm font-medium text-slate-300">Telegram notifications</h2>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Get alerted when monitors go down, apps crash, backups complete, or someone logs in.
+            Create a bot via <strong className="text-slate-400">@BotFather</strong> and send a message to it,
+            then use <strong className="text-slate-400">@userinfobot</strong> to find your chat ID.
+          </p>
+          <div className="space-y-4">
+            {TELEGRAM_FIELDS.map(f => (
+              <div key={f.key} className="card p-4">
+                <label className="block text-xs font-medium text-slate-300 mb-1">{f.label}</label>
+                <p className="text-xs text-slate-500 mb-2">{f.description}</p>
+                <div className="flex gap-2">
+                  <input type={f.type} className="flex-1 input-field text-sm" placeholder={f.placeholder}
+                    value={values[f.key] ?? ''} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))} />
+                  <button type="button" onClick={() => saveSetting(f.key, values[f.key] ?? '')} disabled={saving === f.key}
+                    className="px-3 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-lg text-xs transition-colors shrink-0">
+                    {saved === f.key ? <CheckCircle className="w-3.5 h-3.5" /> : saving === f.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* TOTP backup codes */}
+        {totpEnabled && (
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Key className="w-4 h-4 text-slate-400" />
+              <h2 className="text-sm font-medium text-slate-300">TOTP recovery codes</h2>
+            </div>
+            <div className="card p-5">
+              <p className="text-xs text-slate-400 mb-3">
+                Recovery codes let you sign in if you lose access to your authenticator app.
+                Each code can only be used once. Keep them somewhere safe.
+              </p>
+              {backupCodesUnused !== null && (
+                <p className="text-xs text-slate-500 mb-3">
+                  <strong className="text-slate-300">{backupCodesUnused}</strong> unused codes remaining
+                </p>
+              )}
+              {generatedCodes ? (
+                <div className="space-y-3">
+                  <div className="bg-surface border border-amber-500/30 rounded-lg p-4">
+                    <p className="text-xs text-amber-400 mb-3 font-medium">Save these now — they will not be shown again.</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {generatedCodes.map((c, i) => (
+                        <code key={i} className="text-sm font-mono text-slate-200 bg-black/30 px-3 py-1.5 rounded text-center">{c}</code>
+                      ))}
+                    </div>
+                    <button type="button" onClick={() => navigator.clipboard.writeText(generatedCodes.join('\n'))}
+                      className="mt-3 flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors">
+                      <Copy className="w-3 h-3" /> Copy all
+                    </button>
+                  </div>
+                  <button type="button" onClick={() => setGeneratedCodes(null)} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                    Done, I've saved them
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={genBackupCodes} disabled={totpBusy}
+                  className="flex items-center gap-2 text-xs font-medium px-4 py-2 bg-white/5 hover:bg-white/10 border border-border text-slate-300 rounded-lg transition-colors">
+                  {totpBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
+                  Generate new recovery codes
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Password change */}
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <Lock className="w-4 h-4 text-slate-400" />
+            <h2 className="text-sm font-medium text-slate-300">Change password</h2>
+          </div>
+          <div className="card p-5 space-y-3">
+            {pwMsg && (
+              <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${pwMsg.ok ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-red-400 bg-red-500/10 border-red-500/20'}`}>
+                {pwMsg.ok ? <CheckCircle className="w-3.5 h-3.5 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 shrink-0" />}
+                {pwMsg.text}
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Current password</label>
+              <input type="password" className="input-field text-sm" placeholder="••••••••" value={pwCurrent} onChange={e => setPwCurrent(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">New password</label>
+              <input type="password" className="input-field text-sm" placeholder="At least 8 characters" value={pwNew} onChange={e => setPwNew(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Confirm new password</label>
+              <input type="password" className="input-field text-sm" placeholder="••••••••" value={pwConfirm} onChange={e => setPwConfirm(e.target.value)} />
+            </div>
+            <button type="button" onClick={changePassword} disabled={pwBusy || !pwCurrent || !pwNew || !pwConfirm}
+              className="btn-primary !w-auto px-6 text-sm disabled:opacity-50">
+              {pwBusy ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating…</> : 'Update password'}
+            </button>
           </div>
         </section>
 

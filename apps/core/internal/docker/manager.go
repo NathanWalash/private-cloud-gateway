@@ -199,6 +199,21 @@ func (m *Manager) Status(ctx context.Context, containerName string) string {
 	}
 }
 
+// LogsFollow returns a streaming reader of live container logs (follow=true).
+// The caller owns the ReadCloser and must close it when done.
+func (m *Manager) LogsFollow(ctx context.Context, containerName string) (io.ReadCloser, error) {
+	path := fmt.Sprintf("/containers/%s/logs?stdout=1&stderr=1&follow=1&tail=0", containerName)
+	resp, err := m.do(ctx, "GET", path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("logs follow %s: %w", containerName, err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("logs follow %s: status %d", containerName, resp.StatusCode)
+	}
+	return resp.Body, nil
+}
+
 // StatusAfterStart polls the container status for up to maxSeconds seconds.
 // Returns "running" if stable, "error" if it keeps restarting or exits immediately.
 func (m *Manager) StatusAfterStart(ctx context.Context, containerName string, maxSeconds int) string {

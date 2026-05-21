@@ -58,6 +58,9 @@ func New(
 	mux.HandleFunc("POST /api/auth/totp/setup", authHandler.RequireAuth(authHandler.TOTPSetup))
 	mux.HandleFunc("POST /api/auth/totp/confirm", authHandler.RequireAuth(authHandler.TOTPConfirm))
 	mux.HandleFunc("POST /api/auth/totp/disable", authHandler.RequireAuth(authHandler.TOTPDisable))
+	mux.HandleFunc("GET /api/auth/totp/backup-codes", authHandler.RequireAuth(authHandler.TOTPBackupCodeStatus))
+	mux.HandleFunc("POST /api/auth/totp/backup-codes", authHandler.RequireAuth(authHandler.TOTPGenBackupCodes))
+	mux.HandleFunc("POST /api/auth/password", authHandler.RequireAuth(authHandler.ChangePassword))
 
 	// ── App management ────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/status", authHandler.RequireAuth(apiHandler.Status))
@@ -81,9 +84,12 @@ func New(
 		}
 	}))
 	mux.HandleFunc("GET /api/apps/", authHandler.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/logs") {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/logs"):
 			apiHandler.Logs(w, r)
-		} else {
+		case strings.HasSuffix(r.URL.Path, "/logs/stream"):
+			apiHandler.LogsStream(w, r)
+		default:
 			http.NotFound(w, r)
 		}
 	}))
@@ -140,9 +146,19 @@ func New(
 	return &Server{mux: mux}
 }
 
-// Handler returns the HTTP handler wrapped with security headers middleware.
+// Handler returns the HTTP handler with security headers and body size limits.
 func (s *Server) Handler() http.Handler {
-	return securityHeaders(s.mux)
+	return securityHeaders(limitBody(s.mux))
+}
+
+// limitBody caps request bodies at 10 MB to prevent memory exhaustion.
+func limitBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10 MB
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // securityHeaders adds standard defensive HTTP headers to every response.

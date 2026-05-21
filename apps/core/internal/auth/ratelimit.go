@@ -24,6 +24,8 @@ type rlEntry struct {
 }
 
 var loginLimiter = newRateLimiter()
+// totpLimiter is stricter — TOTP codes can be brute-forced (10^6 possibilities).
+var totpLimiter = &rateLimiter{entries: make(map[string]*rlEntry)}
 
 func newRateLimiter() *rateLimiter {
 	r := &rateLimiter{entries: make(map[string]*rlEntry)}
