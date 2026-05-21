@@ -63,6 +63,7 @@ type AppRecord struct {
 	Subdomain     string `json:"subdomain"`
 	URL           string `json:"url"`
 	Status        string `json:"status"`
+	HealthStatus  string `json:"health_status"`
 	InternalPort  int    `json:"internal_port"`
 	ContainerName string `json:"container_name"`
 }
@@ -70,7 +71,8 @@ type AppRecord struct {
 // GET /api/apps
 func (h *Handler) Apps(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT id, blueprint_id, name, icon, subdomain, internal_port, container_name, status
+		`SELECT id, blueprint_id, name, icon, subdomain, internal_port, container_name, status,
+		        COALESCE(health_status,'unknown')
 		 FROM apps ORDER BY name`)
 	if err != nil {
 		jsonErr(w, "db error", http.StatusInternalServerError)
@@ -82,7 +84,7 @@ func (h *Handler) Apps(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var a AppRecord
 		if err := rows.Scan(&a.ID, &a.BlueprintID, &a.Name, &a.Icon, &a.Subdomain,
-			&a.InternalPort, &a.ContainerName, &a.Status); err != nil {
+			&a.InternalPort, &a.ContainerName, &a.Status, &a.HealthStatus); err != nil {
 			continue
 		}
 		a.URL = fmt.Sprintf("http://%s.%s", a.Subdomain, h.cookieDomain)

@@ -309,26 +309,58 @@ func RunMonitorCheck(db *sql.DB, id int64, targetURL string) {
 	)
 }
 
+// Notifier is a minimal interface so extras.go doesn't import the notify package directly.
+type Notifier interface {
+	Notify(ctx context.Context, event, title, detail string)
+}
+
 // PollAllMonitors checks every monitor. Called on a timer from main.go.
 func PollAllMonitors(db *sql.DB) {
-	rows, err := db.QueryContext(context.Background(), "SELECT id, url FROM monitors")
+	PollAllMonitorsWithNotify(db, nil, nil)
+}
+
+// PollAllMonitorsWithNotify checks every monitor and sends Telegram notifications on state changes.
+func PollAllMonitorsWithNotify(db *sql.DB, notifier Notifier, prevStatus map[int64]string) {
+	rows, err := db.QueryContext(context.Background(), "SELECT id, name, url, status FROM monitors")
 	if err != nil {
 		return
 	}
 	defer rows.Close()
-	// Semaphore: limit concurrent monitor checks to 10 to prevent goroutine explosion.
 	sem := make(chan struct{}, 10)
 	for rows.Next() {
 		var id int64
-		var u string
-		if rows.Scan(&id, &u) != nil {
+		var name, u, prev string
+		if rows.Scan(&id, &name, &u, &prev) != nil {
 			continue
 		}
-		monID, monURL := id, u
+		monID, monURL, monName := id, u, name
+		oldStatus := prev
+		if prevStatus != nil {
+			if s, ok := prevStatus[id]; ok {
+				oldStatus = s
+			}
+		}
 		sem <- struct{}{}
 		go func() {
 			defer func() { <-sem }()
 			RunMonitorCheck(db, monID, monURL)
+			// Check if status changed and notify
+			if notifier != nil {
+				var newStatus string
+				db.QueryRowContext(context.Background(), "SELECT status FROM monitors WHERE id=?", monID).Scan(&newStatus) //nolint:errcheck
+				if prevStatus != nil {
+					prevStatus[monID] = newStatus
+				}
+				if oldStatus != newStatus && oldStatus != "" {
+					if newStatus == "down" {
+						notifier.Notify(context.Background(), "monitor.down",
+							"Monitor DOWN: "+monName, monURL)
+					} else if newStatus == "up" {
+						notifier.Notify(context.Background(), "monitor.up",
+							"Monitor UP: "+monName, monURL)
+					}
+				}
+			}
 		}()
 	}
 }

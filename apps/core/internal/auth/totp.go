@@ -158,10 +158,21 @@ func (h *Handler) TOTPVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify TOTP code
+	// Rate-limit TOTP verify attempts — prevents brute-forcing the 6-digit code.
+	ip := realIP(r)
+	if !totpLimiter.allow(ip) {
+		http.Error(w, `{"error":"too many attempts"}`, http.StatusTooManyRequests)
+		return
+	}
+
+	// Verify TOTP code OR a backup code (allows account recovery if authenticator is lost).
 	var secret string
 	_ = h.db.QueryRowContext(r.Context(), "SELECT COALESCE(totp_secret,'') FROM users WHERE id=?", userID).Scan(&secret)
-	if !totp.Verify(secret, req.Code, time.Now()) {
+
+	validTOTP := totp.Verify(secret, req.Code, time.Now())
+	validBackup := !validTOTP && len(req.Code) == 10 && UseBackupCode(h.db, userID, req.Code)
+
+	if !validTOTP && !validBackup {
 		http.Error(w, `{"error":"invalid code"}`, http.StatusUnauthorized)
 		return
 	}

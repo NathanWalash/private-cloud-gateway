@@ -74,6 +74,14 @@ CREATE TABLE IF NOT EXISTS monitors (
 );
 
 CREATE INDEX IF NOT EXISTS idx_totp_pending_expires ON totp_pending(expires_at);
+
+CREATE TABLE IF NOT EXISTS totp_backup_codes (
+	id         INTEGER  PRIMARY KEY AUTOINCREMENT,
+	user_id    INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	code_hash  TEXT     NOT NULL,
+	used_at    DATETIME,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 `
 
 func Migrate(db *sql.DB) error {
@@ -86,6 +94,8 @@ func Migrate(db *sql.DB) error {
 		"ALTER TABLE users ADD COLUMN first_name  TEXT NOT NULL DEFAULT ''",
 		"ALTER TABLE users ADD COLUMN last_name   TEXT NOT NULL DEFAULT ''",
 		"ALTER TABLE users ADD COLUMN totp_secret TEXT",
+		"ALTER TABLE apps  ADD COLUMN health_status TEXT NOT NULL DEFAULT 'unknown'",
+		"ALTER TABLE apps  ADD COLUMN health_checked DATETIME",
 	} {
 		_, _ = db.Exec(col) // ignore error — column may already exist
 	}

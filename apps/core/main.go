@@ -15,6 +15,7 @@ import (
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/caddy"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/db"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/docker"
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/notify"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/server"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/web"
 )
@@ -95,22 +96,40 @@ func main() {
 	bgCtx, bgCancel := context.WithCancel(context.Background())
 	defer bgCancel()
 
+	// Notification service — reads config from settings table at send time.
+	notifier := notify.New(database)
+
 	// Health polling — updates app status from Docker every 30 seconds.
 	if dm != nil {
 		go runHealthPolling(bgCtx, database, dm)
 		slog.Info("health polling enabled")
 	}
 
-	// Monitor polling — checks all registered URLs every 2 minutes.
+	// App health checks — HTTP ping on each app's health.path every 60 seconds.
 	go func() {
-		ticker := time.NewTicker(2 * time.Minute)
+		ticker := time.NewTicker(60 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-bgCtx.Done():
 				return
 			case <-ticker.C:
-				apiPkg.PollAllMonitors(database)
+				apiPkg.RunAppHealthChecks(database, cfg.blueprintDir, notifier)
+			}
+		}
+	}()
+
+	// Monitor polling — checks all registered URLs every 2 minutes.
+	go func() {
+		ticker := time.NewTicker(2 * time.Minute)
+		defer ticker.Stop()
+		prevStatus := make(map[int64]string)
+		for {
+			select {
+			case <-bgCtx.Done():
+				return
+			case <-ticker.C:
+				apiPkg.PollAllMonitorsWithNotify(database, notifier, prevStatus)
 			}
 		}
 	}()

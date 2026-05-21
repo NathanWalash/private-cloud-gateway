@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   ExternalLink, Play, Square, RotateCcw, Trash2,
-  Loader2, Terminal, RefreshCw, AlertTriangle,
+  Loader2, Terminal, RefreshCw, AlertTriangle, HeartPulse,
 } from 'lucide-react'
 import { App, api } from '../api/client'
 import AppIcon from './AppIcon'
@@ -42,13 +42,28 @@ export default function AppCard({ app, onStatusChange }: AppCardProps) {
           <div className="w-10 h-10 bg-accent/10 border border-accent/20 rounded-lg flex items-center justify-center">
             <AppIcon appId={app.blueprint_id} className="w-5 h-5 text-accent/70" />
           </div>
-          <span className={`flex items-center gap-1.5 text-xs font-medium ${status.color}`}>
-            {app.status === 'error'
-              ? <AlertTriangle className="w-3 h-3" />
-              : <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-            }
-            {status.label}
-          </span>
+          <div className="flex items-center gap-2">
+            {/* Health check indicator — only shown when running */}
+            {app.status === 'running' && app.health_status !== 'unknown' && (
+              <span
+                title={`Health: ${app.health_status}`}
+                className={`text-xs ${
+                  app.health_status === 'healthy' ? 'text-emerald-400' :
+                  app.health_status === 'unreachable' ? 'text-slate-500' :
+                  'text-amber-400'
+                }`}
+              >
+                <HeartPulse className="w-3 h-3" />
+              </span>
+            )}
+            <span className={`flex items-center gap-1.5 text-xs font-medium ${status.color}`}>
+              {app.status === 'error'
+                ? <AlertTriangle className="w-3 h-3" />
+                : <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+              }
+              {status.label}
+            </span>
+          </div>
         </div>
 
         {/* Name + URL */}
