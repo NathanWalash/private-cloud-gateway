@@ -45,7 +45,7 @@ func (h *Handler) Logs(w http.ResponseWriter, r *http.Request) {
 	}
 	logs, err := h.docker.Logs(r.Context(), containerName, tail)
 	if err != nil {
-		jsonErr(w, "logs unavailable: "+err.Error(), http.StatusInternalServerError)
+		jsonErr(w, "logs unavailable", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -76,7 +76,7 @@ func (h *Handler) UpdateApp(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("updating app", "id", id, "image", image)
 	if err := h.docker.UpdateImage(r.Context(), image); err != nil {
-		jsonErr(w, "pull failed: "+err.Error(), http.StatusInternalServerError)
+		jsonErr(w, "image pull failed", http.StatusInternalServerError)
 		return
 	}
 
@@ -95,11 +95,11 @@ func (h *Handler) UpdateApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.docker.Install(r.Context(), bp); err != nil {
-		jsonErr(w, "recreate failed: "+err.Error(), http.StatusInternalServerError)
+		jsonErr(w, "container recreate failed", http.StatusInternalServerError)
 		return
 	}
 	if err := h.docker.Start(r.Context(), containerName); err != nil {
-		jsonErr(w, "start failed: "+err.Error(), http.StatusInternalServerError)
+		jsonErr(w, "failed to start container", http.StatusInternalServerError)
 		return
 	}
 	_, _ = h.db.ExecContext(r.Context(),
@@ -316,11 +316,19 @@ func PollAllMonitors(db *sql.DB) {
 		return
 	}
 	defer rows.Close()
+	// Semaphore: limit concurrent monitor checks to 10 to prevent goroutine explosion.
+	sem := make(chan struct{}, 10)
 	for rows.Next() {
 		var id int64
 		var u string
-		if rows.Scan(&id, &u) == nil {
-			go RunMonitorCheck(db, id, u)
+		if rows.Scan(&id, &u) != nil {
+			continue
 		}
+		monID, monURL := id, u
+		sem <- struct{}{}
+		go func() {
+			defer func() { <-sem }()
+			RunMonitorCheck(db, monID, monURL)
+		}()
 	}
 }

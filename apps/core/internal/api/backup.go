@@ -90,7 +90,7 @@ func (h *Handler) BackupCreate(w http.ResponseWriter, r *http.Request) {
 
 	if err := backup.Create(h.dbPath(), h.blueprintDir, destPath, h.backupPassphrase(), volumes, vr); err != nil {
 		slog.Error("backup create failed", "err", err)
-		jsonErr(w, "backup failed: "+err.Error(), http.StatusInternalServerError)
+		jsonErr(w, "backup failed", http.StatusInternalServerError)
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *Handler) SafeEscape(w http.ResponseWriter, r *http.Request) {
 
 	if err := backup.Create(h.dbPath(), h.blueprintDir, tmpPath, h.backupPassphrase(), volumes, vr); err != nil {
 		slog.Error("safe escape failed", "err", err)
-		http.Error(w, "backup failed: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "backup failed", http.StatusInternalServerError)
 		return
 	}
 
@@ -202,7 +202,7 @@ func (h *Handler) BackupRestore(w http.ResponseWriter, r *http.Request) {
 	// Restore DB and blueprints
 	if err := backup.Restore(tmp.Name(), passphrase, h.dbPath(), h.blueprintDir); err != nil {
 		slog.Error("restore failed", "err", err)
-		jsonErr(w, "restore failed: "+err.Error(), http.StatusInternalServerError)
+		jsonErr(w, "restore failed", http.StatusInternalServerError)
 		return
 	}
 

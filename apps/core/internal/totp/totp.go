@@ -39,10 +39,17 @@ func OTPAuthURI(secret, issuer, accountName string) string {
 	)
 }
 
+// MinSecretLen is the minimum accepted base32-encoded secret length (160 bits = 32 chars).
+// Shorter secrets are brute-forceable and are rejected.
+const MinSecretLen = 32
+
 // Verify checks whether code is valid for the given base32 secret at time t.
 // Accepts codes from the previous, current, and next step window.
 func Verify(secret, code string, t time.Time) bool {
 	secret = strings.ToUpper(strings.TrimSpace(secret))
+	if len(secret) < MinSecretLen {
+		return false
+	}
 	key, err := base32.StdEncoding.DecodeString(secret)
 	if err != nil {
 		return false

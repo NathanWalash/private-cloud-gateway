@@ -64,14 +64,16 @@ CREATE TABLE IF NOT EXISTS settings (
 
 CREATE TABLE IF NOT EXISTS monitors (
 	id           INTEGER  PRIMARY KEY AUTOINCREMENT,
-	name         TEXT     NOT NULL,
-	url          TEXT     NOT NULL UNIQUE,
+	name         TEXT     NOT NULL CHECK(length(name) <= 100),
+	url          TEXT     NOT NULL UNIQUE CHECK(length(url) <= 2048),
 	status       TEXT     NOT NULL DEFAULT 'unknown',
 	status_code  INTEGER,
 	latency_ms   INTEGER,
 	last_checked DATETIME,
 	created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_totp_pending_expires ON totp_pending(expires_at);
 `
 
 func Migrate(db *sql.DB) error {
