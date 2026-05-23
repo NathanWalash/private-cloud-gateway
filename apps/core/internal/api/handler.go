@@ -139,6 +139,17 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check that declared dependencies are installed and running.
+	for _, depID := range bp.DependsOn {
+		var depStatus string
+		err := h.db.QueryRowContext(r.Context(),
+			"SELECT status FROM apps WHERE blueprint_id = ?", depID).Scan(&depStatus)
+		if err != nil || depStatus != "running" {
+			jsonErr(w, "dependency '"+depID+"' must be installed and running first", http.StatusPreconditionFailed)
+			return
+		}
+	}
+
 	// Remove any stale container with the same name before creating.
 	// This handles the case where a previous install partially succeeded.
 	_ = h.docker.Remove(r.Context(), bp.ContainerName())
@@ -280,11 +291,12 @@ func (h *Handler) Blueprints(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type bpSummary struct {
-		ID          string `json:"id"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Icon        string `json:"icon"`
-		Category    string `json:"category"`
+		ID          string   `json:"id"`
+		Name        string   `json:"name"`
+		Description string   `json:"description"`
+		Icon        string   `json:"icon"`
+		Category    string   `json:"category"`
+		DependsOn   []string `json:"depends_on,omitempty"`
 	}
 
 	var summaries []bpSummary
@@ -306,6 +318,7 @@ func (h *Handler) Blueprints(w http.ResponseWriter, r *http.Request) {
 			Description: bp.Description,
 			Icon:        bp.Icon,
 			Category:    bp.Category,
+			DependsOn:   bp.DependsOn,
 		})
 	}
 

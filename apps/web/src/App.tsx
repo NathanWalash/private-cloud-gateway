@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { api } from './api/client'
+
+// Apply saved theme before first render to prevent flash
+;(function initTheme() {
+  const t = localStorage.getItem('pcg-theme') ?? 'dark'
+  document.documentElement.classList.toggle('light', t === 'light')
+  document.documentElement.classList.toggle('dark', t === 'dark')
+})()
 import LoginPage from './pages/LoginPage'
 import SetupPage from './pages/SetupPage'
 import DashboardPage from './pages/DashboardPage'

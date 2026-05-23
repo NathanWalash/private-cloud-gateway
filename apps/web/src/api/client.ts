@@ -24,11 +24,20 @@ export interface Blueprint {
   description: string
   icon: string
   category: string
+  depends_on?: string[]
 }
 
 export interface ServerStatus {
   uptime: string
   version: string
+}
+
+export interface UpdateInfo {
+  app_id: number
+  blueprint_id: string
+  current_image: string
+  latest_digest: string
+  update_available: boolean
 }
 
 class ApiError extends Error {
@@ -132,15 +141,19 @@ export const api = {
   updateApp: (id: number): Promise<{ status: string }> =>
     request(`/api/apps/${id}/update`, { method: 'POST' }),
 
+  appUpdates: (): Promise<UpdateInfo[]> => request('/api/apps/updates'),
+
+  appEventsUrl: '/api/apps/events',
+
   settings: {
     list: (): Promise<Array<{ key: string; value: string }>> => request('/api/settings'),
     set: (key: string, value: string) =>
       request(`/api/settings/${key}`, { method: 'PUT', body: JSON.stringify({ value }) }),
   },
 
-  audit: (limit = 50) =>
-    request<Array<{ id: number; action: string; actor: string; detail: string; created_at: string }>>(
-      `/api/audit?limit=${limit}`
+  audit: (limit = 50, offset = 0) =>
+    request<{ entries: Array<{ id: number; action: string; actor: string; detail: string; created_at: string }>; total: number; limit: number; offset: number }>(
+      `/api/audit?limit=${limit}&offset=${offset}`
     ),
 
   monitors: {
@@ -153,6 +166,7 @@ export const api = {
     list: (): Promise<BackupFile[]> => request('/api/backup/list'),
     create: (): Promise<{ name: string; size: number; volumes: number }> =>
       request('/api/backup/create', { method: 'POST' }),
+    lastRun: (): Promise<{ last_run: string | null }> => request('/api/backup/last-run'),
     safeEscapeUrl: '/api/backup/safe-escape',
     restore: (file: File, passphrase?: string): Promise<{ status: string; message: string }> => {
       const form = new FormData()

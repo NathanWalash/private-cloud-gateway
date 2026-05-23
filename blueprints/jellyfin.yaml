@@ -1,0 +1,32 @@
+id: jellyfin
+name: Jellyfin
+description: Free and open-source media server. Stream your movies, TV shows, music, and photos to any device.
+icon: "🎬"
+category: media
+
+route:
+  subdomain: media
+  internal_port: 8096
+
+container:
+  image: jellyfin/jellyfin:latest
+  environment: []
+  volumes:
+    - pcg-jellyfin-config:/config
+    - pcg-jellyfin-cache:/cache
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /health
+  expected_status: 200
+  timeout_seconds: 30
+
+backup:
+  enabled: true
+  container_paths:
+    - /config
+
+resources:
+  memory_limit: 1g

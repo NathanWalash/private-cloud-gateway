@@ -1,0 +1,37 @@
+id: paperless
+name: Paperless-ngx
+description: Transform physical documents into a searchable archive. Scan, upload, and auto-tag documents with OCR.
+icon: "📁"
+category: productivity
+
+route:
+  subdomain: docs
+  internal_port: 8000
+
+container:
+  image: ghcr.io/paperless-ngx/paperless-ngx:latest
+  environment:
+    - PAPERLESS_SECRET_KEY=changeme-use-openssl-rand-hex-32
+    - PAPERLESS_ALLOWED_HOSTS=*
+    - PAPERLESS_TIME_ZONE=UTC
+  volumes:
+    - pcg-paperless-data:/usr/src/paperless/data
+    - pcg-paperless-media:/usr/src/paperless/media
+    - pcg-paperless-consume:/usr/src/paperless/consume
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /api/
+  expected_status: 200
+  timeout_seconds: 30
+
+backup:
+  enabled: true
+  container_paths:
+    - /usr/src/paperless/data
+    - /usr/src/paperless/media
+
+resources:
+  memory_limit: 1g

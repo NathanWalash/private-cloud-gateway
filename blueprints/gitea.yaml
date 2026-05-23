@@ -1,0 +1,34 @@
+id: gitea
+name: Gitea
+description: Lightweight self-hosted Git service. Your own GitHub — repositories, issues, pull requests, CI/CD.
+icon: "🐙"
+category: development
+
+route:
+  subdomain: git
+  internal_port: 3000
+
+container:
+  image: gitea/gitea:latest
+  environment:
+    - APP_NAME=Private Cloud Git
+    - RUN_MODE=prod
+  volumes:
+    - pcg-gitea-data:/data
+    - pcg-gitea-config:/etc/gitea
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /api/healthz
+  expected_status: 200
+  timeout_seconds: 15
+
+backup:
+  enabled: true
+  container_paths:
+    - /data
+
+resources:
+  memory_limit: 512m

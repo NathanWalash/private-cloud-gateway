@@ -83,6 +83,8 @@ func New(
 			http.NotFound(w, r)
 		}
 	}))
+	mux.HandleFunc("GET /api/apps/updates", authHandler.RequireAuth(apiHandler.AppUpdateStatus))
+	mux.HandleFunc("GET /api/apps/events", authHandler.RequireAuth(apiHandler.AppEvents))
 	mux.HandleFunc("GET /api/apps/", authHandler.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/logs"):
@@ -99,6 +101,7 @@ func New(
 	mux.HandleFunc("GET /api/backup/list", authHandler.RequireAuth(apiHandler.BackupList))
 	mux.HandleFunc("GET /api/backup/safe-escape", authHandler.RequireAuth(apiHandler.SafeEscape))
 	mux.HandleFunc("POST /api/backup/restore", authHandler.RequireAuth(apiHandler.BackupRestore))
+	mux.HandleFunc("GET /api/backup/last-run", authHandler.RequireAuth(apiHandler.BackupLastRun))
 
 	// ── Settings, audit, monitors ─────────────────────────────────────────────
 	mux.HandleFunc("GET /api/settings", authHandler.RequireAuth(apiHandler.GetSettings))

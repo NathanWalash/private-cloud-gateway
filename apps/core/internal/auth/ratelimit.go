@@ -24,8 +24,19 @@ type rlEntry struct {
 }
 
 var loginLimiter = newRateLimiter()
+
 // totpLimiter is stricter — TOTP codes can be brute-forced (10^6 possibilities).
 var totpLimiter = &rateLimiter{entries: make(map[string]*rlEntry)}
+
+// ResetLimiters clears all rate limiter state. Intended for use in tests only.
+func ResetLimiters() {
+	loginLimiter.mu.Lock()
+	loginLimiter.entries = make(map[string]*rlEntry)
+	loginLimiter.mu.Unlock()
+	totpLimiter.mu.Lock()
+	totpLimiter.entries = make(map[string]*rlEntry)
+	totpLimiter.mu.Unlock()
+}
 
 func newRateLimiter() *rateLimiter {
 	r := &rateLimiter{entries: make(map[string]*rlEntry)}

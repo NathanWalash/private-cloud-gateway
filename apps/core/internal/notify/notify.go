@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -37,16 +38,22 @@ func New(db *sql.DB) *Service {
 	return &Service{db: db, client: &http.Client{Timeout: 10 * time.Second}}
 }
 
-// Send dispatches a notification if the channel is configured and the event is enabled.
+// Send dispatches a notification to all configured channels if the event is enabled.
 func (s *Service) Send(ctx context.Context, event, message string) {
-	token, chatID := s.telegramConfig()
-	if token == "" || chatID == "" {
-		return
-	}
 	if !s.eventEnabled(event) {
 		return
 	}
-	go s.sendTelegram(token, chatID, message)
+	// Telegram
+	if token, chatID := s.telegramConfig(); token != "" && chatID != "" {
+		go s.sendTelegram(token, chatID, message)
+	}
+	// SMTP email
+	go func() {
+		subject := "PCG Alert: " + strings.ReplaceAll(event, ".", " ")
+		s.sendEmail(subject, message)
+	}()
+	// Webhook
+	go s.sendWebhook(event, message)
 }
 
 // Notify is a convenience wrapper that formats the message and sends it.
@@ -118,6 +125,10 @@ func trimSp(s string) string {
 		s = s[:len(s)-1]
 	}
 	return s
+}
+
+func logWarn(msg string, err error) {
+	slog.Warn(msg, "err", err)
 }
 
 func htmlEscape(s string) string {

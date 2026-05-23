@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/auth"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/db"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/server"
 )
@@ -25,6 +26,8 @@ const (
 // newTestServer spins up a real in-memory stack: SQLite + migrations + bootstrap user.
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
+	// Reset the global rate limiters so each test starts with a clean slate.
+	auth.ResetLimiters()
 	database, err := db.Open(t.TempDir() + "/test.db")
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
