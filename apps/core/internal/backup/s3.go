@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -64,7 +65,9 @@ func UploadToS3(cfg S3Config, localPath string) (string, error) {
 		return "", err
 	}
 
-	req, err := http.NewRequest("PUT", url, f)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "PUT", url, f)
 	if err != nil {
 		return "", err
 	}
@@ -96,8 +99,7 @@ func UploadToS3(cfg S3Config, localPath string) (string, error) {
 	)
 	req.Header.Set("Authorization", authHeader)
 
-	client := &http.Client{Timeout: 5 * time.Minute}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("s3 put: %w", err)
 	}
