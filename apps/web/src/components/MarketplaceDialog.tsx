@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Search, Check, Loader2, AlertCircle, Package } from 'lucide-react'
+import { X, Search, Check, Loader2, AlertCircle, Package, Link } from 'lucide-react'
 import { Blueprint, api, ApiError } from '../api/client'
 import AppIcon from './AppIcon'
 
@@ -137,6 +137,12 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
                   {bp.description && (
                     <p className="text-xs text-slate-500 line-clamp-2 mt-1">{bp.description}</p>
                   )}
+                  {bp.depends_on && bp.depends_on.length > 0 && (
+                    <p className="flex items-center gap-1 text-xs text-amber-500/70 mt-1.5">
+                      <Link className="w-2.5 h-2.5" />
+                      Requires: {bp.depends_on.join(', ')}
+                    </p>
+                  )}
                 </button>
               ))}
             </div>
@@ -151,11 +157,22 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
             </div>
           )}
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">
-              {selected
-                ? `Installing: ${blueprints.find(b => b.id === selected)?.name}`
-                : 'Select an app to install'}
-            </p>
+            <div className="text-xs text-slate-500">
+              {selected ? (() => {
+                const bp = blueprints.find(b => b.id === selected)
+                return (
+                  <div>
+                    <span>Installing: <strong className="text-slate-300">{bp?.name}</strong></span>
+                    {bp?.depends_on && bp.depends_on.length > 0 && (
+                      <p className="text-amber-500/70 mt-0.5 flex items-center gap-1">
+                        <Link className="w-3 h-3" />
+                        Needs {bp.depends_on.join(', ')} running first
+                      </p>
+                    )}
+                  </div>
+                )
+              })() : 'Select an app to install'}
+            </div>
             <div className="flex gap-3">
               <button type="button" onClick={onClose} className="text-sm text-slate-400 hover:text-slate-200 px-4 py-2 transition-colors">
                 Cancel

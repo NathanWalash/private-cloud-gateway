@@ -178,7 +178,7 @@ type AuditEntry struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// GET /api/audit?limit=50
+// GET /api/audit?limit=50&offset=0
 func (h *Handler) AuditLog(w http.ResponseWriter, r *http.Request) {
 	limit := 50
 	if l := r.URL.Query().Get("limit"); l != "" {
@@ -186,9 +186,19 @@ func (h *Handler) AuditLog(w http.ResponseWriter, r *http.Request) {
 			limit = n
 		}
 	}
+	offset := 0
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+	// Return total count for pagination UI
+	var total int
+	h.db.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM audit_log").Scan(&total) //nolint:errcheck
+
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT id, action, COALESCE(actor,''), COALESCE(detail,''), created_at
-		 FROM audit_log ORDER BY id DESC LIMIT ?`, limit)
+		 FROM audit_log ORDER BY id DESC LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
 		jsonOK(w, []AuditEntry{})
 		return
@@ -201,7 +211,9 @@ func (h *Handler) AuditLog(w http.ResponseWriter, r *http.Request) {
 			entries = append(entries, e)
 		}
 	}
-	jsonOK(w, entries)
+	w.Header().Set("Content-Type", "application/json")
+	b, _ := json.Marshal(map[string]any{"entries": entries, "total": total, "limit": limit, "offset": offset})
+	_, _ = w.Write(b)
 }
 
 // ── API monitors ──────────────────────────────────────────────────────────────

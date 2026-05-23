@@ -20,6 +20,7 @@ type Blueprint struct {
 	Description string    `yaml:"description"`
 	Icon        string    `yaml:"icon"`
 	Category    string    `yaml:"category"`
+	DependsOn   []string  `yaml:"depends_on"` // blueprint IDs that must be running before this installs
 	Route       Route     `yaml:"route"`
 	Container   Container `yaml:"container"`
 	Lifecycle   Lifecycle `yaml:"lifecycle"`

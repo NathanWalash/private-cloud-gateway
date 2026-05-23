@@ -25,12 +25,28 @@ const TELEGRAM_FIELDS: SettingField[] = [
   { key: 'NOTIFY_EVENTS', label: 'Events to notify', description: '"all", "none", or comma-separated: monitor.down, app.crash, backup.done, login.success', type: 'text', placeholder: 'all' },
 ]
 
+const SMTP_FIELDS: SettingField[] = [
+  { key: 'SMTP_HOST', label: 'SMTP host', description: 'e.g. smtp.gmail.com, smtp.sendgrid.net', type: 'text', placeholder: 'smtp.gmail.com' },
+  { key: 'SMTP_PORT', label: 'SMTP port', description: '587 = STARTTLS (default), 465 = SMTPS, 25 = plain', type: 'text', placeholder: '587' },
+  { key: 'SMTP_USER', label: 'Username', description: 'SMTP username / email address.', type: 'text', placeholder: 'you@example.com' },
+  { key: 'SMTP_PASSWORD', label: 'Password / API key', description: 'SMTP password or app-specific password.', type: 'password', placeholder: '••••••••' },
+  { key: 'SMTP_FROM', label: 'From address', description: 'Sender address shown in the email. Defaults to username.', type: 'text', placeholder: 'PCG Alerts <you@example.com>' },
+  { key: 'SMTP_TO', label: 'Send to', description: 'Recipient address(es) for alert emails.', type: 'text', placeholder: 'you@example.com' },
+]
+
+const WEBHOOK_FIELDS: SettingField[] = [
+  { key: 'WEBHOOK_URL', label: 'Webhook URL', description: 'POST JSON payload to this URL on every event. Works with n8n, Zapier, Discord, Slack, etc.', type: 'text', placeholder: 'https://hooks.example.com/...' },
+]
+
 export default function SettingsPage() {
   const navigate = useNavigate()
   const [values, setValues] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<string | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
   const [audit, setAudit] = useState<Array<{ id: number; action: string; actor: string; detail: string; created_at: string }>>([])
+  const [auditOffset, setAuditOffset] = useState(0)
+  const [auditTotal, setAuditTotal] = useState(0)
+  const AUDIT_LIMIT = 20
   // TOTP state
   const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null)
   const [totpSetup, setTotpSetup] = useState<{ secret: string; uri: string } | null>(null)
@@ -53,7 +69,7 @@ export default function SettingsPage() {
       settings.forEach(s => { map[s.key] = s.value })
       setValues(map)
     }).catch(() => {})
-    api.audit(20).then(setAudit).catch(() => {})
+    api.audit(AUDIT_LIMIT, 0).then(r => { setAudit(r.entries); setAuditTotal(r.total) }).catch(() => {})
     api.auth.totp.status().then(r => setTotpEnabled(r.enabled)).catch(() => {})
     api.auth.totp.backupCodes().then(r => setBackupCodesUnused(r.unused)).catch(() => {})
   }, [])
@@ -281,9 +297,14 @@ export default function SettingsPage() {
 
         {/* Audit log */}
         <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Shield className="w-4 h-4 text-slate-400" />
-            <h2 className="text-sm font-medium text-slate-300">Recent activity</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-slate-400" />
+              <h2 className="text-sm font-medium text-slate-300">Recent activity</h2>
+            </div>
+            {auditTotal > 0 && (
+              <span className="text-xs text-slate-600">{auditTotal} total</span>
+            )}
           </div>
           <div className="card divide-y divide-border">
             {audit.length === 0 && <p className="text-xs text-slate-600 p-4">No activity recorded.</p>}
@@ -295,6 +316,37 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
+          {auditTotal > AUDIT_LIMIT && (
+            <div className="flex items-center justify-between mt-3 px-1">
+              <button
+                type="button"
+                disabled={auditOffset === 0}
+                onClick={() => {
+                  const next = Math.max(0, auditOffset - AUDIT_LIMIT)
+                  setAuditOffset(next)
+                  api.audit(AUDIT_LIMIT, next).then(r => { setAudit(r.entries); setAuditTotal(r.total) }).catch(() => {})
+                }}
+                className="text-xs text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-colors px-2 py-1"
+              >
+                Previous
+              </button>
+              <span className="text-xs text-slate-600">
+                {auditOffset + 1}–{Math.min(auditOffset + AUDIT_LIMIT, auditTotal)} of {auditTotal}
+              </span>
+              <button
+                type="button"
+                disabled={auditOffset + AUDIT_LIMIT >= auditTotal}
+                onClick={() => {
+                  const next = auditOffset + AUDIT_LIMIT
+                  setAuditOffset(next)
+                  api.audit(AUDIT_LIMIT, next).then(r => { setAudit(r.entries); setAuditTotal(r.total) }).catch(() => {})
+                }}
+                className="text-xs text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-colors px-2 py-1"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Telegram notifications */}
@@ -310,6 +362,64 @@ export default function SettingsPage() {
           </p>
           <div className="space-y-4">
             {TELEGRAM_FIELDS.map(f => (
+              <div key={f.key} className="card p-4">
+                <label className="block text-xs font-medium text-slate-300 mb-1">{f.label}</label>
+                <p className="text-xs text-slate-500 mb-2">{f.description}</p>
+                <div className="flex gap-2">
+                  <input type={f.type} className="flex-1 input-field text-sm" placeholder={f.placeholder}
+                    value={values[f.key] ?? ''} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))} />
+                  <button type="button" onClick={() => saveSetting(f.key, values[f.key] ?? '')} disabled={saving === f.key}
+                    className="px-3 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-lg text-xs transition-colors shrink-0">
+                    {saved === f.key ? <CheckCircle className="w-3.5 h-3.5" /> : saving === f.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Email (SMTP) notifications */}
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <Bell className="w-4 h-4 text-slate-400" />
+            <h2 className="text-sm font-medium text-slate-300">Email notifications (SMTP)</h2>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Receive email alerts for the same events as Telegram. Works with any SMTP provider
+            (Gmail App Passwords, SendGrid, Mailgun, Fastmail, etc.).
+            Leave SMTP host blank to disable.
+          </p>
+          <div className="space-y-4">
+            {SMTP_FIELDS.map(f => (
+              <div key={f.key} className="card p-4">
+                <label className="block text-xs font-medium text-slate-300 mb-1">{f.label}</label>
+                <p className="text-xs text-slate-500 mb-2">{f.description}</p>
+                <div className="flex gap-2">
+                  <input type={f.type} className="flex-1 input-field text-sm" placeholder={f.placeholder}
+                    value={values[f.key] ?? ''} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))} />
+                  <button type="button" onClick={() => saveSetting(f.key, values[f.key] ?? '')} disabled={saving === f.key}
+                    className="px-3 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-lg text-xs transition-colors shrink-0">
+                    {saved === f.key ? <CheckCircle className="w-3.5 h-3.5" /> : saving === f.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Webhook notifications */}
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <Bell className="w-4 h-4 text-slate-400" />
+            <h2 className="text-sm font-medium text-slate-300">Webhook notifications</h2>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            POST a JSON payload to any URL on every event. Integrates with n8n, Zapier, Make,
+            Discord (webhook URL), Slack (incoming webhook), or any custom endpoint.
+            Payload: <code className="text-slate-400 bg-black/20 px-1 rounded">&#123; event, message, time &#125;</code>
+          </p>
+          <div className="space-y-4">
+            {WEBHOOK_FIELDS.map(f => (
               <div key={f.key} className="card p-4">
                 <label className="block text-xs font-medium text-slate-300 mb-1">{f.label}</label>
                 <p className="text-xs text-slate-500 mb-2">{f.description}</p>

@@ -1,0 +1,37 @@
+id: immich
+name: Immich
+description: High-performance self-hosted photo and video backup solution. Works with the Immich mobile app for automatic backup.
+icon: "📷"
+category: storage
+
+route:
+  subdomain: photos
+  internal_port: 2283
+
+container:
+  image: ghcr.io/immich-app/immich-server:release
+  environment:
+    - DB_HOSTNAME=localhost
+    - DB_USERNAME=postgres
+    - DB_PASSWORD=postgres
+    - DB_DATABASE_NAME=immich
+    - REDIS_HOSTNAME=localhost
+  volumes:
+    - pcg-immich-upload:/usr/src/app/upload
+    - pcg-immich-data:/data
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /api/server-info/ping
+  expected_status: 200
+  timeout_seconds: 30
+
+backup:
+  enabled: true
+  container_paths:
+    - /usr/src/app/upload
+
+resources:
+  memory_limit: 2g

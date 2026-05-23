@@ -119,6 +119,20 @@ func main() {
 		}
 	}()
 
+	// Docker Hub update check — fetches latest digests every 6 hours.
+	go func() {
+		ticker := time.NewTicker(6 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-bgCtx.Done():
+				return
+			case <-ticker.C:
+				apiPkg.CheckAppUpdates(database)
+			}
+		}
+	}()
+
 	// Monitor polling — checks all registered URLs every 2 minutes.
 	go func() {
 		ticker := time.NewTicker(2 * time.Minute)
@@ -256,6 +270,8 @@ func runScheduledBackups(ctx context.Context, interval time.Duration, dbPath, bl
 			slog.Error("scheduled backup failed", "err", err)
 		} else {
 			slog.Info("scheduled backup completed", "file", filepath.Base(destPath), "volumes", len(volumes))
+			// Optional S3/R2 off-site upload
+			uploadBackupToS3(destPath)
 		}
 		} // end select case block
 	}
@@ -287,12 +303,18 @@ func runHealthPolling(ctx context.Context, database *sql.DB, dm *docker.Manager)
 				continue
 			}
 			if status, ok := statuses[name]; ok {
-				_, _ = database.ExecContext(context.Background(),
+				res, _ := database.ExecContext(context.Background(),
 					"UPDATE apps SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!=?",
 					status, id, status)
+				if n, _ := res.RowsAffected(); n > 0 {
+					apiPkg.BroadcastStatus(id, status)
+				}
 			} else {
-				_, _ = database.ExecContext(context.Background(),
+				res, _ := database.ExecContext(context.Background(),
 					"UPDATE apps SET status='missing', updated_at=CURRENT_TIMESTAMP WHERE id=?", id)
+				if n, _ := res.RowsAffected(); n > 0 {
+					apiPkg.BroadcastStatus(id, "missing")
+				}
 			}
 		}
 		rows.Close()
@@ -351,5 +373,32 @@ func reregisterRoutes(database *sql.DB, cm *caddy.Manager) {
 		}
 		slog.Info("caddy routes synced on startup", "count", len(routes), "attempt", i+1)
 		return
+	}
+}
+
+// uploadBackupToS3 uploads a completed backup file to S3/R2 if configured.
+// All config is read from environment variables so no restart is required after
+// setting them — but it does require a process restart to pick up new values.
+func uploadBackupToS3(localPath string) {
+	endpoint := os.Getenv("CLOUD_CORE_S3_ENDPOINT")
+	bucket := os.Getenv("CLOUD_CORE_S3_BUCKET")
+	accessKey := os.Getenv("CLOUD_CORE_S3_ACCESS_KEY")
+	secretKey := os.Getenv("CLOUD_CORE_S3_SECRET_KEY")
+	if endpoint == "" || bucket == "" || accessKey == "" || secretKey == "" {
+		return
+	}
+	cfg := backup.S3Config{
+		Endpoint:  endpoint,
+		Bucket:    bucket,
+		Region:    getenv("CLOUD_CORE_S3_REGION", "auto"),
+		AccessKey: accessKey,
+		SecretKey: secretKey,
+		Prefix:    os.Getenv("CLOUD_CORE_S3_PREFIX"),
+	}
+	key, err := backup.UploadToS3(cfg, localPath)
+	if err != nil {
+		slog.Error("s3 off-site backup failed", "err", err)
+	} else {
+		slog.Info("s3 off-site backup uploaded", "key", key)
 	}
 }

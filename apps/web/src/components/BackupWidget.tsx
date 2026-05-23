@@ -28,6 +28,7 @@ export default function BackupWidget() {
   const [status, setStatus] = useState<Status>(null)
   const [statusMsg, setStatusMsg] = useState('')
   const [showRestore, setShowRestore] = useState(false)
+  const [lastRun, setLastRun] = useState<string | null>(null)
 
   const load = useCallback(() => {
     api.backup.list()
@@ -36,7 +37,10 @@ export default function BackupWidget() {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    api.backup.lastRun().then(r => setLastRun(r.last_run)).catch(() => {})
+  }, [load])
 
   async function handleCreate() {
     setCreating(true)
@@ -84,7 +88,7 @@ export default function BackupWidget() {
         </div>
 
         {/* Latest status */}
-        <div className="mb-4">
+        <div className="mb-4 space-y-2">
           {latest ? (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-xs text-emerald-400">
@@ -98,6 +102,11 @@ export default function BackupWidget() {
               <AlertTriangle className="w-3 h-3" /> No backups yet
             </div>
           ) : null}
+          {lastRun && (
+            <p className="text-xs text-slate-600">
+              Scheduled: {formatDate(lastRun)}
+            </p>
+          )}
         </div>
 
         {/* Status feedback */}

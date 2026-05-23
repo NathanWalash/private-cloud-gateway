@@ -1,0 +1,33 @@
+id: nextcloud
+name: Nextcloud
+description: Your own cloud storage, calendar, contacts, and collaboration suite. Like Dropbox and Google Drive, but self-hosted.
+icon: "☁️"
+category: storage
+
+route:
+  subdomain: cloud
+  internal_port: 80
+
+container:
+  image: nextcloud:latest
+  environment:
+    - SQLITE_DATABASE=nextcloud
+    - NEXTCLOUD_TRUSTED_DOMAINS=cloud.localtest.me
+  volumes:
+    - pcg-nextcloud-data:/var/www/html
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /status.php
+  expected_status: 200
+  timeout_seconds: 30
+
+backup:
+  enabled: true
+  container_paths:
+    - /var/www/html
+
+resources:
+  memory_limit: 1g

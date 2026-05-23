@@ -117,11 +117,20 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 	sb.WriteString(fmt.Sprintf("%s://home.%s {\n\treverse_proxy core:8080\n}\n\n", proto, m.cookieDomain))
 
 	if !m.https {
-		// Test app — local dev only. Proves auth gate without installing a blueprint.
-		sb.WriteString(fmt.Sprintf(
-			"http://files.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy whoami:80\n}\n\n",
-			m.cookieDomain,
-		))
+		// Test app — local dev only. Only add if no installed app uses the 'files' subdomain.
+		filesInUse := false
+		for _, app := range apps {
+			if app.Subdomain == "files" {
+				filesInUse = true
+				break
+			}
+		}
+		if !filesInUse {
+			sb.WriteString(fmt.Sprintf(
+				"http://files.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy whoami:80\n}\n\n",
+				m.cookieDomain,
+			))
+		}
 	}
 
 	// One block per installed app.

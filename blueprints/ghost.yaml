@@ -1,0 +1,33 @@
+id: ghost
+name: Ghost
+description: Professional publishing platform. Create a blog, newsletter, or membership site with a clean modern editor.
+icon: "✍️"
+category: productivity
+
+route:
+  subdomain: blog
+  internal_port: 2368
+
+container:
+  image: ghost:alpine
+  environment:
+    - url=http://blog.localtest.me
+    - NODE_ENV=production
+  volumes:
+    - pcg-ghost-content:/var/lib/ghost/content
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /ghost/api/v4/admin/site/
+  expected_status: 200
+  timeout_seconds: 30
+
+backup:
+  enabled: true
+  container_paths:
+    - /var/lib/ghost/content
+
+resources:
+  memory_limit: 512m

@@ -1,0 +1,32 @@
+id: homeassistant
+name: Home Assistant
+description: Open-source home automation platform. Control and automate your smart home devices from one place.
+icon: "🏠"
+category: automation
+
+route:
+  subdomain: home
+  internal_port: 8123
+
+container:
+  image: ghcr.io/home-assistant/home-assistant:stable
+  environment:
+    - TZ=UTC
+  volumes:
+    - pcg-homeassistant-config:/config
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /api/
+  expected_status: 401
+  timeout_seconds: 30
+
+backup:
+  enabled: true
+  container_paths:
+    - /config
+
+resources:
+  memory_limit: 1g

@@ -101,6 +101,10 @@ func (h *Handler) BackupCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("backup created", "file", name, "size", size, "volumes", len(volumes))
+	// Store last-run timestamp for dashboard display
+	_, _ = h.db.ExecContext(r.Context(),
+		`INSERT INTO settings(key,value,updated_at) VALUES('LAST_BACKUP_TIME',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+		 ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_, _ = fmt.Fprintf(w, `{"name":%q,"size":%d,"volumes":%d}`, name, size, len(volumes))
@@ -209,4 +213,17 @@ func (h *Handler) BackupRestore(w http.ResponseWriter, r *http.Request) {
 	slog.Info("backup restored — restart required")
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write([]byte(`{"status":"restored","message":"Restart the service to apply the restored database."}`))
+}
+
+// BackupLastRun returns the timestamp of the most recent backup.
+// GET /api/backup/last-run
+func (h *Handler) BackupLastRun(w http.ResponseWriter, r *http.Request) {
+	var t string
+	h.db.QueryRowContext(r.Context(), "SELECT value FROM settings WHERE key='LAST_BACKUP_TIME'").Scan(&t) //nolint:errcheck
+	w.Header().Set("Content-Type", "application/json")
+	if t == "" {
+		_, _ = w.Write([]byte(`{"last_run":null}`))
+	} else {
+		_, _ = fmt.Fprintf(w, `{"last_run":%q}`, t)
+	}
 }

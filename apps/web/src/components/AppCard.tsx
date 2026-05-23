@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   ExternalLink, Play, Square, RotateCcw, Trash2,
-  Loader2, Terminal, RefreshCw, AlertTriangle, HeartPulse,
+  Loader2, Terminal, RefreshCw, AlertTriangle, HeartPulse, ArrowUpCircle,
 } from 'lucide-react'
 import { App, api } from '../api/client'
 import AppIcon from './AppIcon'
@@ -18,9 +18,10 @@ const statusConfig = {
 interface AppCardProps {
   app: App
   onStatusChange: () => void
+  updateAvailable?: boolean
 }
 
-export default function AppCard({ app, onStatusChange }: AppCardProps) {
+export default function AppCard({ app, onStatusChange, updateAvailable = false }: AppCardProps) {
   const [busy, setBusy] = useState(false)
   const [showLogs, setShowLogs] = useState(false)
   const status = statusConfig[app.status as keyof typeof statusConfig] ?? statusConfig.missing
@@ -43,6 +44,12 @@ export default function AppCard({ app, onStatusChange }: AppCardProps) {
             <AppIcon appId={app.blueprint_id} className="w-5 h-5 text-accent/70" />
           </div>
           <div className="flex items-center gap-2">
+            {/* Update available badge */}
+            {updateAvailable && (
+              <span title="Update available" className="text-blue-400">
+                <ArrowUpCircle className="w-3.5 h-3.5" />
+              </span>
+            )}
             {/* Health check indicator — only shown when running */}
             {app.status === 'running' && app.health_status !== 'unknown' && (
               <span
