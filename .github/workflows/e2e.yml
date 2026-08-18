@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Create .env
         run: |
@@ -56,7 +56,7 @@ jobs:
       - name: Run shell E2E tests (unauthenticated)
         run: bash scripts/e2e.sh
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.24"
           cache-dependency-path: apps/core/go.sum
