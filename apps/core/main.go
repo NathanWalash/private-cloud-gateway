@@ -22,12 +22,12 @@ import (
 
 func main() {
 	cfg := config{
-		env:               getenv("CLOUD_CORE_ENV", "production"),
-		dbPath:            getenv("CLOUD_CORE_DATABASE_PATH", "./data/cloud-core.db"),
-		sessionSecret:     mustGetenv("CLOUD_CORE_SESSION_SECRET"),
-		port:              getenv("CLOUD_CORE_PORT", "8080"),
-		loginURL:          getenv("CLOUD_CORE_LOGIN_URL", "http://home.localtest.me/login"),
-		cookieDomain:      getenv("CLOUD_CORE_COOKIE_DOMAIN", "localtest.me"),
+		env:           getenv("CLOUD_CORE_ENV", "production"),
+		dbPath:        getenv("CLOUD_CORE_DATABASE_PATH", "./data/cloud-core.db"),
+		sessionSecret: mustGetenv("CLOUD_CORE_SESSION_SECRET"),
+		port:          getenv("CLOUD_CORE_PORT", "8080"),
+		loginURL:      getenv("CLOUD_CORE_LOGIN_URL", "http://home.localtest.me/login"),
+		cookieDomain:  getenv("CLOUD_CORE_COOKIE_DOMAIN", "localtest.me"),
 		// Bootstrap vars are optional — the in-app setup wizard is preferred.
 		bootstrapEmail:    os.Getenv("CLOUD_CORE_BOOTSTRAP_EMAIL"),
 		bootstrapPassword: os.Getenv("CLOUD_CORE_BOOTSTRAP_PASSWORD"),
@@ -225,62 +225,62 @@ func runScheduledBackups(ctx context.Context, interval time.Duration, dbPath, bl
 		case <-ticker.C:
 		}
 		{
-		slog.Info("running scheduled backup...")
+			slog.Info("running scheduled backup...")
 
-		backupDir := os.Getenv("CLOUD_CORE_BACKUP_DIR")
-		if backupDir == "" {
-			backupDir = "/backups"
-		}
-		if err := os.MkdirAll(backupDir, 0o700); err != nil {
-			slog.Error("scheduled backup: cannot create dir", "err", err)
-			continue
-		}
+			backupDir := os.Getenv("CLOUD_CORE_BACKUP_DIR")
+			if backupDir == "" {
+				backupDir = "/backups"
+			}
+			if err := os.MkdirAll(backupDir, 0o700); err != nil {
+				slog.Error("scheduled backup: cannot create dir", "err", err)
+				continue
+			}
 
-		passphrase := os.Getenv("CLOUD_CORE_BACKUP_PASSPHRASE")
-		destPath := filepath.Join(backupDir, backup.FileName(time.Now()))
+			passphrase := os.Getenv("CLOUD_CORE_BACKUP_PASSPHRASE")
+			destPath := filepath.Join(backupDir, backup.FileName(time.Now()))
 
-		// Collect volumes from running apps via blueprints directory
-		var volumes []backup.AppVolume
-		var vr backup.VolumeReader
-		if dm != nil {
-			entries, _ := os.ReadDir(blueprintDir)
-			for _, e := range entries {
-				if e.IsDir() {
-					continue
+			// Collect volumes from running apps via blueprints directory
+			var volumes []backup.AppVolume
+			var vr backup.VolumeReader
+			if dm != nil {
+				entries, _ := os.ReadDir(blueprintDir)
+				for _, e := range entries {
+					if e.IsDir() {
+						continue
+					}
+					data, err := os.ReadFile(filepath.Join(blueprintDir, e.Name()))
+					if err != nil {
+						continue
+					}
+					bp, err := blueprint.Parse(data)
+					if err != nil || !bp.Backup.Enabled {
+						continue
+					}
+					containerName := bp.ContainerName()
+					status := dm.Status(context.Background(), containerName)
+					if status != "running" {
+						continue
+					}
+					for _, p := range bp.Backup.ContainerPaths {
+						volumes = append(volumes, backup.AppVolume{
+							AppID:         bp.ID,
+							ContainerName: containerName,
+							ContainerPath: p,
+						})
+					}
 				}
-				data, err := os.ReadFile(filepath.Join(blueprintDir, e.Name()))
-				if err != nil {
-					continue
-				}
-				bp, err := blueprint.Parse(data)
-				if err != nil || !bp.Backup.Enabled {
-					continue
-				}
-				containerName := bp.ContainerName()
-				status := dm.Status(context.Background(), containerName)
-				if status != "running" {
-					continue
-				}
-				for _, p := range bp.Backup.ContainerPaths {
-					volumes = append(volumes, backup.AppVolume{
-						AppID:         bp.ID,
-						ContainerName: containerName,
-						ContainerPath: p,
-					})
+				vr = func(cn, cp string) (io.ReadCloser, error) {
+					return dm.CopyFromContainer(context.Background(), cn, cp)
 				}
 			}
-			vr = func(cn, cp string) (io.ReadCloser, error) {
-				return dm.CopyFromContainer(context.Background(), cn, cp)
-			}
-		}
 
-		if err := backup.Create(dbPath, blueprintDir, destPath, passphrase, volumes, vr); err != nil {
-			slog.Error("scheduled backup failed", "err", err)
-		} else {
-			slog.Info("scheduled backup completed", "file", filepath.Base(destPath), "volumes", len(volumes))
-			// Optional S3/R2 off-site upload
-			uploadBackupToS3(destPath)
-		}
+			if err := backup.Create(dbPath, blueprintDir, destPath, passphrase, volumes, vr); err != nil {
+				slog.Error("scheduled backup failed", "err", err)
+			} else {
+				slog.Info("scheduled backup completed", "file", filepath.Base(destPath), "volumes", len(volumes))
+				// Optional S3/R2 off-site upload
+				uploadBackupToS3(destPath)
+			}
 		} // end select case block
 	}
 }
@@ -296,36 +296,36 @@ func runHealthPolling(ctx context.Context, database *sql.DB, dm *docker.Manager)
 		case <-ticker.C:
 		}
 		{
-		statuses := dm.StatusAll(context.Background())
-		if len(statuses) == 0 {
-			continue
-		}
-		rows, err := database.QueryContext(context.Background(), "SELECT id, container_name FROM apps")
-		if err != nil {
-			continue
-		}
-		for rows.Next() {
-			var id int64
-			var name string
-			if rows.Scan(&id, &name) != nil {
+			statuses := dm.StatusAll(context.Background())
+			if len(statuses) == 0 {
 				continue
 			}
-			if status, ok := statuses[name]; ok {
-				res, _ := database.ExecContext(context.Background(),
-					"UPDATE apps SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!=?",
-					status, id, status)
-				if n, _ := res.RowsAffected(); n > 0 {
-					apiPkg.BroadcastStatus(id, status)
+			rows, err := database.QueryContext(context.Background(), "SELECT id, container_name FROM apps")
+			if err != nil {
+				continue
+			}
+			for rows.Next() {
+				var id int64
+				var name string
+				if rows.Scan(&id, &name) != nil {
+					continue
 				}
-			} else {
-				res, _ := database.ExecContext(context.Background(),
-					"UPDATE apps SET status='missing', updated_at=CURRENT_TIMESTAMP WHERE id=?", id)
-				if n, _ := res.RowsAffected(); n > 0 {
-					apiPkg.BroadcastStatus(id, "missing")
+				if status, ok := statuses[name]; ok {
+					res, _ := database.ExecContext(context.Background(),
+						"UPDATE apps SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!=?",
+						status, id, status)
+					if n, _ := res.RowsAffected(); n > 0 {
+						apiPkg.BroadcastStatus(id, status)
+					}
+				} else {
+					res, _ := database.ExecContext(context.Background(),
+						"UPDATE apps SET status='missing', updated_at=CURRENT_TIMESTAMP WHERE id=?", id)
+					if n, _ := res.RowsAffected(); n > 0 {
+						apiPkg.BroadcastStatus(id, "missing")
+					}
 				}
 			}
-		}
-		rows.Close()
+			rows.Close()
 		} // end select case block
 	}
 }

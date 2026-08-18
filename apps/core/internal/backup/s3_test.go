@@ -22,7 +22,7 @@ func TestDeriveSigningKey_KnownVector(t *testing.T) {
 func TestBuildHeaders_Sorted(t *testing.T) {
 	h := http.Header{
 		"Content-Type":         {"application/octet-stream"},
-		"X-Amz-Date":          {"20231001T000000Z"},
+		"X-Amz-Date":           {"20231001T000000Z"},
 		"X-Amz-Content-Sha256": {"abc123"},
 	}
 	signed, canonical := buildHeaders(h, "s3.amazonaws.com")

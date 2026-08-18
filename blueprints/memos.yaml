@@ -9,7 +9,7 @@ route:
   internal_port: 5230
 
 container:
-  image: neosmemo/memos:stable
+  image: neosmemo/memos:0.30.0
   environment: []
   volumes:
     - pcg-memos-data:/var/opt/memos

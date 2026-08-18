@@ -9,7 +9,7 @@ route:
   internal_port: 8080
 
 container:
-  image: filebrowser/filebrowser:latest
+  image: filebrowser/filebrowser:v2.63.23
   environment:
     - FB_DATABASE=/database/filebrowser.db
   volumes:

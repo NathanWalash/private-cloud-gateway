@@ -9,7 +9,7 @@ route:
   internal_port: 80
 
 container:
-  image: vaultwarden/server:latest
+  image: vaultwarden/server:1.37.1
   environment:
     - WEBSOCKET_ENABLED=true
     - SIGNUPS_ALLOWED=false

@@ -9,7 +9,7 @@ route:
   internal_port: 2368
 
 container:
-  image: ghost:alpine
+  image: ghost:6.57.1
   environment:
     - url=${SCHEME}://blog.${DOMAIN}
     - NODE_ENV=production

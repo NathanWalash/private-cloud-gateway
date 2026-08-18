@@ -143,9 +143,9 @@ func deriveSigningKey(secret, date, region, service string) []byte {
 func buildHeaders(h http.Header, host string) (signed, canonical string) {
 	headers := map[string]string{
 		"host":                 host,
-		"content-type":        h.Get("Content-Type"),
+		"content-type":         h.Get("Content-Type"),
 		"x-amz-content-sha256": h.Get("x-amz-content-sha256"),
-		"x-amz-date":          h.Get("x-amz-date"),
+		"x-amz-date":           h.Get("x-amz-date"),
 	}
 	keys := make([]string, 0, len(headers))
 	for k := range headers {

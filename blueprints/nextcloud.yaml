@@ -9,7 +9,7 @@ route:
   internal_port: 80
 
 container:
-  image: nextcloud:latest
+  image: nextcloud:34.0.3
   environment:
     - SQLITE_DATABASE=nextcloud
     - NEXTCLOUD_TRUSTED_DOMAINS=cloud.${DOMAIN}

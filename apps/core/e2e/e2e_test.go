@@ -4,10 +4,11 @@
 // These tests run against a live stack and are NOT part of the standard CI pipeline.
 //
 // Run with:
-//   E2E_BASE_URL=http://home.localtest.me \
-//   E2E_EMAIL=you@example.com \
-//   E2E_PASSWORD=yourpassword \
-//   go test -v -tags e2e ./e2e/...
+//
+//	E2E_BASE_URL=http://home.localtest.me \
+//	E2E_EMAIL=you@example.com \
+//	E2E_PASSWORD=yourpassword \
+//	go test -v -tags e2e ./e2e/...
 package e2e_test
 
 import (

@@ -219,13 +219,13 @@ func (h *Handler) AuditLog(w http.ResponseWriter, r *http.Request) {
 // ── API monitors ──────────────────────────────────────────────────────────────
 
 type Monitor struct {
-	ID          int64    `json:"id"`
-	Name        string   `json:"name"`
-	URL         string   `json:"url"`
-	Status      string   `json:"status"`
-	StatusCode  *int     `json:"status_code"`
-	LatencyMs   *int     `json:"latency_ms"`
-	LastChecked *string  `json:"last_checked"`
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	URL         string  `json:"url"`
+	Status      string  `json:"status"`
+	StatusCode  *int    `json:"status_code"`
+	LatencyMs   *int    `json:"latency_ms"`
+	LastChecked *string `json:"last_checked"`
 }
 
 // GET /api/monitors
