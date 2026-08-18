@@ -42,7 +42,7 @@ FROM builder AS tester
 RUN CGO_ENABLED=0 go test -v -count=1 ./...
 
 # ── Runtime ───────────────────────────────────────────────────────────────────
-FROM alpine:3.20
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates tzdata
 
