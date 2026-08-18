@@ -7,7 +7,7 @@
 # Stage 5: minimal runtime image
 
 # ── Web app ───────────────────────────────────────────────────────────────────
-FROM node:22-alpine AS web-builder
+FROM node:26-alpine AS web-builder
 
 WORKDIR /web
 
