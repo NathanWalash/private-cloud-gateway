@@ -70,12 +70,19 @@ func main() {
 		slog.Info("docker connected")
 	}
 
+	secure := cfg.env == "production" && cfg.adminEmail != ""
 	var cm *caddy.Manager
-	if cfg.env == "production" && cfg.adminEmail != "" {
+	if secure {
 		cm = caddy.NewProduction(cfg.caddyAdmin, cfg.cookieDomain, cfg.adminEmail)
 		slog.Info("caddy running in production HTTPS mode", "domain", cfg.cookieDomain)
 	} else {
 		cm = caddy.New(cfg.caddyAdmin, cfg.cookieDomain, cfg.loginURL)
+	}
+
+	// Public scheme used for app URLs and blueprint ${SCHEME} substitution.
+	scheme := "http"
+	if secure {
+		scheme = "https"
 	}
 
 	srv := server.New(
@@ -83,6 +90,7 @@ func main() {
 		[]byte(cfg.sessionSecret),
 		cfg.loginURL,
 		cfg.cookieDomain,
+		scheme,
 		web.FS(),
 		dm,
 		cm,

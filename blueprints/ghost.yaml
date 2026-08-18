@@ -11,7 +11,7 @@ route:
 container:
   image: ghost:alpine
   environment:
-    - url=http://blog.localtest.me
+    - url=${SCHEME}://blog.${DOMAIN}
     - NODE_ENV=production
   volumes:
     - pcg-ghost-content:/var/lib/ghost/content

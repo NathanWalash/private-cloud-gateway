@@ -94,7 +94,7 @@ func (h *Handler) UpdateApp(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, "blueprint parse error", http.StatusInternalServerError)
 		return
 	}
-	if err := h.docker.Install(r.Context(), bp); err != nil {
+	if err := h.docker.Install(r.Context(), bp.Render(h.cookieDomain, h.scheme)); err != nil {
 		jsonErr(w, "container recreate failed", http.StatusInternalServerError)
 		return
 	}
