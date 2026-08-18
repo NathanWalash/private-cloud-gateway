@@ -20,7 +20,7 @@ COPY apps/web/ .
 RUN npm run build
 
 # ── Go dependencies ───────────────────────────────────────────────────────────
-FROM golang:1.24-alpine AS go-deps
+FROM golang:1.26-alpine AS go-deps
 
 WORKDIR /build
 COPY apps/core/go.mod apps/core/go.sum ./
