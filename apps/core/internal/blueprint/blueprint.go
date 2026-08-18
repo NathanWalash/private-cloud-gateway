@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -108,4 +109,25 @@ func (bp *Blueprint) Validate() error {
 // ContainerName returns the Docker container name for this blueprint.
 func (bp *Blueprint) ContainerName() string {
 	return "pcg-" + bp.ID
+}
+
+// Render returns a copy of the blueprint with deployment placeholders in
+// container environment values substituted for the running instance's values:
+//
+//	${DOMAIN}  -> the configured root domain (e.g. example.com)
+//	${SCHEME}  -> "https" in production, "http" in local dev
+//
+// This lets a single blueprint work in both dev (localtest.me/http) and
+// production (real domain/https) without hard-coding either.
+func (bp *Blueprint) Render(domain, scheme string) *Blueprint {
+	out := *bp
+	if len(bp.Container.Environment) > 0 {
+		repl := strings.NewReplacer("${DOMAIN}", domain, "${SCHEME}", scheme)
+		env := make([]string, len(bp.Container.Environment))
+		for i, e := range bp.Container.Environment {
+			env[i] = repl.Replace(e)
+		}
+		out.Container.Environment = env
+	}
+	return &out
 }

@@ -28,7 +28,7 @@ type Server struct {
 func New(
 	db *sql.DB,
 	secret []byte,
-	loginURL, cookieDomain string,
+	loginURL, cookieDomain, scheme string,
 	staticFS fs.FS,
 	dm *docker.Manager,
 	cm *caddy.Manager,
@@ -37,7 +37,7 @@ func New(
 	mux := http.NewServeMux()
 
 	authHandler := auth.NewHandler(db, loginURL, cookieDomain)
-	apiHandler := api.NewHandler(db, "0.2.0", dm, cm, blueprintDir, cookieDomain)
+	apiHandler := api.NewHandler(db, "0.2.0", dm, cm, blueprintDir, cookieDomain, scheme)
 
 	// ── Auth & setup ─────────────────────────────────────────────────────────
 	// When SPA mode is active, /login is handled by React Router — serve index.html.

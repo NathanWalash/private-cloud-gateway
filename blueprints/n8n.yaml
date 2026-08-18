@@ -11,10 +11,10 @@ route:
 container:
   image: docker.n8n.io/n8nio/n8n:latest
   environment:
-    - N8N_HOST=n8n.localtest.me
-    - N8N_PROTOCOL=http
+    - N8N_HOST=n8n.${DOMAIN}
+    - N8N_PROTOCOL=${SCHEME}
     - NODE_ENV=production
-    - WEBHOOK_URL=http://n8n.localtest.me/
+    - WEBHOOK_URL=${SCHEME}://n8n.${DOMAIN}/
   volumes:
     - pcg-n8n-data:/home/node/.n8n
 

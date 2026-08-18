@@ -12,7 +12,7 @@ container:
   image: nextcloud:latest
   environment:
     - SQLITE_DATABASE=nextcloud
-    - NEXTCLOUD_TRUSTED_DOMAINS=cloud.localtest.me
+    - NEXTCLOUD_TRUSTED_DOMAINS=cloud.${DOMAIN}
   volumes:
     - pcg-nextcloud-data:/var/www/html
 

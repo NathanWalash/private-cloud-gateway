@@ -33,7 +33,7 @@ No session: browser redirected to the login page.
 |---|---|
 | **Authentication** | bcrypt passwords, TOTP two-factor auth, session cookies, rate limiting |
 | **App management** | Install, start, stop, restart, update, remove Docker apps |
-| **Blueprints** | YAML app definitions — 11 built-in (File Browser, Vaultwarden, n8n, Uptime Kuma, ...) |
+| **Blueprints** | YAML app definitions — 19 built-in (Nextcloud, Immich, Jellyfin, Vaultwarden, n8n, ...) |
 | **Dashboard** | React 18 + Tailwind — marketplace, live status polling, logs viewer |
 | **Backup** | AES-256-GCM encrypted archives, Safe Escape download, scheduled backups |
 | **Monitoring** | URL health monitors, server status widget |
@@ -140,17 +140,25 @@ cd apps/core && E2E_EMAIL=x E2E_PASSWORD=y go test -v -tags e2e ./e2e/...
 
 | App | Subdomain | Purpose |
 |---|---|---|
+| Actual Budget | `budget.*` | Personal finance and budgeting |
+| CouchDB | `couchdb.*` | Database for Obsidian LiveSync |
+| Excalidraw | `draw.*` | Collaborative virtual whiteboard |
 | File Browser | `files.*` | Browser-based file manager |
-| Stirling PDF | `pdf.*` | PDF merge, split, compress, OCR |
-| Shiori | `bookmarks.*` | Read-later and bookmark manager |
-| Uptime Kuma | `status.*` | Uptime monitoring for URLs, APIs, TCP |
-| Vaultwarden | `vault.*` | Self-hosted Bitwarden password manager |
-| SilverBullet | `notes.*` | Markdown wiki with backlinks |
+| FreshRSS | `rss.*` | Self-hosted RSS reader |
+| Ghost | `blog.*` | Publishing and blogging platform |
+| Gitea | `git.*` | Lightweight self-hosted Git |
+| Home Assistant | `home.*` | Home automation hub |
+| Immich | `photos.*` | Photo and video backup |
+| Jellyfin | `media.*` | Media server for movies and music |
 | Memos | `memos.*` | Quick-capture notes and journal |
 | n8n | `n8n.*` | Workflow automation |
-| Actual Budget | `budget.*` | Personal finance and budgeting |
-| Excalidraw | `draw.*` | Collaborative virtual whiteboard |
-| CouchDB | `couchdb.*` | Database for Obsidian LiveSync |
+| Nextcloud | `cloud.*` | Files, calendar, contacts suite |
+| Paperless-ngx | `docs.*` | Document management with OCR |
+| Shiori | `bookmarks.*` | Read-later and bookmark manager |
+| SilverBullet | `notes.*` | Markdown wiki with backlinks |
+| Stirling PDF | `pdf.*` | PDF merge, split, compress, OCR |
+| Uptime Kuma | `status.*` | Uptime monitoring for URLs, APIs, TCP |
+| Vaultwarden | `vault.*` | Bitwarden-compatible password manager |
 
 ## Documentation
 

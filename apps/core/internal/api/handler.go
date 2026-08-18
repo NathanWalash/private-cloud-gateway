@@ -29,9 +29,10 @@ type Handler struct {
 	caddy        *caddy.Manager
 	blueprintDir string
 	cookieDomain string
+	scheme       string // "https" in production, "http" in local dev
 }
 
-func NewHandler(db *sql.DB, version string, dm *docker.Manager, cm *caddy.Manager, blueprintDir, cookieDomain string) *Handler {
+func NewHandler(db *sql.DB, version string, dm *docker.Manager, cm *caddy.Manager, blueprintDir, cookieDomain, scheme string) *Handler {
 	return &Handler{
 		db:           db,
 		startTime:    time.Now(),
@@ -40,6 +41,7 @@ func NewHandler(db *sql.DB, version string, dm *docker.Manager, cm *caddy.Manage
 		caddy:        cm,
 		blueprintDir: blueprintDir,
 		cookieDomain: cookieDomain,
+		scheme:       scheme,
 	}
 }
 
@@ -87,7 +89,7 @@ func (h *Handler) Apps(w http.ResponseWriter, r *http.Request) {
 			&a.InternalPort, &a.ContainerName, &a.Status, &a.HealthStatus); err != nil {
 			continue
 		}
-		a.URL = fmt.Sprintf("http://%s.%s", a.Subdomain, h.cookieDomain)
+		a.URL = fmt.Sprintf("%s://%s.%s", h.scheme, a.Subdomain, h.cookieDomain)
 		apps = append(apps, a)
 	}
 
@@ -154,7 +156,7 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 	// This handles the case where a previous install partially succeeded.
 	_ = h.docker.Remove(r.Context(), bp.ContainerName())
 
-	if err := h.docker.Install(r.Context(), bp); err != nil {
+	if err := h.docker.Install(r.Context(), bp.Render(h.cookieDomain, h.scheme)); err != nil {
 		slog.Error("docker install failed", "app", bp.ID, "err", err)
 		jsonErr(w, "app installation failed", http.StatusInternalServerError)
 		return
