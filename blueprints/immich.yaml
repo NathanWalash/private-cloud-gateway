@@ -9,7 +9,7 @@ route:
   internal_port: 2283
 
 container:
-  image: ghcr.io/immich-app/immich-server:release
+  image: ghcr.io/immich-app/immich-server:v3.1.0
   environment:
     - DB_HOSTNAME=localhost
     - DB_USERNAME=postgres

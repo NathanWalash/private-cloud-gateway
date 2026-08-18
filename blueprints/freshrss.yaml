@@ -9,7 +9,7 @@ route:
   internal_port: 80
 
 container:
-  image: freshrss/freshrss:latest
+  image: freshrss/freshrss:1.29.1
   environment:
     - TZ=UTC
     - CRON_MIN=1,31

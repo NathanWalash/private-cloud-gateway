@@ -9,7 +9,7 @@ route:
   internal_port: 8000
 
 container:
-  image: ghcr.io/paperless-ngx/paperless-ngx:latest
+  image: ghcr.io/paperless-ngx/paperless-ngx:3.0.5
   environment:
     - PAPERLESS_SECRET_KEY=changeme-use-openssl-rand-hex-32
     - PAPERLESS_ALLOWED_HOSTS=*

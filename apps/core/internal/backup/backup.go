@@ -327,28 +327,43 @@ func decryptStream(src io.Reader, passphrase string) (io.Reader, error) {
 }
 
 // newBytesReader wraps a byte slice as an io.Reader.
-type bytesReader struct{ b []byte; pos int }
+type bytesReader struct {
+	b   []byte
+	pos int
+}
+
 func newBytesReader(b []byte) *bytesReader { return &bytesReader{b: b} }
 func (r *bytesReader) Read(p []byte) (int, error) {
-	if r.pos >= len(r.b) { return 0, io.EOF }
+	if r.pos >= len(r.b) {
+		return 0, io.EOF
+	}
 	n := copy(p, r.b[r.pos:])
 	r.pos += n
 	return n, nil
 }
 func (r *bytesReader) ReadAt(p []byte, off int64) (int, error) {
-	if off >= int64(len(r.b)) { return 0, io.EOF }
+	if off >= int64(len(r.b)) {
+		return 0, io.EOF
+	}
 	n := copy(p, r.b[off:])
-	if n < len(p) { return n, io.EOF }
+	if n < len(p) {
+		return n, io.EOF
+	}
 	return n, nil
 }
 func (r *bytesReader) Seek(offset int64, whence int) (int64, error) {
 	var newPos int64
 	switch whence {
-	case io.SeekStart:   newPos = offset
-	case io.SeekCurrent: newPos = int64(r.pos) + offset
-	case io.SeekEnd:     newPos = int64(len(r.b)) + offset
+	case io.SeekStart:
+		newPos = offset
+	case io.SeekCurrent:
+		newPos = int64(r.pos) + offset
+	case io.SeekEnd:
+		newPos = int64(len(r.b)) + offset
 	}
-	if newPos < 0 { return 0, fmt.Errorf("negative seek") }
+	if newPos < 0 {
+		return 0, fmt.Errorf("negative seek")
+	}
 	r.pos = int(newPos)
 	return newPos, nil
 }

@@ -9,7 +9,7 @@ route:
   internal_port: 8123
 
 container:
-  image: ghcr.io/home-assistant/home-assistant:stable
+  image: ghcr.io/home-assistant/home-assistant:2026.8.2
   environment:
     - TZ=UTC
   volumes:

@@ -9,7 +9,7 @@ route:
   internal_port: 8080
 
 container:
-  image: ghcr.io/go-shiori/shiori:latest
+  image: ghcr.io/go-shiori/shiori:v1.8.0
   environment:
     - SHIORI_DIR=/data
   volumes:

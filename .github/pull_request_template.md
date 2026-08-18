@@ -1,21 +1,23 @@
-## What and why
+## What & why
 
-<!-- Describe what this PR does and why it is needed. One or two sentences is enough for small changes. -->
+<!-- What does this change do, and why? Link any related issue. -->
 
-## How to test
+## Changes
 
-<!-- Steps to verify the change works correctly. Be specific enough that someone unfamiliar with the code can follow them. -->
+<!-- Bullet the key changes. -->
 
-- Step 1
-- Step 2
+-
+
+## Testing
+
+<!-- How did you verify this? -->
+
+- [ ] `cd apps/core && go test -race ./...` passes
+- [ ] `make lint` passes
+- [ ] Frontend builds (`cd apps/web && pnpm build`) — if UI changed
 
 ## Checklist
 
-- [ ] Work is on a feature branch — not committed directly to `main`.
-- [ ] Commits follow [Conventional Commit](https://www.conventionalcommits.org/) style.
-- [ ] Apps remain behind Caddy and the auth gate.
-- [ ] No app container ports are exposed publicly.
-- [ ] Docs updated if behaviour changed.
-- [ ] Tests added or updated if applicable.
-- [ ] Local Docker Compose still starts cleanly (if applicable).
-- [ ] No `.env`, secrets, keys, or credentials in the diff.
+- [ ] Conventional Commit title (`feat(scope):`, `fix(scope):`, ...)
+- [ ] Docs/README updated if behaviour or blueprints changed
+- [ ] New blueprints pin an explicit image version (no `:latest`) and use `${DOMAIN}`/`${SCHEME}` for domain-specific env

@@ -115,7 +115,7 @@ Every pull request runs:
 | `markdown-lint` | markdownlint-cli2 |
 | `shellcheck` | ShellCheck |
 | `yaml-lint` | yamllint |
-| `go-lint` | golangci-lint — govet, errcheck, staticcheck, gosec, bodyclose, noctx |
+| `go-lint` | golangci-lint — gofmt, govet, errcheck, staticcheck, gosec, bodyclose, noctx |
 | `go-vuln` | govulncheck — CVE scan against Go vulnerability database |
 | `go-test` | Full test suite with race detector |
 | `node-build` | TypeScript type-check + Vite production build |

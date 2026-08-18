@@ -9,7 +9,7 @@ route:
   internal_port: 80
 
 container:
-  image: excalidraw/excalidraw:latest
+  image: excalidraw/excalidraw:sha-4bfc5bb
   environment: []
   volumes: []
 

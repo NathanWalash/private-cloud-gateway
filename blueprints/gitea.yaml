@@ -9,7 +9,7 @@ route:
   internal_port: 3000
 
 container:
-  image: gitea/gitea:latest
+  image: gitea/gitea:1.27.2
   environment:
     - APP_NAME=Private Cloud Git
     - RUN_MODE=prod

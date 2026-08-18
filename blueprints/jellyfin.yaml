@@ -9,7 +9,7 @@ route:
   internal_port: 8096
 
 container:
-  image: jellyfin/jellyfin:latest
+  image: jellyfin/jellyfin:10.11.11
   environment: []
   volumes:
     - pcg-jellyfin-config:/config

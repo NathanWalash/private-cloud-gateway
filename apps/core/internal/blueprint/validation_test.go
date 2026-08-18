@@ -25,11 +25,11 @@ func TestValidateBlueprintID(t *testing.T) {
 		"",
 		"../etc/passwd",
 		"../../secret",
-		"app name",     // space
-		"App",          // uppercase
-		"app.yaml",     // dot
-		"app/subdir",   // slash
-		"app;rm-rf",    // semicolon
+		"app name",                     // space
+		"App",                          // uppercase
+		"app.yaml",                     // dot
+		"app/subdir",                   // slash
+		"app;rm-rf",                    // semicolon
 		"a" + string(make([]byte, 65)), // too long
 	}
 	for _, id := range invalid {

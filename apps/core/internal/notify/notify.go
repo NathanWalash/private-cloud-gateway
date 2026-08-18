@@ -17,15 +17,15 @@ import (
 
 // Event types
 const (
-	EventMonitorDown    = "monitor.down"
-	EventMonitorUp      = "monitor.up"
-	EventAppCrash       = "app.crash"
-	EventAppHealthBad   = "app.health.bad"
-	EventAppHealthOK    = "app.health.ok"
-	EventBackupDone     = "backup.done"
-	EventBackupFailed   = "backup.failed"
-	EventLoginSuccess   = "login.success"
-	EventLoginFail      = "login.fail"
+	EventMonitorDown  = "monitor.down"
+	EventMonitorUp    = "monitor.up"
+	EventAppCrash     = "app.crash"
+	EventAppHealthBad = "app.health.bad"
+	EventAppHealthOK  = "app.health.ok"
+	EventBackupDone   = "backup.done"
+	EventBackupFailed = "backup.failed"
+	EventLoginSuccess = "login.success"
+	EventLoginFail    = "login.fail"
 )
 
 // Service sends notifications using the configured channel.
@@ -83,8 +83,8 @@ func (s *Service) sendTelegram(token, chatID, text string) {
 }
 
 func (s *Service) telegramConfig() (token, chatID string) {
-	s.db.QueryRow("SELECT value FROM settings WHERE key='TELEGRAM_BOT_TOKEN'").Scan(&token)   //nolint:errcheck
-	s.db.QueryRow("SELECT value FROM settings WHERE key='TELEGRAM_CHAT_ID'").Scan(&chatID)    //nolint:errcheck
+	s.db.QueryRow("SELECT value FROM settings WHERE key='TELEGRAM_BOT_TOKEN'").Scan(&token) //nolint:errcheck
+	s.db.QueryRow("SELECT value FROM settings WHERE key='TELEGRAM_CHAT_ID'").Scan(&chatID)  //nolint:errcheck
 	return
 }
 

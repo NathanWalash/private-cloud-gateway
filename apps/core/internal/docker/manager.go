@@ -75,21 +75,21 @@ func (m *Manager) Install(ctx context.Context, bp *blueprint.Blueprint) error {
 
 	// Build container config.
 	type hostConfig struct {
-		Binds         []string          `json:"Binds,omitempty"`
-		RestartPolicy map[string]any    `json:"RestartPolicy"`
-		Memory        int64             `json:"Memory,omitempty"`
-		NetworkMode   string            `json:"NetworkMode"`
+		Binds         []string       `json:"Binds,omitempty"`
+		RestartPolicy map[string]any `json:"RestartPolicy"`
+		Memory        int64          `json:"Memory,omitempty"`
+		NetworkMode   string         `json:"NetworkMode"`
 	}
 	type endpointSettings struct{}
 	type networkingConfig struct {
 		EndpointsConfig map[string]*endpointSettings `json:"EndpointsConfig"`
 	}
 	type createBody struct {
-		Image        string              `json:"Image"`
-		Env          []string            `json:"Env,omitempty"`
-		Labels       map[string]string   `json:"Labels,omitempty"`
-		HostConfig   hostConfig          `json:"HostConfig"`
-		NetworkingConfig networkingConfig `json:"NetworkingConfig"`
+		Image            string            `json:"Image"`
+		Env              []string          `json:"Env,omitempty"`
+		Labels           map[string]string `json:"Labels,omitempty"`
+		HostConfig       hostConfig        `json:"HostConfig"`
+		NetworkingConfig networkingConfig  `json:"NetworkingConfig"`
 	}
 
 	body := createBody{
@@ -100,10 +100,10 @@ func (m *Manager) Install(ctx context.Context, bp *blueprint.Blueprint) error {
 			"pcg.managed": "true",
 		},
 		HostConfig: hostConfig{
-			Binds:       bp.Container.Volumes,
+			Binds:         bp.Container.Volumes,
 			RestartPolicy: map[string]any{"Name": "unless-stopped"},
-			Memory:      parseMemoryLimit(bp.Resources.MemoryLimit),
-			NetworkMode: privateNetwork,
+			Memory:        parseMemoryLimit(bp.Resources.MemoryLimit),
+			NetworkMode:   privateNetwork,
 		},
 		NetworkingConfig: networkingConfig{
 			EndpointsConfig: map[string]*endpointSettings{
@@ -311,8 +311,8 @@ func (m *Manager) StatusAll(ctx context.Context) map[string]string {
 	defer resp.Body.Close()
 
 	var containers []struct {
-		Names  []string `json:"Names"`
-		State  string   `json:"State"`
+		Names []string `json:"Names"`
+		State string   `json:"State"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&containers); err != nil {
 		return nil

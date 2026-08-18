@@ -9,7 +9,7 @@ route:
   internal_port: 5678
 
 container:
-  image: docker.n8n.io/n8nio/n8n:latest
+  image: docker.n8n.io/n8nio/n8n:2.35.3
   environment:
     - N8N_HOST=n8n.${DOMAIN}
     - N8N_PROTOCOL=${SCHEME}

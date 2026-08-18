@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	numBackupCodes    = 8
-	backupCodeDigits  = 10
+	numBackupCodes   = 8
+	backupCodeDigits = 10
 )
 
 // GenerateBackupCodes creates numBackupCodes random codes, stores bcrypt hashes,
@@ -68,7 +68,7 @@ func UseBackupCode(db *sql.DB, userID int64, code string) bool {
 
 // BackupCodeStatus returns how many backup codes remain unused.
 func BackupCodeStatus(db *sql.DB, userID int64) (total, unused int) {
-	db.QueryRow("SELECT COUNT(*) FROM totp_backup_codes WHERE user_id=?", userID).Scan(&total) //nolint:errcheck
+	db.QueryRow("SELECT COUNT(*) FROM totp_backup_codes WHERE user_id=?", userID).Scan(&total)                      //nolint:errcheck
 	db.QueryRow("SELECT COUNT(*) FROM totp_backup_codes WHERE user_id=? AND used_at IS NULL", userID).Scan(&unused) //nolint:errcheck
 	return
 }

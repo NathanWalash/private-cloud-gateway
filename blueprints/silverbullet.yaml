@@ -9,7 +9,7 @@ route:
   internal_port: 3000
 
 container:
-  image: ghcr.io/silverbulletmd/silverbullet:latest
+  image: ghcr.io/silverbulletmd/silverbullet:2.10.0
   environment: []
   volumes:
     - pcg-silverbullet-space:/space

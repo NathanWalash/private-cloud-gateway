@@ -81,4 +81,3 @@ func RunAppHealthChecks(db *sql.DB, blueprintDir string, notifier *notify.Servic
 		}
 	}
 }
-

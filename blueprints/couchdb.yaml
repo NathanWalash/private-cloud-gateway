@@ -9,7 +9,7 @@ route:
   internal_port: 5984
 
 container:
-  image: couchdb:latest
+  image: couchdb:3.5.2
   environment:
     - COUCHDB_USER=admin
     - COUCHDB_PASSWORD=changeme
