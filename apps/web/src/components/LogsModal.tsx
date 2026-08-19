@@ -54,6 +54,8 @@ export default function LogsModal({ appId, appName, onClose }: LogsModalProps) {
     setStreaming(false); setConnected(false)
   }, [])
 
+  // Load logs when the app changes; the tail <select> triggers its own reloads.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadStatic(); return () => esRef.current?.close() }, [appId])
 
   return (
