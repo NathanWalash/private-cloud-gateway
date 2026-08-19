@@ -74,14 +74,17 @@ make dev-down        # stop           make dev-nuke  # wipe volumes+images, rebu
 cross-subdomain sessions). Chrome/Edge need no hosts file.
 
 ### Two dev loops
+
 - **Full stack** (`make dev-up`): core + web are baked into the image, so a code
   change means a rebuild. Correct for backend/integration work.
-- **Fast frontend loop**: run only the core with its port exposed, then Vite dev
-  server with hot reload —
-  ```sh
-  docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.dev.yml up core
-  cd apps/web && pnpm dev      # http://localhost:5173, proxies /api → core
-  ```
+- **Fast frontend loop**: run only the core with its port exposed, then the Vite
+  dev server with hot reload — open `http://localhost:5173`, which proxies
+  `/api` to the core.
+
+```sh
+docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.dev.yml up core
+cd apps/web && pnpm dev
+```
 
 ## Conventions
 
