@@ -1,186 +1,172 @@
+<div align="center">
+
 # Private Cloud Gateway
+
+**Your own cloud — one login in front of everything.**
+
+Self-host Nextcloud, Immich, Vaultwarden, Jellyfin and more. Each app gets its
+own subdomain and a private container; a single sign-in and automatic HTTPS sit
+in front of all of them. One small server, entirely yours.
 
 [![CI](https://github.com/NathanWalash/private-cloud-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/NathanWalash/private-cloud-gateway/actions/workflows/ci.yml)
 [![Go 1.26](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A self-hosted cloud dashboard that protects every app behind a single login.
-Each installed app gets its own subdomain, a Docker container on a private network,
-and automatic HTTPS in production. Everything runs on one Oracle Cloud VM.
+[Quick start](#quick-start) · [How it works](#how-it-works) · [Apps](#built-in-apps) · [Deploy](#deploy-to-production) · [Security](#security)
+
+</div>
+
+---
+
+## Why
+
+Self-hosting usually means a pile of exposed ports, a different login per app,
+and fragile reverse-proxy configs. Private Cloud Gateway replaces that with one
+gateway: **every app sits behind a single login on a private network**, gets its
+own `app.yourdomain.com`, and is installed from a small YAML "blueprint" in a
+couple of clicks. It runs comfortably on one cheap VM (an Oracle Cloud Always
+Free box is plenty).
+
+## Highlights
+
+- **One login, everything behind it.** Caddy verifies your session before any
+  app is reachable — apps are never exposed directly.
+- **Real auth.** bcrypt passwords, TOTP two-factor with backup codes, session
+  cookies (`HttpOnly`, `SameSite`, `Secure` in production), login rate limiting.
+- **Install apps in clicks.** 19 built-in blueprints (Nextcloud, Immich,
+  Jellyfin, Vaultwarden, n8n, Paperless-ngx…); adding one is a single YAML file.
+- **Encrypted backups.** AES-256-GCM archives with optional off-site S3/R2 upload
+  and a one-file "safe escape" download.
+- **One binary, no runtime deps.** Go core (pure-Go SQLite, no CGO) with the
+  React dashboard embedded — plus Caddy and Docker.
+- **Boring on purpose.** Comprehensive tests, `gosec` + `govulncheck` in CI, and
+  a one-command installer.
+
+## Screenshots
+
+<!-- Add real screenshots to docs/screenshots/ and reference them here. -->
+Run the [quick start](#quick-start) and open `http://home.localtest.me` to see
+the dashboard, or the marketplace, app cards, and live status widgets in action.
+
+## Quick start
+
+Requires a Docker runtime (Docker Desktop **or** Rancher Desktop) and Git.
+
+```sh
+git clone https://github.com/NathanWalash/private-cloud-gateway.git
+cd private-cloud-gateway
+make dev-up          # creates .env, builds images, starts the stack
+```
+
+Open **`http://home.localtest.me`** in Chrome — the first-run setup wizard
+creates your admin account. (`*.localtest.me` resolves to `127.0.0.1` via public
+DNS, so no hosts-file editing; use it rather than `localhost`, which breaks
+cross-subdomain cookies.)
+
+```sh
+make dev-logs        # tail logs        make dev-ps    # container status
+make dev-down        # stop             make dev-nuke  # wipe + rebuild
+```
 
 ## How it works
 
 ```text
 Browser
-  |
-  v  HTTPS
-Caddy  (public gateway — only service with host ports)
-  |
-  v  forward_auth: verify session
-Go Core  (auth, Docker lifecycle, blueprints, backup)
-  |
-  v  private Docker network
-App containers  (File Browser, Vaultwarden, n8n, etc.)
+  │  HTTPS (prod) / HTTP (dev)
+  ▼
+Caddy            ← the only service with host ports (80/443)
+  │  forward_auth → core:8080/api/auth/verify   (session valid?)
+  ▼  yes → proxy · no → 302 to login
+Go Core (:8080)  ← auth, Docker lifecycle, blueprints, backups, API, dashboard
+  │  Docker API over the socket
+  ▼  private network (never publicly routable)
+App containers   (Nextcloud, Immich, Vaultwarden, …)
 ```
 
-When a request arrives for `pdf.yourdomain.com`, Caddy calls Go Core to
-verify the session cookie. Valid session: request proxied to the PDF container.
-No session: browser redirected to the login page.
+When a request hits `photos.yourdomain.com`, Caddy asks the core to verify the
+session cookie. Valid → the request is proxied to the Immich container. Invalid
+→ the browser is redirected to the login page. App containers only ever listen
+on the private Docker network.
 
-## Features
+## Built-in apps
 
-| Category | What ships |
-|---|---|
-| **Authentication** | bcrypt passwords, TOTP two-factor auth, session cookies, rate limiting |
-| **App management** | Install, start, stop, restart, update, remove Docker apps |
-| **Blueprints** | YAML app definitions — 19 built-in (Nextcloud, Immich, Jellyfin, Vaultwarden, n8n, ...) |
-| **Dashboard** | React 18 + Tailwind — marketplace, live status polling, logs viewer |
-| **Backup** | AES-256-GCM encrypted archives, Safe Escape download, scheduled backups |
-| **Monitoring** | URL health monitors, server status widget |
-| **Production** | Let's Encrypt HTTPS, systemd service, one-command Oracle Cloud installer |
-| **Developer** | Comprehensive test suite, CI pipeline, E2E tests, Docker dev tools |
+| App | Subdomain | App | Subdomain |
+|---|---|---|---|
+| Nextcloud | `cloud.*` | Immich | `photos.*` |
+| Jellyfin | `media.*` | Vaultwarden | `vault.*` |
+| Paperless-ngx | `docs.*` | Gitea | `git.*` |
+| Ghost | `blog.*` | FreshRSS | `rss.*` |
+| n8n | `n8n.*` | Home Assistant | `home.*` |
+| File Browser | `files.*` | Stirling PDF | `pdf.*` |
+| Actual Budget | `budget.*` | Uptime Kuma | `status.*` |
+| Memos | `memos.*` | SilverBullet | `notes.*` |
+| Shiori | `bookmarks.*` | Excalidraw | `draw.*` |
+| CouchDB | `couchdb.*` | | |
 
-## Quick start (local development)
+Adding an app is one YAML file in [`blueprints/`](blueprints/) — see
+[`blueprints/README.md`](blueprints/README.md) or run the `/new-blueprint`
+scaffold.
 
-Requirements: Docker Desktop, Git.
+## Deploy to production
 
-```bash
-git clone https://github.com/NathanWalash/private-cloud-gateway.git
-cd private-cloud-gateway
-cp .env.example .env
-# Edit .env — set CLOUD_CORE_SESSION_SECRET (openssl rand -hex 32)
-./scripts/dev-up.sh            # or: make dev-up
-```
+One command on a fresh Ubuntu 22.04+ VM (Oracle Cloud Always Free ARM works well):
 
-Open `http://home.localtest.me` in Chrome. The setup wizard appears on first run.
-
-> `*.localtest.me` resolves to `127.0.0.1` via public DNS. No hosts file needed
-> in Chrome/Edge. Other browsers may need entries in `/etc/hosts`.
-
-## Development commands
-
-```bash
-make dev-up      # start stack (builds on first run)
-make dev-down    # stop stack
-make nuke        # wipe everything — containers, volumes, images — and rebuild
-make test        # run unit + integration tests
-make lint        # run all linters
-```
-
-## Production deployment (Oracle Cloud)
-
-One command on a fresh Ubuntu 22.04+ VM:
-
-```bash
+```sh
 curl -fsSL https://raw.githubusercontent.com/NathanWalash/private-cloud-gateway/main/install.sh | sudo bash
 ```
 
-The installer prompts for your domain and admin email, generates secrets, configures
-systemd and UFW, and starts the service. Point `A *.yourdomain.com` at the server IP
-and visit `https://home.yourdomain.com` to complete setup.
+The installer prompts for your domain and admin email, generates secrets, and
+configures systemd + the firewall. Point `A yourdomain.com` and
+`A *.yourdomain.com` at the server, then visit `https://home.yourdomain.com`.
+Full details in [`infra/oracle/README.md`](infra/oracle/README.md).
 
-See [infra/oracle/README.md](infra/oracle/README.md) for full deployment documentation.
+## Security
 
-## Architecture
+- Caddy is the only service with host ports; every app is behind `forward_auth`
+  on a private network.
+- Passwords hashed with bcrypt; optional TOTP 2FA with recovery codes.
+- Session cookies are `HttpOnly` / `SameSite=Lax`, and `Secure` in production;
+  logins are rate-limited per IP.
+- Backups are AES-256-GCM encrypted; `gosec` and `govulncheck` run in CI.
 
-```text
-private-cloud-gateway/
-  apps/
-    core/        Go service — auth, Docker lifecycle, blueprints, backup, API
-    web/         Vite + React 18 + TypeScript + Tailwind dashboard
-  blueprints/    YAML app definitions
-  infra/
-    caddy/       Caddyfile (local dev + production)
-    docker/      docker-compose files
-    oracle/      systemd service, firewall, installer
-  scripts/       dev-up, dev-down, dev-nuke, e2e, lint
+See [`docs/04-security-model.md`](docs/04-security-model.md). Report
+vulnerabilities via [`SECURITY.md`](SECURITY.md).
+
+## Development
+
+```sh
+make dev-up          # full stack (rebuilds core + web)
+make test            # unit + integration tests
+make lint            # markdown / shell / yaml linters
 ```
 
-**Architecture invariants:**
+For a fast frontend loop, run the core alone and Vite with hot reload — see
+[`CLAUDE.md`](CLAUDE.md) for that and the full architecture, conventions, and
+gotchas. The UI follows [`design.md`](design.md). CI runs golangci-lint,
+`govulncheck`, the race-enabled test suite, the web build, and a Docker build on
+every PR.
 
-- Caddy is the **only** service with exposed host ports (80, 443).
-- All app containers use `expose:` only — never reachable from outside Docker.
-- Every protected subdomain uses `forward_auth` before proxying.
-- Session cookies are `HttpOnly`, `SameSite=Lax`, scoped to the root domain.
-- Login rate-limited to 10 attempts per IP per minute.
-- Backup archives are AES-256-GCM encrypted when a passphrase is set.
+## Tech stack
 
-## CI pipeline
-
-Every pull request runs:
-
-| Job | Tool |
-|---|---|
-| `repo-check` | Verifies required files exist |
-| `markdown-lint` | markdownlint-cli2 |
-| `shellcheck` | ShellCheck |
-| `yaml-lint` | yamllint |
-| `go-lint` | golangci-lint — gofmt, govet, errcheck, staticcheck, gosec, bodyclose, noctx |
-| `go-vuln` | govulncheck — CVE scan against Go vulnerability database |
-| `go-test` | Full test suite with race detector |
-| `node-build` | TypeScript type-check + Vite production build |
-| `go-build` | Docker image build (requires all other jobs to pass) |
-
-On version tags, `release.yml` builds and pushes the Docker image to `ghcr.io`.
-
-## Running tests
-
-```bash
-# Unit and integration tests
-cd apps/core && go test -v -race ./...
-
-# End-to-end tests against a running stack
-E2E_EMAIL=you@example.com E2E_PASSWORD=yourpass ./scripts/e2e.sh
-
-# Go E2E with typed assertions
-cd apps/core && E2E_EMAIL=x E2E_PASSWORD=y go test -v -tags e2e ./e2e/...
-```
-
-## Built-in blueprints
-
-| App | Subdomain | Purpose |
-|---|---|---|
-| Actual Budget | `budget.*` | Personal finance and budgeting |
-| CouchDB | `couchdb.*` | Database for Obsidian LiveSync |
-| Excalidraw | `draw.*` | Collaborative virtual whiteboard |
-| File Browser | `files.*` | Browser-based file manager |
-| FreshRSS | `rss.*` | Self-hosted RSS reader |
-| Ghost | `blog.*` | Publishing and blogging platform |
-| Gitea | `git.*` | Lightweight self-hosted Git |
-| Home Assistant | `home.*` | Home automation hub |
-| Immich | `photos.*` | Photo and video backup |
-| Jellyfin | `media.*` | Media server for movies and music |
-| Memos | `memos.*` | Quick-capture notes and journal |
-| n8n | `n8n.*` | Workflow automation |
-| Nextcloud | `cloud.*` | Files, calendar, contacts suite |
-| Paperless-ngx | `docs.*` | Document management with OCR |
-| Shiori | `bookmarks.*` | Read-later and bookmark manager |
-| SilverBullet | `notes.*` | Markdown wiki with backlinks |
-| Stirling PDF | `pdf.*` | PDF merge, split, compress, OCR |
-| Uptime Kuma | `status.*` | Uptime monitoring for URLs, APIs, TCP |
-| Vaultwarden | `vault.*` | Bitwarden-compatible password manager |
+Go (standard library, `modernc.org/sqlite`) · React 18 + TypeScript + Vite +
+Tailwind · Caddy · Docker · SQLite.
 
 ## Documentation
 
-| Document | Description |
+| Doc | About |
 |---|---|
-| [docs/dev-local.md](docs/dev-local.md) | Local setup, prerequisites, test checklist |
-| [docs/git-workflow.md](docs/git-workflow.md) | Branch naming, commit style, PR process |
-| [docs/02-architecture.md](docs/02-architecture.md) | Architecture overview |
-| [docs/04-security-model.md](docs/04-security-model.md) | Security model |
-| [docs/decisions/](docs/decisions/) | Architecture decision records |
-| [infra/oracle/README.md](infra/oracle/README.md) | Production deployment |
-| [ROADMAP.md](ROADMAP.md) | Milestone progress |
+| [CLAUDE.md](CLAUDE.md) | Architecture, dev workflow, conventions (start here) |
+| [design.md](design.md) | Design system and UI direction |
+| [docs/](docs/) | Numbered design docs + decision records |
+| [ROADMAP.md](ROADMAP.md) | Milestones and progress |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-| [SECURITY.md](SECURITY.md) | Security policy |
 
 ## Contributing
 
-PRs are required before merging to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md)
-and [docs/git-workflow.md](docs/git-workflow.md).
-
-Use Conventional Commit messages: `feat(scope):`, `fix(scope):`, `chore(scope):`, etc.
+PRs are required to `main`, with Conventional Commit titles
+(`feat(scope):`, `fix(scope):`, …). See [CONTRIBUTING.md](CONTRIBUTING.md) and
+[docs/git-workflow.md](docs/git-workflow.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE)
