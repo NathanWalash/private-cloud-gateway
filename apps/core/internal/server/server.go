@@ -29,7 +29,7 @@ type Server struct {
 func New(
 	db *sql.DB,
 	secret []byte,
-	loginURL, cookieDomain, scheme string,
+	loginURL, cookieDomain, scheme, setupToken string,
 	staticFS fs.FS,
 	dm *docker.Manager,
 	cm *caddy.Manager,
@@ -37,7 +37,7 @@ func New(
 ) *Server {
 	mux := http.NewServeMux()
 
-	authHandler := auth.NewHandler(db, loginURL, cookieDomain, scheme == "https")
+	authHandler := auth.NewHandler(db, loginURL, cookieDomain, scheme == "https", setupToken)
 	apiHandler := api.NewHandler(db, version.Version, dm, cm, blueprintDir, cookieDomain, scheme)
 
 	// ── Auth & setup ─────────────────────────────────────────────────────────

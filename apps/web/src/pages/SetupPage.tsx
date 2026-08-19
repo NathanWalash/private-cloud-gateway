@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Globe, WarningCircle, CircleNotch, ShieldCheck } from '@phosphor-icons/react'
 import { api, ApiError } from '../api/client'
 
@@ -12,8 +12,14 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [token, setToken] = useState('')
+  const [tokenRequired, setTokenRequired] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    api.auth.needsSetup().then(r => setTokenRequired(r.token_required)).catch(() => {})
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -28,7 +34,7 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
     setError('')
     setLoading(true)
     try {
-      await api.auth.setup(email, password, firstName, lastName)
+      await api.auth.setup(email, password, firstName, lastName, token)
       onComplete()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Setup failed.')
@@ -111,6 +117,20 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
                 value={confirm} onChange={e => setConfirm(e.target.value)}
               />
             </div>
+
+            {tokenRequired && (
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1.5">Setup token</label>
+                <input
+                  type="text" required autoComplete="off"
+                  className="input-field font-mono" placeholder="From the installer output"
+                  value={token} onChange={e => setToken(e.target.value)}
+                />
+                <p className="text-xs text-text-muted mt-1.5">
+                  Printed by <code>install.sh</code>. Required to claim the admin account.
+                </p>
+              </div>
+            )}
 
             <button type="submit" disabled={loading} className="btn-primary mt-2">
               {loading
