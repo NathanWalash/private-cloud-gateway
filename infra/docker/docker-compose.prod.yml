@@ -32,12 +32,9 @@ services:
 
   # ── Go Core ───────────────────────────────────────────────────────────────
   core:
-    image: ghcr.io/nathanwalash/private-cloud-gateway:latest
-    # Falls back to building locally if the image is not yet in ghcr.io.
-    # Remove the `build:` block after tagging a release.
-    build:
-      context: /opt/pcg
-      dockerfile: Dockerfile
+    # Production runs a pinned release image — never :latest or a local build.
+    # PCG_VERSION is written to /opt/pcg/.env by scripts/deploy.sh.
+    image: ghcr.io/nathanwalash/private-cloud-gateway:${PCG_VERSION:-latest}
     restart: always
     env_file: /opt/pcg/.env
     environment:
