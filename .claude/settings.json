@@ -1,0 +1,5 @@
+{
+  "hooks": { "PostToolUse": [ { "matcher": "Edit|Write", "hooks": [
+    { "type": "command", "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.go) command -v gofmt >/dev/null && gofmt -w \"$f\" ;; esac" }
+  ]}]}
+}
