@@ -78,3 +78,6 @@ rootCA*.pem
 Thumbs.db
 Desktop.ini
 ehthumbs.db
+
+# Go coverage
+coverage.out
