@@ -131,9 +131,9 @@ jobs:
         run: go tool cover -func=coverage.out | tail -1
         working-directory: apps/core
 
-  # ── Node type-check and build ─────────────────────────────────────────────
+  # ── Web app: lint, test, type-check, build ────────────────────────────────
   node-build:
-    name: Web app build
+    name: Web app checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -150,6 +150,14 @@ jobs:
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
+        working-directory: apps/web
+
+      - name: Lint
+        run: npm run lint
+        working-directory: apps/web
+
+      - name: Test
+        run: npm run test
         working-directory: apps/web
 
       - name: Type-check and build
