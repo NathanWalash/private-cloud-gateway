@@ -18,6 +18,7 @@ jobs:
         run: |
           required=(
             README.md
+            CLAUDE.md
             ROADMAP.md
             CONTRIBUTING.md
             SECURITY.md

@@ -45,10 +45,12 @@ services:
       - public   # needs public to reach Caddy admin API at caddy:2019
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 15s
+      retries: 10
+      # Generous slack so a slow first build doesn't make Caddy's
+      # depends_on: service_healthy abort before the core finishes booting.
+      start_period: 40s
     expose:
       - "8080"
 
