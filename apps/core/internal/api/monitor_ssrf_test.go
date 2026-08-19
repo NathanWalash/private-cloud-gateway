@@ -33,13 +33,13 @@ func TestBlockedIP(t *testing.T) {
 
 func TestValidateMonitorURL(t *testing.T) {
 	bad := []string{
-		"",                              // empty
-		"not a url",                     // malformed
-		"ftp://example.com",             // wrong scheme
-		"file:///etc/passwd",            // wrong scheme
-		"http://169.254.169.254/meta",   // metadata IP literal
-		"http://127.0.0.1:8080/admin",   // loopback IP literal
-		"http://10.0.0.1/",              // private IP literal
+		"",                            // empty
+		"not a url",                   // malformed
+		"ftp://example.com",           // wrong scheme
+		"file:///etc/passwd",          // wrong scheme
+		"http://169.254.169.254/meta", // metadata IP literal
+		"http://127.0.0.1:8080/admin", // loopback IP literal
+		"http://10.0.0.1/",            // private IP literal
 	}
 	for _, u := range bad {
 		if err := validateMonitorURL(u); err == nil {
