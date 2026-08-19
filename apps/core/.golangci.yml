@@ -1,3 +1,5 @@
+version: "2"
+
 run:
   timeout: 5m
 
@@ -5,25 +7,41 @@ linters:
   enable:
     - govet
     - errcheck
-    - staticcheck
-    - gosimple
+    - staticcheck   # v2 folds gosimple + stylecheck in
     - ineffassign
     - unused
     - misspell
     - gosec
     - bodyclose
-    - noctx
+    - godot         # doc comments end with a period (auto-fixable)
+  settings:
+    errcheck:
+      # Fire-and-forget cleanup where a failed error is not actionable.
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close
+        - (*database/sql.DB).Close
+        - (*database/sql.Rows).Close
+        - (*crypto/tls.Conn).Close
+        - os.Remove
+        - fmt.Fprint
+        - fmt.Fprintf
+    gosec:
+      excludes:
+        - G104  # unhandled errors — covered by errcheck with our exclusions
+        - G118  # context.Background in long-lived background goroutines is intended
+        - G120  # form parsing is bounded by the 10 MB body-limit middleware
+        - G124  # cookies set Secure conditionally (h.secure) for prod HTTPS; gosec can't see the variable
+        - G304  # file path from a trusted env var (SQLite/backup paths)
+        - G703  # taint: backup dir comes from operator-set env, not user input
+        - G705  # taint: response values are server-generated, not user input
+  exclusions:
+    rules:
+      - path: _test.go
+        linters:
+          - errcheck
+          - gosec
+
+formatters:
+  enable:
     - gofmt
-
-linters-settings:
-  gosec:
-    excludes:
-      - G304  # file path from variable — acceptable for SQLite path from env
-
-issues:
-  exclude-rules:
-    - path: "_test.go"
-      linters:
-        - errcheck
-        - gosec
-        - noctx

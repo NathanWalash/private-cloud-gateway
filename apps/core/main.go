@@ -66,7 +66,7 @@ func main() {
 	if err != nil {
 		slog.Warn("docker unavailable — app install/lifecycle disabled", "err", err)
 	} else {
-		defer dm.Close()
+		defer func() { _ = dm.Close() }()
 		slog.Info("docker connected")
 	}
 

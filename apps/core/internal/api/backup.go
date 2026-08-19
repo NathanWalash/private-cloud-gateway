@@ -72,7 +72,7 @@ func (h *Handler) volumeReader(containerName, containerPath string) (io.ReadClos
 }
 
 // BackupCreate triggers a backup (DB + blueprints + app volumes).
-// POST /api/backup/create
+// POST /api/backup/create.
 func (h *Handler) BackupCreate(w http.ResponseWriter, r *http.Request) {
 	if err := os.MkdirAll(h.backupDir(), 0o700); err != nil {
 		jsonErr(w, "cannot create backup dir", http.StatusInternalServerError)
@@ -111,7 +111,7 @@ func (h *Handler) BackupCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 // BackupList returns available backups.
-// GET /api/backup/list
+// GET /api/backup/list.
 func (h *Handler) BackupList(w http.ResponseWriter, _ *http.Request) {
 	backups, err := backup.ListBackups(h.backupDir())
 	if err != nil {
@@ -125,7 +125,7 @@ func (h *Handler) BackupList(w http.ResponseWriter, _ *http.Request) {
 }
 
 // SafeEscape creates a backup and streams it directly to the browser.
-// GET /api/backup/safe-escape
+// GET /api/backup/safe-escape.
 func (h *Handler) SafeEscape(w http.ResponseWriter, r *http.Request) {
 	name := backup.FileName(time.Now())
 	tmpPath := filepath.Join(os.TempDir(), name)
@@ -168,7 +168,7 @@ func (h *Handler) SafeEscape(w http.ResponseWriter, r *http.Request) {
 
 // BackupRestore restores a backup archive uploaded via multipart form.
 // POST /api/backup/restore
-// Form fields: file (required), passphrase (optional, overrides env var)
+// Form fields: file (required), passphrase (optional, overrides env var).
 func (h *Handler) BackupRestore(w http.ResponseWriter, r *http.Request) {
 	// 64MB max upload
 	if err := r.ParseMultipartForm(64 << 20); err != nil {
@@ -216,7 +216,7 @@ func (h *Handler) BackupRestore(w http.ResponseWriter, r *http.Request) {
 }
 
 // BackupLastRun returns the timestamp of the most recent backup.
-// GET /api/backup/last-run
+// GET /api/backup/last-run.
 func (h *Handler) BackupLastRun(w http.ResponseWriter, r *http.Request) {
 	var t string
 	h.db.QueryRowContext(r.Context(), "SELECT value FROM settings WHERE key='LAST_BACKUP_TIME'").Scan(&t) //nolint:errcheck

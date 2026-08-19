@@ -47,7 +47,7 @@ func NewHandler(db *sql.DB, version string, dm *docker.Manager, cm *caddy.Manage
 
 // ── Status ────────────────────────────────────────────────────────────────────
 
-// GET /api/status
+// GET /api/status.
 func (h *Handler) Status(w http.ResponseWriter, _ *http.Request) {
 	uptime := time.Since(h.startTime).Round(time.Second).String()
 	w.Header().Set("Content-Type", "application/json")
@@ -70,7 +70,7 @@ type AppRecord struct {
 	ContainerName string `json:"container_name"`
 }
 
-// GET /api/apps
+// GET /api/apps.
 func (h *Handler) Apps(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT id, blueprint_id, name, icon, subdomain, internal_port, container_name, status,
@@ -101,7 +101,7 @@ type InstallRequest struct {
 	BlueprintID string `json:"blueprint_id"`
 }
 
-// POST /api/apps/install
+// POST /api/apps/install.
 func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 	// Validate input FIRST — before any other check — to catch injection attempts early.
 	var req InstallRequest
@@ -199,7 +199,7 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, `{"id":%d,"status":"running"}`, id)
 }
 
-// DELETE /api/apps/:id
+// DELETE /api/apps/:id.
 func (h *Handler) Uninstall(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
@@ -234,17 +234,17 @@ func (h *Handler) Uninstall(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// POST /api/apps/:id/start
+// POST /api/apps/:id/start.
 func (h *Handler) StartApp(w http.ResponseWriter, r *http.Request) {
 	h.lifecycleAction(w, r, "start", func(cn string) error { return h.docker.Start(r.Context(), cn) })
 }
 
-// POST /api/apps/:id/stop
+// POST /api/apps/:id/stop.
 func (h *Handler) StopApp(w http.ResponseWriter, r *http.Request) {
 	h.lifecycleAction(w, r, "stop", func(cn string) error { return h.docker.Stop(r.Context(), cn) })
 }
 
-// POST /api/apps/:id/restart
+// POST /api/apps/:id/restart.
 func (h *Handler) RestartApp(w http.ResponseWriter, r *http.Request) {
 	h.lifecycleAction(w, r, "restart", func(cn string) error { return h.docker.Restart(r.Context(), cn) })
 }
@@ -284,7 +284,7 @@ func (h *Handler) lifecycleAction(w http.ResponseWriter, r *http.Request, action
 	_, _ = fmt.Fprintf(w, `{"status":%q}`, status)
 }
 
-// GET /api/blueprints
+// GET /api/blueprints.
 func (h *Handler) Blueprints(w http.ResponseWriter, r *http.Request) {
 	entries, err := os.ReadDir(h.blueprintDir)
 	if err != nil {

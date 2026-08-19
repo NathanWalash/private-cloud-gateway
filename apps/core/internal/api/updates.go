@@ -52,7 +52,7 @@ func CheckAppUpdates(db *sql.DB) {
 }
 
 // AppUpdateStatus returns whether updates are available for all installed apps.
-// GET /api/apps/updates
+// GET /api/apps/updates.
 func (h *Handler) AppUpdateStatus(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(),
 		"SELECT id, blueprint_id, image FROM apps WHERE status='running'")

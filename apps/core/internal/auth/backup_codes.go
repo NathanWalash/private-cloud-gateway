@@ -74,7 +74,7 @@ func BackupCodeStatus(db *sql.DB, userID int64) (total, unused int) {
 }
 
 // TOTPGenBackupCodes generates backup codes for the authenticated user.
-// POST /api/auth/totp/backup-codes
+// POST /api/auth/totp/backup-codes.
 func (h *Handler) TOTPGenBackupCodes(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie(cookieName)
 	if cookie == nil {
@@ -97,7 +97,7 @@ func (h *Handler) TOTPGenBackupCodes(w http.ResponseWriter, r *http.Request) {
 }
 
 // TOTPBackupCodeStatus returns how many backup codes remain.
-// GET /api/auth/totp/backup-codes
+// GET /api/auth/totp/backup-codes.
 func (h *Handler) TOTPBackupCodeStatus(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie(cookieName)
 	if cookie == nil {

@@ -9,7 +9,7 @@ import (
 )
 
 // LogsStream streams container logs as Server-Sent Events.
-// GET /api/apps/:id/logs/stream?tail=50
+// GET /api/apps/:id/logs/stream?tail=50.
 func (h *Handler) LogsStream(w http.ResponseWriter, r *http.Request) {
 	if h.docker == nil {
 		http.Error(w, "Docker unavailable", http.StatusServiceUnavailable)

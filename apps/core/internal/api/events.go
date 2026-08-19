@@ -56,7 +56,7 @@ func BroadcastStatus(appID int64, status string) {
 }
 
 // AppEvents streams real-time app status changes via SSE.
-// GET /api/apps/events
+// GET /api/apps/events.
 func (h *Handler) AppEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {

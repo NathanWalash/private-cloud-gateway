@@ -19,10 +19,11 @@ type Handler struct {
 	db           *sql.DB
 	loginURL     string
 	cookieDomain string
+	secure       bool // set the Secure flag on cookies (true in production HTTPS)
 }
 
-func NewHandler(db *sql.DB, loginURL, cookieDomain string) *Handler {
-	return &Handler{db: db, loginURL: loginURL, cookieDomain: cookieDomain}
+func NewHandler(db *sql.DB, loginURL, cookieDomain string, secure bool) *Handler {
+	return &Handler{db: db, loginURL: loginURL, cookieDomain: cookieDomain, secure: secure}
 }
 
 // LoginPage serves the HTML login form (used as a fallback if JS fails).
@@ -71,7 +72,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 }
 
 // NeedsSetup returns whether the system has been configured yet.
-// GET /api/auth/setup
+// GET /api/auth/setup.
 func (h *Handler) NeedsSetup(w http.ResponseWriter, _ *http.Request) {
 	var count int
 	h.db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count) //nolint:errcheck
@@ -80,7 +81,7 @@ func (h *Handler) NeedsSetup(w http.ResponseWriter, _ *http.Request) {
 }
 
 // Setup creates the first admin account. Only works when no users exist.
-// POST /api/auth/setup
+// POST /api/auth/setup.
 func (h *Handler) Setup(w http.ResponseWriter, r *http.Request) {
 	var count int
 	h.db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count) //nolint:errcheck
@@ -176,7 +177,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		"SELECT COALESCE(totp_secret,'') FROM users WHERE id=?", userID).Scan(&totpSecret) //nolint:errcheck
 	if totpSecret != "" {
 		// Issue a short-lived token for the second factor step.
-		pending := &Handler{db: h.db, loginURL: h.loginURL, cookieDomain: h.cookieDomain}
+		pending := &Handler{db: h.db, loginURL: h.loginURL, cookieDomain: h.cookieDomain, secure: h.secure}
 		token, err := storeTOTPPending(pending, userID)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
@@ -201,6 +202,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Domain:   h.cookieDomain,
 		HttpOnly: true,
+		Secure:   h.secure,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(sessionTTL),
 	})
@@ -230,6 +232,8 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Domain:   h.cookieDomain,
 		HttpOnly: true,
+		Secure:   h.secure,
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
 

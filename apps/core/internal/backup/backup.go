@@ -269,7 +269,7 @@ func writeToPath(r io.Reader, dst string) error {
 }
 
 // encryptStream encrypts src using AES-256-GCM + PBKDF2.
-// Format: [32-byte salt][12-byte nonce][ciphertext+GCM tag]
+// Format: [32-byte salt][12-byte nonce][ciphertext+GCM tag].
 func encryptStream(src io.Reader, dst io.Writer, passphrase string) error {
 	salt := make([]byte, saltLen)
 	if _, err := rand.Read(salt); err != nil {

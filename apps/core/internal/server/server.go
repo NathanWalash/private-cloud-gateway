@@ -37,7 +37,7 @@ func New(
 ) *Server {
 	mux := http.NewServeMux()
 
-	authHandler := auth.NewHandler(db, loginURL, cookieDomain)
+	authHandler := auth.NewHandler(db, loginURL, cookieDomain, scheme == "https")
 	apiHandler := api.NewHandler(db, version.Version, dm, cm, blueprintDir, cookieDomain, scheme)
 
 	// ── Auth & setup ─────────────────────────────────────────────────────────

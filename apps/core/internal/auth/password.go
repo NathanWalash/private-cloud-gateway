@@ -8,7 +8,7 @@ import (
 )
 
 // ChangePassword allows an authenticated user to update their password.
-// POST /api/auth/password  body: {current_password, new_password}
+// POST /api/auth/password  body: {current_password, new_password}.
 func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie(cookieName)
 	if cookie == nil {

@@ -20,7 +20,7 @@ import (
 
 // ── App logs ─────────────────────────────────────────────────────────────────
 
-// GET /api/apps/:id/logs?tail=100
+// GET /api/apps/:id/logs?tail=100.
 func (h *Handler) Logs(w http.ResponseWriter, r *http.Request) {
 	if h.docker == nil {
 		jsonErr(w, "Docker unavailable", http.StatusServiceUnavailable)
@@ -120,7 +120,7 @@ type Setting struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
-// GET /api/settings
+// GET /api/settings.
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(),
 		"SELECT key, value, updated_at FROM settings ORDER BY key")
@@ -139,7 +139,7 @@ func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, settings)
 }
 
-// PUT /api/settings/:key
+// PUT /api/settings/:key.
 func (h *Handler) PutSetting(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	key := parts[len(parts)-1]
@@ -178,7 +178,7 @@ type AuditEntry struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// GET /api/audit?limit=50&offset=0
+// GET /api/audit?limit=50&offset=0.
 func (h *Handler) AuditLog(w http.ResponseWriter, r *http.Request) {
 	limit := 50
 	if l := r.URL.Query().Get("limit"); l != "" {
@@ -228,7 +228,7 @@ type Monitor struct {
 	LastChecked *string `json:"last_checked"`
 }
 
-// GET /api/monitors
+// GET /api/monitors.
 func (h *Handler) MonitorList(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(),
 		"SELECT id, name, url, status, status_code, latency_ms, last_checked FROM monitors ORDER BY name")
@@ -247,7 +247,7 @@ func (h *Handler) MonitorList(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, monitors)
 }
 
-// POST /api/monitors
+// POST /api/monitors.
 func (h *Handler) MonitorCreate(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Name string `json:"name"`
@@ -274,7 +274,7 @@ func (h *Handler) MonitorCreate(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, `{"id":%d}`, id)
 }
 
-// DELETE /api/monitors/:id
+// DELETE /api/monitors/:id.
 func (h *Handler) MonitorDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
@@ -364,10 +364,11 @@ func PollAllMonitorsWithNotify(db *sql.DB, notifier Notifier, prevStatus map[int
 					prevStatus[monID] = newStatus
 				}
 				if oldStatus != newStatus && oldStatus != "" {
-					if newStatus == "down" {
+					switch newStatus {
+					case "down":
 						notifier.Notify(context.Background(), "monitor.down",
 							"Monitor DOWN: "+monName, monURL)
-					} else if newStatus == "up" {
+					case "up":
 						notifier.Notify(context.Background(), "monitor.up",
 							"Monitor UP: "+monName, monURL)
 					}
