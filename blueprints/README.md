@@ -45,8 +45,9 @@ URL (e.g. Nextcloud trusted domains, n8n host, Ghost URL) — use the placeholde
 
 **Obsidian sync:** Obsidian is a desktop app — there is no Docker server for it.
 Install `couchdb` and use the [Self-hosted LiveSync](https://github.com/vrtmrz/obsidian-livesync) plugin
-in Obsidian to sync your vault to your server. Or install `silverbullet` for an Obsidian-like
-markdown notes experience that runs entirely in the browser.
+in Obsidian to sync your vault to your server — see the step-by-step
+[Obsidian sync guide](../docs/obsidian-sync.md). Or install `silverbullet` for an
+Obsidian-like markdown notes experience that runs entirely in the browser.
 
 **Vaultwarden:** `SIGNUPS_ALLOWED=false` is set by default. Create your account immediately
 after first install before anyone else can.
