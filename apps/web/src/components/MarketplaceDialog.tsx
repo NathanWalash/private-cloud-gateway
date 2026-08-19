@@ -115,7 +115,7 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
                   className={`text-left p-4 rounded-xl border transition-all ${
                     selected === bp.id
                       ? 'border-accent bg-accent/10 ring-1 ring-accent/30'
-                      : 'border-border bg-card/50 hover:border-slate-600 hover:bg-card'
+                      : 'border-border bg-card/50 hover:border-text-muted hover:bg-card'
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">

@@ -132,7 +132,7 @@ export default function BackupWidget() {
             onClick={handleCreate}
             disabled={creating || restoring}
             className="w-full flex items-center justify-center gap-1.5 text-xs font-medium
-                       bg-white/5 hover:bg-white/10 border border-border hover:border-slate-600
+                       bg-white/5 hover:bg-white/10 border border-border hover:border-text-muted
                        text-slate-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             {creating
@@ -156,7 +156,7 @@ export default function BackupWidget() {
             onClick={() => setShowRestore(true)}
             disabled={creating || restoring}
             className="w-full flex items-center justify-center gap-1.5 text-xs font-medium
-                       bg-white/5 hover:bg-white/10 border border-border hover:border-slate-600
+                       bg-white/5 hover:bg-white/10 border border-border hover:border-text-muted
                        text-slate-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             <UploadSimple className="w-3.5 h-3.5" />

@@ -50,7 +50,7 @@ export default function InstallDialog({ blueprints, onClose, onInstalled }: Inst
                 <button
                   key={bp.id} onClick={() => setSelected(bp.id)}
                   className={`w-full text-left p-3.5 rounded-lg border transition-all ${
-                    selected === bp.id ? 'border-accent bg-accent/10' : 'border-border hover:border-slate-600 hover:bg-white/3'
+                    selected === bp.id ? 'border-accent bg-accent/10' : 'border-border hover:border-text-muted hover:bg-white/3'
                   }`}
                 >
                   <div className="flex items-center gap-3">
