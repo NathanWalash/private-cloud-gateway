@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// Event types
+// Event types.
 const (
 	EventMonitorDown  = "monitor.down"
 	EventMonitorUp    = "monitor.up"

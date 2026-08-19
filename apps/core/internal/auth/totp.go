@@ -15,7 +15,7 @@ const totpPendingTTL = 5 * time.Minute
 const totpIssuer = "Private Cloud Gateway"
 
 // TOTPStatus returns whether TOTP is enabled for the authenticated user.
-// GET /api/auth/totp/status
+// GET /api/auth/totp/status.
 func (h *Handler) TOTPStatus(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie(cookieName)
 	if cookie == nil {
@@ -35,7 +35,7 @@ func (h *Handler) TOTPStatus(w http.ResponseWriter, r *http.Request) {
 
 // TOTPSetup generates a new TOTP secret and returns the otpauth URI.
 // The secret is NOT saved until TOTPConfirm succeeds.
-// POST /api/auth/totp/setup
+// POST /api/auth/totp/setup.
 func (h *Handler) TOTPSetup(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie(cookieName)
 	if cookie == nil {
@@ -64,7 +64,7 @@ func (h *Handler) TOTPSetup(w http.ResponseWriter, r *http.Request) {
 }
 
 // TOTPConfirm saves the TOTP secret after verifying the first code.
-// POST /api/auth/totp/confirm  body: {secret, code}
+// POST /api/auth/totp/confirm  body: {secret, code}.
 func (h *Handler) TOTPConfirm(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie(cookieName)
 	if cookie == nil {
@@ -104,7 +104,7 @@ func (h *Handler) TOTPConfirm(w http.ResponseWriter, r *http.Request) {
 }
 
 // TOTPDisable removes TOTP from the account.
-// POST /api/auth/totp/disable  body: {code}
+// POST /api/auth/totp/disable  body: {code}.
 func (h *Handler) TOTPDisable(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie(cookieName)
 	if cookie == nil {
@@ -137,7 +137,7 @@ func (h *Handler) TOTPDisable(w http.ResponseWriter, r *http.Request) {
 }
 
 // TOTPVerify handles the second step of login when TOTP is enabled.
-// POST /api/auth/totp/verify  body: {token, code}
+// POST /api/auth/totp/verify  body: {token, code}.
 func (h *Handler) TOTPVerify(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Token string `json:"token"`
@@ -192,6 +192,7 @@ func (h *Handler) TOTPVerify(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Domain:   h.cookieDomain,
 		HttpOnly: true,
+		Secure:   h.secure,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(sessionTTL),
 	})

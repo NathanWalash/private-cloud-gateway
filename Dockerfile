@@ -7,7 +7,7 @@
 # Stage 5: minimal runtime image
 
 # ── Web app ───────────────────────────────────────────────────────────────────
-FROM node:22-alpine AS web-builder
+FROM node:26-alpine AS web-builder
 
 WORKDIR /web
 
@@ -20,7 +20,7 @@ COPY apps/web/ .
 RUN npm run build
 
 # ── Go dependencies ───────────────────────────────────────────────────────────
-FROM golang:1.24-alpine AS go-deps
+FROM golang:1.26-alpine AS go-deps
 
 WORKDIR /build
 COPY apps/core/go.mod apps/core/go.sum ./
@@ -46,7 +46,7 @@ FROM builder AS tester
 RUN CGO_ENABLED=0 go test -v -count=1 ./...
 
 # ── Runtime ───────────────────────────────────────────────────────────────────
-FROM alpine:3.20
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates tzdata
 

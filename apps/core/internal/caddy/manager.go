@@ -90,7 +90,7 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 
 	if m.https {
 		// Production: HTTPS with Let's Encrypt, admin API off public internet
-		sb.WriteString(fmt.Sprintf(`{
+		fmt.Fprintf(&sb, `{
 	admin :2019
 	email %s
 	log {
@@ -98,7 +98,7 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 	}
 }
 
-`, m.adminEmail))
+`, m.adminEmail)
 		proto = "https"
 	} else {
 		// Local dev: HTTP only, no cert requests
@@ -114,7 +114,7 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 	}
 
 	// Dashboard and auth — always present.
-	sb.WriteString(fmt.Sprintf("%s://home.%s {\n\treverse_proxy core:8080\n}\n\n", proto, m.cookieDomain))
+	fmt.Fprintf(&sb, "%s://home.%s {\n\treverse_proxy core:8080\n}\n\n", proto, m.cookieDomain)
 
 	if !m.https {
 		// Test app — local dev only. Only add if no installed app uses the 'files' subdomain.
@@ -126,30 +126,24 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 			}
 		}
 		if !filesInUse {
-			sb.WriteString(fmt.Sprintf(
-				"http://files.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy whoami:80\n}\n\n",
-				m.cookieDomain,
-			))
+			fmt.Fprintf(&sb, "http://files.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy whoami:80\n}\n\n",
+				m.cookieDomain)
 		}
 	}
 
 	// One block per installed app.
 	for _, app := range apps {
-		sb.WriteString(fmt.Sprintf(
-			"%s://%s.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy %s:%d\n}\n\n",
+		fmt.Fprintf(&sb, "%s://%s.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy %s:%d\n}\n\n",
 			proto, app.Subdomain, m.cookieDomain,
-			app.ContainerName, app.InternalPort,
-		))
+			app.ContainerName, app.InternalPort)
 	}
 
 	// Catch-all: any unrecognised subdomain redirects to the home dashboard.
 	// This handles: apps not yet installed, typos, and Caddy redirecting /login
 	// to home.* for the React setup wizard to handle.
-	sb.WriteString(fmt.Sprintf(
-		"%s://*.%s {\n\tredir %s://home.%s{uri} temporary\n}\n\n",
+	fmt.Fprintf(&sb, "%s://*.%s {\n\tredir %s://home.%s{uri} temporary\n}\n\n",
 		proto, m.cookieDomain,
-		proto, m.cookieDomain,
-	))
+		proto, m.cookieDomain)
 
 	return sb.String()
 }
