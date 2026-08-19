@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Globe, Plus, Package, Settings, Sun, Sunset, Moon, Activity, Archive, Radio } from 'lucide-react'
+import { Globe, Plus, Package, Gear, Sun, SunHorizon, Moon, Pulse, Archive, Broadcast } from '@phosphor-icons/react'
 import ProfileDropdown from '../components/ProfileDropdown'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
@@ -97,7 +97,7 @@ export default function DashboardPage() {
               className="text-slate-400 hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-white/5"
               title="Settings"
             >
-              <Settings className="w-3.5 h-3.5" />
+              <Gear className="w-3.5 h-3.5" />
             </button>
             <ProfileDropdown />
           </div>
@@ -186,7 +186,7 @@ export default function DashboardPage() {
           <div>
             {/* Mobile tabs */}
             <div className="lg:hidden flex border border-border rounded-lg overflow-hidden mb-4">
-              {([ ['status', 'Status', Activity], ['backup', 'Backup', Archive], ['monitors', 'Monitors', Radio] ] as const).map(([id, label, Icon]) => (
+              {([ ['status', 'Status', Pulse], ['backup', 'Backup', Archive], ['monitors', 'Monitors', Broadcast] ] as const).map(([id, label, Icon]) => (
                 <button
                   key={id}
                   type="button"
@@ -239,6 +239,6 @@ function GreetingIcon() {
   const h = new Date().getHours()
   const cls = "w-7 h-7"
   if (h < 12) return <Sun className={`${cls} text-amber-400`} strokeWidth={1.5} />
-  if (h < 17) return <Sunset className={`${cls} text-orange-400`} strokeWidth={1.5} />
+  if (h < 17) return <SunHorizon className={`${cls} text-orange-400`} strokeWidth={1.5} />
   return <Moon className={`${cls} text-blue-400`} strokeWidth={1.5} />
 }

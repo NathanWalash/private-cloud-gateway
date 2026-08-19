@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Search, Check, Loader2, AlertCircle, Package, Link } from 'lucide-react'
+import { X, MagnifyingGlass, Check, CircleNotch, WarningCircle, Package, LinkSimple } from '@phosphor-icons/react'
 import { Blueprint, api, ApiError } from '../api/client'
 import AppIcon from './AppIcon'
 
@@ -59,7 +59,7 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
         {/* Search */}
         <div className="px-6 py-3 border-b border-border shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
             <input
               autoFocus
               type="text"
@@ -139,7 +139,7 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
                   )}
                   {bp.depends_on && bp.depends_on.length > 0 && (
                     <p className="flex items-center gap-1 text-xs text-amber-500/70 mt-1.5">
-                      <Link className="w-2.5 h-2.5" />
+                      <LinkSimple className="w-2.5 h-2.5" />
                       Requires: {bp.depends_on.join(', ')}
                     </p>
                   )}
@@ -153,7 +153,7 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
         <div className="px-6 py-4 border-t border-border shrink-0">
           {error && (
             <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg mb-3">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />{error}
+              <WarningCircle className="w-3.5 h-3.5 shrink-0" />{error}
             </div>
           )}
           <div className="flex items-center justify-between">
@@ -165,7 +165,7 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
                     <span>Installing: <strong className="text-slate-300">{bp?.name}</strong></span>
                     {bp?.depends_on && bp.depends_on.length > 0 && (
                       <p className="text-amber-500/70 mt-0.5 flex items-center gap-1">
-                        <Link className="w-3 h-3" />
+                        <LinkSimple className="w-3 h-3" />
                         Needs {bp.depends_on.join(', ')} running first
                       </p>
                     )}
@@ -184,7 +184,7 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
                 className="btn-primary !w-auto px-6 text-sm disabled:opacity-50"
               >
                 {installing
-                  ? <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />Installing…</span>
+                  ? <span className="flex items-center gap-2"><CircleNotch className="w-3.5 h-3.5 animate-spin" />Installing…</span>
                   : 'Install'}
               </button>
             </div>

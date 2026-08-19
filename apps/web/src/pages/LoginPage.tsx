@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Globe, AlertCircle, Loader2, ShieldCheck } from 'lucide-react'
+import { Globe, WarningCircle, CircleNotch, ShieldCheck } from '@phosphor-icons/react'
 import { api, ApiError } from '../api/client'
 
 export default function LoginPage() {
@@ -70,7 +70,7 @@ export default function LoginPage() {
         <div className="card p-8">
           {error && (
             <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-3 py-2.5 rounded-lg mb-5">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+              <WarningCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>
           )}
@@ -95,7 +95,7 @@ export default function LoginPage() {
               </div>
               <button type="submit" disabled={loading} className="btn-primary mt-2">
                 {loading
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</>
+                  ? <><CircleNotch className="w-4 h-4 animate-spin" /> Signing in…</>
                   : 'Sign in'}
               </button>
             </form>
@@ -118,7 +118,7 @@ export default function LoginPage() {
               </div>
               <button type="submit" disabled={loading || totpCode.length < 6} className="btn-primary">
                 {loading
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying…</>
+                  ? <><CircleNotch className="w-4 h-4 animate-spin" /> Verifying…</>
                   : 'Verify'}
               </button>
               <button

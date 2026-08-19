@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
-  Archive, Download, Plus, RefreshCw, CheckCircle,
-  AlertTriangle, Loader2, Upload, X,
-} from 'lucide-react'
+  Archive, DownloadSimple, Plus, ArrowsClockwise, CheckCircle,
+  Warning, CircleNotch, UploadSimple, X,
+} from '@phosphor-icons/react'
 import { api, BackupFile, ApiError } from '../api/client'
 
 function formatSize(bytes: number): string {
@@ -84,7 +84,7 @@ export default function BackupWidget() {
             <Archive className="w-3.5 h-3.5 text-slate-400" />
             <h3 className="text-sm font-medium text-slate-300">Backups</h3>
           </div>
-          {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-600" />}
+          {loading && <CircleNotch className="w-3.5 h-3.5 animate-spin text-slate-600" />}
         </div>
 
         {/* Latest status */}
@@ -99,7 +99,7 @@ export default function BackupWidget() {
             </div>
           ) : !loading ? (
             <div className="flex items-center gap-1.5 text-xs text-amber-400">
-              <AlertTriangle className="w-3 h-3" /> No backups yet
+              <Warning className="w-3 h-3" /> No backups yet
             </div>
           ) : null}
           {lastRun && (
@@ -122,7 +122,7 @@ export default function BackupWidget() {
         )}
         {status === 'error' && (
           <p className="text-xs text-red-400 mb-3 flex items-center gap-1.5">
-            <AlertTriangle className="w-3 h-3" /> {statusMsg}
+            <Warning className="w-3 h-3" /> {statusMsg}
           </p>
         )}
 
@@ -136,7 +136,7 @@ export default function BackupWidget() {
                        text-slate-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             {creating
-              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating…</>
+              ? <><CircleNotch className="w-3.5 h-3.5 animate-spin" /> Creating…</>
               : <><Plus className="w-3.5 h-3.5" /> Backup now</>
             }
           </button>
@@ -148,7 +148,7 @@ export default function BackupWidget() {
                        bg-accent/10 hover:bg-accent/20 border border-accent/20
                        text-accent px-3 py-2 rounded-lg transition-colors"
           >
-            <Download className="w-3.5 h-3.5" />
+            <DownloadSimple className="w-3.5 h-3.5" />
             Safe Escape download
           </a>
 
@@ -159,14 +159,14 @@ export default function BackupWidget() {
                        bg-white/5 hover:bg-white/10 border border-border hover:border-slate-600
                        text-slate-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
-            <Upload className="w-3.5 h-3.5" />
+            <UploadSimple className="w-3.5 h-3.5" />
             Restore from backup
           </button>
 
           {backups.length > 0 && (
             <details className="group">
               <summary className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer hover:text-slate-400 transition-colors list-none">
-                <RefreshCw className="w-3 h-3" />
+                <ArrowsClockwise className="w-3 h-3" />
                 {backups.length} backup{backups.length !== 1 ? 's' : ''} stored
               </summary>
               <div className="mt-2 space-y-1 max-h-28 overflow-y-auto">
@@ -210,7 +210,7 @@ function RestoreDialog({
       <div className="card w-full max-w-md">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="font-semibold text-slate-100 flex items-center gap-2">
-            <Upload className="w-4 h-4 text-slate-400" />
+            <UploadSimple className="w-4 h-4 text-slate-400" />
             Restore from backup
           </h2>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-300 p-1 rounded hover:bg-white/5">
@@ -220,7 +220,7 @@ function RestoreDialog({
 
         <div className="p-5 space-y-4">
           <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs px-3 py-2.5 rounded-lg flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <Warning className="w-4 h-4 shrink-0 mt-0.5" />
             This will overwrite your current database and blueprints. The service must be restarted after restore.
           </div>
 
@@ -272,7 +272,7 @@ function RestoreDialog({
             className="btn-primary !w-auto px-5 text-sm bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
           >
             {loading
-              ? <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />Restoring…</span>
+              ? <span className="flex items-center gap-2"><CircleNotch className="w-3.5 h-3.5 animate-spin" />Restoring…</span>
               : 'Restore'}
           </button>
         </div>

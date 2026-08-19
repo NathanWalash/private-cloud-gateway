@@ -1,32 +1,32 @@
 import {
-  HardDrive, Wrench, FileText, Activity, Shield,
-  DollarSign, Zap, Globe, Package,
-  BookMarked, Database, Wallet, FileChartLine, BarChart3,
-  type LucideIcon,
-} from 'lucide-react'
+  HardDrive, Wrench, FileText, Pulse, Shield,
+  CurrencyDollar, Lightning, Globe, Package,
+  Bookmark, Database, Wallet, ChartLine, ChartBar,
+  type Icon as PhosphorIcon,
+} from '@phosphor-icons/react'
 
-const ICONS_BY_ID: Record<string, LucideIcon> = {
+const ICONS_BY_ID: Record<string, PhosphorIcon> = {
   filebrowser:     HardDrive,
-  'stirling-pdf':  FileChartLine,
-  shiori:          BookMarked,
-  'uptime-kuma':   BarChart3,
+  'stirling-pdf':  ChartLine,
+  shiori:          Bookmark,
+  'uptime-kuma':   ChartBar,
   vaultwarden:     Wallet,
   silverbullet:    FileText,
   memos:           FileText,
-  n8n:             Zap,
-  'actual-budget': DollarSign,
+  n8n:             Lightning,
+  'actual-budget': CurrencyDollar,
   excalidraw:      Wrench,
   couchdb:         Database,
 }
 
-const ICONS_BY_CATEGORY: Record<string, LucideIcon> = {
+const ICONS_BY_CATEGORY: Record<string, PhosphorIcon> = {
   storage:      HardDrive,
   utilities:    Wrench,
   productivity: FileText,
-  monitoring:   Activity,
+  monitoring:   Pulse,
   security:     Shield,
-  finance:      DollarSign,
-  automation:   Zap,
+  finance:      CurrencyDollar,
+  automation:   Lightning,
   networking:   Globe,
 }
 
@@ -37,7 +37,7 @@ interface AppIconProps {
 }
 
 export default function AppIcon({ appId, category, className = 'w-5 h-5' }: AppIconProps) {
-  const Icon: LucideIcon =
+  const Icon: PhosphorIcon =
     (appId && ICONS_BY_ID[appId]) ||
     (category && ICONS_BY_CATEGORY[category]) ||
     Package

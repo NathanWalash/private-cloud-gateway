@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Check, Loader2, Package, AlertCircle } from 'lucide-react'
+import { X, Check, CircleNotch, Package, WarningCircle } from '@phosphor-icons/react'
 import { Blueprint, api, ApiError } from '../api/client'
 
 interface InstallDialogProps {
@@ -68,7 +68,7 @@ export default function InstallDialog({ blueprints, onClose, onInstalled }: Inst
 
           {error && (
             <div className="flex items-center gap-2 text-xs text-red-400 mt-3 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <WarningCircle className="w-3.5 h-3.5 shrink-0" />
               {error}
             </div>
           )}
@@ -83,7 +83,7 @@ export default function InstallDialog({ blueprints, onClose, onInstalled }: Inst
             className="btn-primary !w-auto px-6 text-sm"
           >
             {installing
-              ? <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />Installing…</span>
+              ? <span className="flex items-center gap-2"><CircleNotch className="w-3.5 h-3.5 animate-spin" />Installing…</span>
               : 'Install'}
           </button>
         </div>

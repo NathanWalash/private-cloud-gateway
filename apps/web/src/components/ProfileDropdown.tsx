@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Settings, User, ChevronDown } from 'lucide-react'
+import { SignOut, Gear, User, CaretDown } from '@phosphor-icons/react'
 import { useAuth } from '../hooks/useAuth'
 
 export default function ProfileDropdown() {
@@ -45,7 +45,7 @@ export default function ProfileDropdown() {
         <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-xs font-semibold text-accent">
           {initials}
         </div>
-        <ChevronDown className={`w-3 h-3 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <CaretDown className={`w-3 h-3 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -62,14 +62,14 @@ export default function ProfileDropdown() {
             onClick={() => { setOpen(false); navigate('/settings') }}
           />
           <DropItem
-            icon={<Settings className="w-3.5 h-3.5" />}
+            icon={<Gear className="w-3.5 h-3.5" />}
             label="Settings"
             onClick={() => { setOpen(false); navigate('/settings') }}
           />
 
           <div className="border-t border-border mt-1 pt-1">
             <DropItem
-              icon={<LogOut className="w-3.5 h-3.5" />}
+              icon={<SignOut className="w-3.5 h-3.5" />}
               label="Sign out"
               onClick={handleLogout}
               danger
