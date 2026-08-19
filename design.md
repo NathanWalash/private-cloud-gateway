@@ -26,7 +26,7 @@ These are the tells this refresh removes:
 | Default Tailwind **indigo-500 (`#6366f1`)** accent | A single considered accent, used sparingly |
 | Purple/blue **gradients** and glows | Flat fills; depth from a 1px border + one soft shadow |
 | Every element in a **rounded card** | Group with space and hairlines; reserve cards for real units |
-| **Emoji** as UI icons | Consistent line icons (Lucide), one size/stroke |
+| **Emoji** as UI icons | Consistent line icons (Phosphor), one size/weight |
 | Loud, saturated **status colours** | Muted semantic colours + a small dot, not full-bleed fills |
 | Inconsistent, generous **rounding + shadows** | One radius token, one shadow token |
 
@@ -103,9 +103,22 @@ No bouncing, no long fades. Respect `prefers-reduced-motion`.
 
 ## Iconography
 
-Lucide line icons, one stroke width (1.5px) and a consistent size (16 or 20px).
-App icons in blueprints may keep their brand marks; the dashboard chrome uses
-Lucide only.
+Use **[@phosphor-icons/react](https://phosphoricons.com)** — a distinctive but
+neutral set (Lucide is over-used and part of the "template" look). Rules:
+
+- One **weight** everywhere for chrome — `regular` (don't mix regular/bold/fill).
+- One **size** per context — 16px inline, 20px for primary nav/actions.
+- App icons in blueprints keep their brand marks; the dashboard chrome is
+  Phosphor only.
+- Import per-icon (`import { Gear } from "@phosphor-icons/react"`) so tree-shaking
+  keeps the bundle small.
+
+## Tooling
+
+- **AI-assisted UI:** when generating or reworking screens, use
+  [beautifui.dev](https://www.beautifului.dev/) as the generation aid, then
+  reconcile the output against *this* document — tokens, spacing, and the
+  no-AI-look rules above take precedence over whatever a generator emits.
 
 ## Applying this
 
