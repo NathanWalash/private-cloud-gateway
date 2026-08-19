@@ -76,14 +76,14 @@ export default function DashboardPage() {
             <div className="w-7 h-7 bg-accent/10 border border-accent/20 rounded-lg flex items-center justify-center">
               <Globe className="w-4 h-4 text-accent" strokeWidth={1.5} />
             </div>
-            <span className="font-semibold text-sm text-slate-100 hidden sm:inline">Private Cloud Gateway</span>
-            <span className="font-semibold text-sm text-slate-100 sm:hidden">PCG</span>
+            <span className="font-semibold text-sm text-text-primary hidden sm:inline">Private Cloud Gateway</span>
+            <span className="font-semibold text-sm text-text-primary sm:hidden">PCG</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={toggleTheme}
-              className="text-slate-400 hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-white/5"
+              className="text-text-muted hover:text-text-primary transition-colors p-1.5 rounded-lg hover:bg-white/5"
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {theme === 'dark'
@@ -94,7 +94,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate('/settings')}
-              className="text-slate-400 hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-white/5"
+              className="text-text-muted hover:text-text-primary transition-colors p-1.5 rounded-lg hover:bg-white/5"
               title="Settings"
             >
               <Gear className="w-3.5 h-3.5" />
@@ -121,7 +121,7 @@ export default function DashboardPage() {
           {/* Apps — 3/4 */}
           <div className="lg:col-span-3 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Apps</h2>
+              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider">Apps</h2>
               <div className="flex items-center gap-3">
                 {apps.length > 0 && <span className="text-xs text-slate-600">{apps.length} installed</span>}
                 <button
@@ -151,7 +151,7 @@ export default function DashboardPage() {
             {!appsLoading && apps.length === 0 && (
               <div className="card p-10 text-center">
                 <Package className="w-10 h-10 text-slate-600 mx-auto mb-4" strokeWidth={1.5} />
-                <h3 className="text-sm font-medium text-slate-400 mb-1">No apps installed</h3>
+                <h3 className="text-sm font-medium text-text-muted mb-1">No apps installed</h3>
                 <p className="text-xs text-slate-600 max-w-xs mx-auto mb-4">
                   Install apps from YAML blueprints. Each app gets its own protected subdomain.
                 </p>
@@ -194,7 +194,7 @@ export default function DashboardPage() {
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors
                     ${mobileSidebar === id
                       ? 'bg-accent/10 text-accent border-b-2 border-accent'
-                      : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                      : 'text-text-muted hover:text-text-primary hover:bg-white/5'
                     }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -204,7 +204,7 @@ export default function DashboardPage() {
             </div>
             {/* Desktop: all visible; mobile: only selected tab */}
             <div className={`space-y-4 ${mobileSidebar !== 'status' ? 'lg:block hidden' : ''}`}>
-              <h2 className="hidden lg:block text-sm font-medium text-slate-400 uppercase tracking-wider">Status</h2>
+              <h2 className="hidden lg:block text-sm font-medium text-text-muted uppercase tracking-wider">Status</h2>
               <StatusWidget />
             </div>
             <div className={`space-y-4 mt-4 ${mobileSidebar !== 'backup' ? 'lg:block hidden' : ''}`}>

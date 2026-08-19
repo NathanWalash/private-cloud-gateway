@@ -63,8 +63,8 @@ export default function LogsModal({ appId, appName, onClose }: LogsModalProps) {
       <div className="card w-full max-w-4xl h-[80vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
           <div className="flex items-center gap-2.5">
-            <Terminal className="w-4 h-4 text-slate-400" />
-            <h2 className="font-medium text-slate-200 text-sm">{appName} — logs</h2>
+            <Terminal className="w-4 h-4 text-text-muted" />
+            <h2 className="font-medium text-text-primary text-sm">{appName} — logs</h2>
             {streaming && (
               <span className={`flex items-center gap-1 text-xs ${connected ? 'text-emerald-400' : 'text-amber-400'}`}>
                 {connected ? <><WifiHigh className="w-3 h-3" /> live</> : <><WifiSlash className="w-3 h-3" /> reconnecting…</>}
@@ -76,10 +76,10 @@ export default function LogsModal({ appId, appName, onClose }: LogsModalProps) {
               <>
                 <select value={tail} onChange={e => { setTail(+e.target.value); loadStatic(+e.target.value) }}
                   aria-label="Number of log lines to show"
-                  className="text-xs bg-surface border border-border text-slate-300 px-2 py-1 rounded-md">
+                  className="text-xs bg-surface border border-border text-text-primary px-2 py-1 rounded-md">
                   {[50, 100, 300, 500].map(n => <option key={n} value={n}>Last {n} lines</option>)}
                 </select>
-                <button type="button" onClick={() => loadStatic()} className="text-slate-400 hover:text-slate-200 p-1.5 rounded-md hover:bg-white/5" title="Refresh">
+                <button type="button" onClick={() => loadStatic()} className="text-text-muted hover:text-text-primary p-1.5 rounded-md hover:bg-white/5" title="Refresh">
                   <ArrowsClockwise className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                 </button>
                 <button type="button" onClick={startStream}
@@ -93,14 +93,14 @@ export default function LogsModal({ appId, appName, onClose }: LogsModalProps) {
                 <WifiSlash className="w-3 h-3" /> Stop
               </button>
             )}
-            <button type="button" onClick={onClose} title="Close logs" className="text-slate-500 hover:text-slate-300 p-1.5 rounded-md hover:bg-white/5">
+            <button type="button" onClick={onClose} title="Close logs" className="text-text-muted hover:text-text-primary p-1.5 rounded-md hover:bg-white/5">
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto bg-surface p-4 font-mono text-xs text-slate-300 leading-relaxed">
+        <div className="flex-1 overflow-y-auto bg-surface p-4 font-mono text-xs text-text-primary leading-relaxed">
           {loading && !lines.length && (
-            <div className="flex items-center gap-2 text-slate-500"><CircleNotch className="w-3.5 h-3.5 animate-spin" /> Loading…</div>
+            <div className="flex items-center gap-2 text-text-muted"><CircleNotch className="w-3.5 h-3.5 animate-spin" /> Loading…</div>
           )}
           {lines.length > 0 ? (
             <pre className="whitespace-pre-wrap break-all">{lines.join('\n')}</pre>

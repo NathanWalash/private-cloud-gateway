@@ -61,8 +61,8 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 bg-accent/10 border border-accent/20 rounded-xl mb-4">
             <Globe className="w-6 h-6 text-accent" strokeWidth={1.5} />
           </div>
-          <h1 className="text-xl font-semibold text-slate-100">Private Cloud Gateway</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-xl font-semibold text-text-primary">Private Cloud Gateway</h1>
+          <p className="text-sm text-text-muted mt-1">
             {totpToken ? 'Two-factor authentication' : 'Sign in to your private cloud'}
           </p>
         </div>
@@ -78,7 +78,7 @@ export default function LoginPage() {
           {!totpToken ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
+                <label htmlFor="email" className="block text-xs font-medium text-text-muted mb-1.5">Email</label>
                 <input
                   id="email" type="email" autoComplete="email" required
                   className="input-field" placeholder="admin@example.com"
@@ -86,7 +86,7 @@ export default function LoginPage() {
                 />
               </div>
               <div>
-                <label htmlFor="password" className="block text-xs font-medium text-slate-400 mb-1.5">Password</label>
+                <label htmlFor="password" className="block text-xs font-medium text-text-muted mb-1.5">Password</label>
                 <input
                   id="password" type="password" autoComplete="current-password" required
                   className="input-field" placeholder="••••••••"
@@ -101,12 +101,12 @@ export default function LoginPage() {
             </form>
           ) : (
             <form onSubmit={handleTOTP} className="space-y-4">
-              <div className="flex items-center gap-2 text-xs text-slate-400 bg-accent/5 border border-accent/15 px-3 py-2.5 rounded-lg mb-1">
+              <div className="flex items-center gap-2 text-xs text-text-muted bg-accent/5 border border-accent/15 px-3 py-2.5 rounded-lg mb-1">
                 <ShieldCheck className="w-4 h-4 text-accent shrink-0" />
                 Enter the 6-digit code from your authenticator app.
               </div>
               <div>
-                <label htmlFor="totp" className="block text-xs font-medium text-slate-400 mb-1.5">Authenticator code</label>
+                <label htmlFor="totp" className="block text-xs font-medium text-text-muted mb-1.5">Authenticator code</label>
                 <input
                   id="totp" type="text" autoComplete="one-time-code"
                   inputMode="numeric" pattern="[0-9]*" maxLength={6}
@@ -124,7 +124,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => { setTotpToken(null); setError(''); setTotpCode('') }}
-                className="w-full text-xs text-slate-500 hover:text-slate-300 transition-colors py-1"
+                className="w-full text-xs text-text-muted hover:text-text-primary transition-colors py-1"
               >
                 Back to login
               </button>

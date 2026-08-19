@@ -45,15 +45,15 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-accent/10 border border-accent/20 rounded-2xl mb-4">
             <Globe className="w-7 h-7 text-accent" strokeWidth={1.5} />
           </div>
-          <h1 className="text-2xl font-semibold text-slate-100">Welcome to Private Cloud Gateway</h1>
-          <p className="text-sm text-slate-500 mt-1.5">Create your admin account to get started.</p>
+          <h1 className="text-2xl font-semibold text-text-primary">Welcome to Private Cloud Gateway</h1>
+          <p className="text-sm text-text-muted mt-1.5">Create your admin account to get started.</p>
         </div>
 
         <div className="card p-8">
           {/* Security note */}
           <div className="flex items-start gap-2.5 bg-accent/5 border border-accent/15 px-3.5 py-3 rounded-lg mb-6">
             <ShieldCheck className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-text-muted">
               This is your single private account. Your password is bcrypt-hashed and never stored in plain text.
             </p>
           </div>
@@ -68,7 +68,7 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">First name</label>
+                <label className="block text-xs font-medium text-text-muted mb-1.5">First name</label>
                 <input
                   type="text" required autoComplete="given-name"
                   className="input-field" placeholder="John"
@@ -76,7 +76,7 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">Last name</label>
+                <label className="block text-xs font-medium text-text-muted mb-1.5">Last name</label>
                 <input
                   type="text" autoComplete="family-name"
                   className="input-field" placeholder="Smith"
@@ -86,7 +86,7 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">Email</label>
               <input
                 type="email" required autoComplete="email"
                 className="input-field" placeholder="you@example.com"
@@ -95,7 +95,7 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Password</label>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">Password</label>
               <input
                 type="password" required autoComplete="new-password"
                 className="input-field" placeholder="At least 8 characters"
@@ -104,7 +104,7 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Confirm password</label>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">Confirm password</label>
               <input
                 type="password" required autoComplete="new-password"
                 className="input-field" placeholder="••••••••"
