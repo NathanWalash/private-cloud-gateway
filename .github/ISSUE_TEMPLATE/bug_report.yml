@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a problem with Private Cloud Gateway
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: A clear description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      options:
+        - Local dev (make dev-up)
+        - Oracle Cloud
+        - Other VM
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: From /api/status or the image tag.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      render: shell
