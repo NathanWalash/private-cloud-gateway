@@ -81,8 +81,8 @@ export default function BackupWidget() {
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Archive className="w-3.5 h-3.5 text-slate-400" />
-            <h3 className="text-sm font-medium text-slate-300">Backups</h3>
+            <Archive className="w-3.5 h-3.5 text-text-muted" />
+            <h3 className="text-sm font-medium text-text-primary">Backups</h3>
           </div>
           {loading && <CircleNotch className="w-3.5 h-3.5 animate-spin text-slate-600" />}
         </div>
@@ -94,8 +94,8 @@ export default function BackupWidget() {
               <div className="flex items-center gap-1.5 text-xs text-emerald-400">
                 <CheckCircle className="w-3 h-3" /> Last backup
               </div>
-              <p className="text-xs text-slate-300">{formatDate(latest.created_at)}</p>
-              <p className="text-xs text-slate-500">{formatSize(latest.size)}</p>
+              <p className="text-xs text-text-primary">{formatDate(latest.created_at)}</p>
+              <p className="text-xs text-text-muted">{formatSize(latest.size)}</p>
             </div>
           ) : !loading ? (
             <div className="flex items-center gap-1.5 text-xs text-amber-400">
@@ -133,7 +133,7 @@ export default function BackupWidget() {
             disabled={creating || restoring}
             className="w-full flex items-center justify-center gap-1.5 text-xs font-medium
                        bg-white/5 hover:bg-white/10 border border-border hover:border-text-muted
-                       text-slate-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                       text-text-primary px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             {creating
               ? <><CircleNotch className="w-3.5 h-3.5 animate-spin" /> Creating…</>
@@ -157,7 +157,7 @@ export default function BackupWidget() {
             disabled={creating || restoring}
             className="w-full flex items-center justify-center gap-1.5 text-xs font-medium
                        bg-white/5 hover:bg-white/10 border border-border hover:border-text-muted
-                       text-slate-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+                       text-text-muted px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             <UploadSimple className="w-3.5 h-3.5" />
             Restore from backup
@@ -165,14 +165,14 @@ export default function BackupWidget() {
 
           {backups.length > 0 && (
             <details className="group">
-              <summary className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer hover:text-slate-400 transition-colors list-none">
+              <summary className="flex items-center gap-1.5 text-xs text-text-muted cursor-pointer hover:text-text-muted transition-colors list-none">
                 <ArrowsClockwise className="w-3 h-3" />
                 {backups.length} backup{backups.length !== 1 ? 's' : ''} stored
               </summary>
               <div className="mt-2 space-y-1 max-h-28 overflow-y-auto">
                 {backups.map(b => (
                   <div key={b.name} className="flex items-center justify-between text-xs py-1 border-t border-border first:border-0">
-                    <span className="text-slate-500 truncate mr-2">{formatDate(b.created_at)}</span>
+                    <span className="text-text-muted truncate mr-2">{formatDate(b.created_at)}</span>
                     <span className="text-slate-600 shrink-0">{formatSize(b.size)}</span>
                   </div>
                 ))}
@@ -209,11 +209,11 @@ function RestoreDialog({
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="card w-full max-w-md">
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="font-semibold text-slate-100 flex items-center gap-2">
-            <UploadSimple className="w-4 h-4 text-slate-400" />
+          <h2 className="font-semibold text-text-primary flex items-center gap-2">
+            <UploadSimple className="w-4 h-4 text-text-muted" />
             Restore from backup
           </h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 p-1 rounded hover:bg-white/5">
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary p-1 rounded hover:bg-white/5">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -225,19 +225,19 @@ function RestoreDialog({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">Backup file (.pcg-backup)</label>
+            <label className="block text-xs font-medium text-text-muted mb-1.5">Backup file (.pcg-backup)</label>
             <input
               type="file"
               accept=".pcg-backup"
               onChange={e => setFile(e.target.files?.[0] ?? null)}
-              className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg
-                         file:border file:border-border file:bg-card file:text-slate-300
+              className="w-full text-xs text-text-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg
+                         file:border file:border-border file:bg-card file:text-text-primary
                          file:text-xs file:cursor-pointer hover:file:bg-white/10 file:transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+            <label className="block text-xs font-medium text-text-muted mb-1.5">
               Passphrase <span className="text-slate-600">(leave empty if unencrypted)</span>
             </label>
             <input
@@ -256,14 +256,14 @@ function RestoreDialog({
               onChange={e => setConfirmed(e.target.checked)}
               className="mt-0.5"
             />
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-text-muted">
               I understand this will overwrite my current data
             </span>
           </label>
         </div>
 
         <div className="flex items-center justify-end gap-3 p-5 border-t border-border">
-          <button onClick={onClose} className="text-sm text-slate-400 hover:text-slate-200 px-4 py-2 transition-colors">
+          <button onClick={onClose} className="text-sm text-text-muted hover:text-text-primary px-4 py-2 transition-colors">
             Cancel
           </button>
           <button

@@ -142,11 +142,11 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-surface">
       <header className="border-b border-border bg-card/50 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
-          <button type="button" onClick={() => navigate('/')} className="text-slate-400 hover:text-slate-200 p-1.5 rounded-md hover:bg-white/5 transition-colors">
+          <button type="button" onClick={() => navigate('/')} className="text-text-muted hover:text-text-primary p-1.5 rounded-md hover:bg-white/5 transition-colors">
             <CaretLeft className="w-4 h-4" />
           </button>
-          <Gear className="w-4 h-4 text-slate-400" />
-          <h1 className="font-semibold text-sm text-slate-100">Settings</h1>
+          <Gear className="w-4 h-4 text-text-muted" />
+          <h1 className="font-semibold text-sm text-text-primary">Settings</h1>
         </div>
       </header>
 
@@ -155,15 +155,15 @@ export default function SettingsPage() {
         {/* Runtime config */}
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <Globe className="w-4 h-4 text-slate-400" />
-            <h2 className="text-sm font-medium text-slate-300">Runtime configuration</h2>
+            <Globe className="w-4 h-4 text-text-muted" />
+            <h2 className="text-sm font-medium text-text-primary">Runtime configuration</h2>
           </div>
-          <p className="text-xs text-slate-500 mb-4">Stored in the database. Take effect after restart.</p>
+          <p className="text-xs text-text-muted mb-4">Stored in the database. Take effect after restart.</p>
           <div className="space-y-4">
             {FIELDS.map(f => (
               <div key={f.key} className="card p-4">
-                <label className="block text-xs font-medium text-slate-300 mb-1">{f.label}</label>
-                <p className="text-xs text-slate-500 mb-2">{f.description}</p>
+                <label className="block text-xs font-medium text-text-primary mb-1">{f.label}</label>
+                <p className="text-xs text-text-muted mb-2">{f.description}</p>
                 <div className="flex gap-2">
                   {f.type === 'select' ? (
                     <select
@@ -201,8 +201,8 @@ export default function SettingsPage() {
         {/* Two-factor authentication */}
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <Key className="w-4 h-4 text-slate-400" />
-            <h2 className="text-sm font-medium text-slate-300">Two-factor authentication</h2>
+            <Key className="w-4 h-4 text-text-muted" />
+            <h2 className="text-sm font-medium text-text-primary">Two-factor authentication</h2>
           </div>
 
           {totpMsg && (
@@ -216,14 +216,14 @@ export default function SettingsPage() {
 
           <div className="card p-5">
             {totpEnabled === null ? (
-              <p className="text-xs text-slate-500">Loading…</p>
+              <p className="text-xs text-text-muted">Loading…</p>
             ) : totpEnabled ? (
               <div>
                 <div className="flex items-center gap-2.5 mb-4">
                   <ShieldCheck className="w-5 h-5 text-emerald-400" />
                   <div>
-                    <p className="text-sm font-medium text-slate-200">TOTP is enabled</p>
-                    <p className="text-xs text-slate-500">Your account requires an authenticator code on login.</p>
+                    <p className="text-sm font-medium text-text-primary">TOTP is enabled</p>
+                    <p className="text-xs text-text-muted">Your account requires an authenticator code on login.</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -243,10 +243,10 @@ export default function SettingsPage() {
             ) : !totpSetup ? (
               <div>
                 <div className="flex items-center gap-2.5 mb-4">
-                  <Shield className="w-5 h-5 text-slate-500" />
+                  <Shield className="w-5 h-5 text-text-muted" />
                   <div>
-                    <p className="text-sm font-medium text-slate-300">TOTP not enabled</p>
-                    <p className="text-xs text-slate-500">Add a second factor using Google Authenticator, Authy, or 1Password.</p>
+                    <p className="text-sm font-medium text-text-primary">TOTP not enabled</p>
+                    <p className="text-xs text-text-muted">Add a second factor using Google Authenticator, Authy, or 1Password.</p>
                   </div>
                 </div>
                 <button type="button" onClick={startTOTPSetup} disabled={totpBusy}
@@ -257,22 +257,22 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-sm font-medium text-slate-200">Scan with your authenticator app</p>
+                <p className="text-sm font-medium text-text-primary">Scan with your authenticator app</p>
 
                 {/* Manual entry */}
                 <div className="bg-surface border border-border rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1.5">Manual entry key</p>
-                  <p className="font-mono text-sm text-slate-300 select-all break-all">{totpSetup.secret}</p>
+                  <p className="text-xs text-text-muted mb-1.5">Manual entry key</p>
+                  <p className="font-mono text-sm text-text-primary select-all break-all">{totpSetup.secret}</p>
                 </div>
 
                 {/* URI for deep link */}
                 <div className="bg-surface border border-border rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1.5">Or copy this link and open in your authenticator:</p>
+                  <p className="text-xs text-text-muted mb-1.5">Or copy this link and open in your authenticator:</p>
                   <a href={totpSetup.uri} className="text-xs text-accent hover:underline break-all">{totpSetup.uri.slice(0, 80)}…</a>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">Verify — enter the 6-digit code</label>
+                  <label className="block text-xs font-medium text-text-muted mb-1.5">Verify — enter the 6-digit code</label>
                   <div className="flex gap-2">
                     <input
                       type="text" inputMode="numeric" maxLength={6} autoFocus
@@ -287,7 +287,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
-                <button type="button" onClick={() => setTotpSetup(null)} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                <button type="button" onClick={() => setTotpSetup(null)} className="text-xs text-text-muted hover:text-text-primary transition-colors">
                   Cancel
                 </button>
               </div>
@@ -299,8 +299,8 @@ export default function SettingsPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-slate-400" />
-              <h2 className="text-sm font-medium text-slate-300">Recent activity</h2>
+              <Shield className="w-4 h-4 text-text-muted" />
+              <h2 className="text-sm font-medium text-text-primary">Recent activity</h2>
             </div>
             {auditTotal > 0 && (
               <span className="text-xs text-slate-600">{auditTotal} total</span>
@@ -310,8 +310,8 @@ export default function SettingsPage() {
             {audit.length === 0 && <p className="text-xs text-slate-600 p-4">No activity recorded.</p>}
             {audit.map(e => (
               <div key={e.id} className="px-4 py-2.5 flex items-center gap-3">
-                <span className="text-xs font-medium text-slate-400 w-36 shrink-0 truncate">{e.action}</span>
-                <span className="text-xs text-slate-500 flex-1 truncate">{e.actor}{e.detail ? ` — ${e.detail}` : ''}</span>
+                <span className="text-xs font-medium text-text-muted w-36 shrink-0 truncate">{e.action}</span>
+                <span className="text-xs text-text-muted flex-1 truncate">{e.actor}{e.detail ? ` — ${e.detail}` : ''}</span>
                 <span className="text-xs text-slate-600 shrink-0">{new Date(e.created_at).toLocaleString()}</span>
               </div>
             ))}
@@ -326,7 +326,7 @@ export default function SettingsPage() {
                   setAuditOffset(next)
                   api.audit(AUDIT_LIMIT, next).then(r => { setAudit(r.entries); setAuditTotal(r.total) }).catch(() => {})
                 }}
-                className="text-xs text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-colors px-2 py-1"
+                className="text-xs text-text-muted hover:text-text-primary disabled:opacity-30 transition-colors px-2 py-1"
               >
                 Previous
               </button>
@@ -341,7 +341,7 @@ export default function SettingsPage() {
                   setAuditOffset(next)
                   api.audit(AUDIT_LIMIT, next).then(r => { setAudit(r.entries); setAuditTotal(r.total) }).catch(() => {})
                 }}
-                className="text-xs text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-colors px-2 py-1"
+                className="text-xs text-text-muted hover:text-text-primary disabled:opacity-30 transition-colors px-2 py-1"
               >
                 Next
               </button>
@@ -352,19 +352,19 @@ export default function SettingsPage() {
         {/* Telegram notifications */}
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <Bell className="w-4 h-4 text-slate-400" />
-            <h2 className="text-sm font-medium text-slate-300">Telegram notifications</h2>
+            <Bell className="w-4 h-4 text-text-muted" />
+            <h2 className="text-sm font-medium text-text-primary">Telegram notifications</h2>
           </div>
-          <p className="text-xs text-slate-500 mb-4">
+          <p className="text-xs text-text-muted mb-4">
             Get alerted when monitors go down, apps crash, backups complete, or someone logs in.
-            Create a bot via <strong className="text-slate-400">@BotFather</strong> and send a message to it,
-            then use <strong className="text-slate-400">@userinfobot</strong> to find your chat ID.
+            Create a bot via <strong className="text-text-muted">@BotFather</strong> and send a message to it,
+            then use <strong className="text-text-muted">@userinfobot</strong> to find your chat ID.
           </p>
           <div className="space-y-4">
             {TELEGRAM_FIELDS.map(f => (
               <div key={f.key} className="card p-4">
-                <label className="block text-xs font-medium text-slate-300 mb-1">{f.label}</label>
-                <p className="text-xs text-slate-500 mb-2">{f.description}</p>
+                <label className="block text-xs font-medium text-text-primary mb-1">{f.label}</label>
+                <p className="text-xs text-text-muted mb-2">{f.description}</p>
                 <div className="flex gap-2">
                   <input type={f.type} className="flex-1 input-field text-sm" placeholder={f.placeholder}
                     value={values[f.key] ?? ''} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))} />
@@ -381,10 +381,10 @@ export default function SettingsPage() {
         {/* Email (SMTP) notifications */}
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <Bell className="w-4 h-4 text-slate-400" />
-            <h2 className="text-sm font-medium text-slate-300">Email notifications (SMTP)</h2>
+            <Bell className="w-4 h-4 text-text-muted" />
+            <h2 className="text-sm font-medium text-text-primary">Email notifications (SMTP)</h2>
           </div>
-          <p className="text-xs text-slate-500 mb-4">
+          <p className="text-xs text-text-muted mb-4">
             Receive email alerts for the same events as Telegram. Works with any SMTP provider
             (Gmail App Passwords, SendGrid, Mailgun, Fastmail, etc.).
             Leave SMTP host blank to disable.
@@ -392,8 +392,8 @@ export default function SettingsPage() {
           <div className="space-y-4">
             {SMTP_FIELDS.map(f => (
               <div key={f.key} className="card p-4">
-                <label className="block text-xs font-medium text-slate-300 mb-1">{f.label}</label>
-                <p className="text-xs text-slate-500 mb-2">{f.description}</p>
+                <label className="block text-xs font-medium text-text-primary mb-1">{f.label}</label>
+                <p className="text-xs text-text-muted mb-2">{f.description}</p>
                 <div className="flex gap-2">
                   <input type={f.type} className="flex-1 input-field text-sm" placeholder={f.placeholder}
                     value={values[f.key] ?? ''} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))} />
@@ -410,19 +410,19 @@ export default function SettingsPage() {
         {/* Webhook notifications */}
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <Bell className="w-4 h-4 text-slate-400" />
-            <h2 className="text-sm font-medium text-slate-300">Webhook notifications</h2>
+            <Bell className="w-4 h-4 text-text-muted" />
+            <h2 className="text-sm font-medium text-text-primary">Webhook notifications</h2>
           </div>
-          <p className="text-xs text-slate-500 mb-4">
+          <p className="text-xs text-text-muted mb-4">
             POST a JSON payload to any URL on every event. Integrates with n8n, Zapier, Make,
             Discord (webhook URL), Slack (incoming webhook), or any custom endpoint.
-            Payload: <code className="text-slate-400 bg-black/20 px-1 rounded">&#123; event, message, time &#125;</code>
+            Payload: <code className="text-text-muted bg-black/20 px-1 rounded">&#123; event, message, time &#125;</code>
           </p>
           <div className="space-y-4">
             {WEBHOOK_FIELDS.map(f => (
               <div key={f.key} className="card p-4">
-                <label className="block text-xs font-medium text-slate-300 mb-1">{f.label}</label>
-                <p className="text-xs text-slate-500 mb-2">{f.description}</p>
+                <label className="block text-xs font-medium text-text-primary mb-1">{f.label}</label>
+                <p className="text-xs text-text-muted mb-2">{f.description}</p>
                 <div className="flex gap-2">
                   <input type={f.type} className="flex-1 input-field text-sm" placeholder={f.placeholder}
                     value={values[f.key] ?? ''} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))} />
@@ -440,17 +440,17 @@ export default function SettingsPage() {
         {totpEnabled && (
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <Key className="w-4 h-4 text-slate-400" />
-              <h2 className="text-sm font-medium text-slate-300">TOTP recovery codes</h2>
+              <Key className="w-4 h-4 text-text-muted" />
+              <h2 className="text-sm font-medium text-text-primary">TOTP recovery codes</h2>
             </div>
             <div className="card p-5">
-              <p className="text-xs text-slate-400 mb-3">
+              <p className="text-xs text-text-muted mb-3">
                 Recovery codes let you sign in if you lose access to your authenticator app.
                 Each code can only be used once. Keep them somewhere safe.
               </p>
               {backupCodesUnused !== null && (
-                <p className="text-xs text-slate-500 mb-3">
-                  <strong className="text-slate-300">{backupCodesUnused}</strong> unused codes remaining
+                <p className="text-xs text-text-muted mb-3">
+                  <strong className="text-text-primary">{backupCodesUnused}</strong> unused codes remaining
                 </p>
               )}
               {generatedCodes ? (
@@ -459,21 +459,21 @@ export default function SettingsPage() {
                     <p className="text-xs text-amber-400 mb-3 font-medium">Save these now — they will not be shown again.</p>
                     <div className="grid grid-cols-2 gap-2">
                       {generatedCodes.map((c, i) => (
-                        <code key={i} className="text-sm font-mono text-slate-200 bg-black/30 px-3 py-1.5 rounded text-center">{c}</code>
+                        <code key={i} className="text-sm font-mono text-text-primary bg-black/30 px-3 py-1.5 rounded text-center">{c}</code>
                       ))}
                     </div>
                     <button type="button" onClick={() => navigator.clipboard.writeText(generatedCodes.join('\n'))}
-                      className="mt-3 flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors">
+                      className="mt-3 flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary transition-colors">
                       <Copy className="w-3 h-3" /> Copy all
                     </button>
                   </div>
-                  <button type="button" onClick={() => setGeneratedCodes(null)} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                  <button type="button" onClick={() => setGeneratedCodes(null)} className="text-xs text-text-muted hover:text-text-primary transition-colors">
                     Done, I've saved them
                   </button>
                 </div>
               ) : (
                 <button type="button" onClick={genBackupCodes} disabled={totpBusy}
-                  className="flex items-center gap-2 text-xs font-medium px-4 py-2 bg-white/5 hover:bg-white/10 border border-border text-slate-300 rounded-lg transition-colors">
+                  className="flex items-center gap-2 text-xs font-medium px-4 py-2 bg-white/5 hover:bg-white/10 border border-border text-text-primary rounded-lg transition-colors">
                   {totpBusy ? <CircleNotch className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
                   Generate new recovery codes
                 </button>
@@ -485,8 +485,8 @@ export default function SettingsPage() {
         {/* Password change */}
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <Lock className="w-4 h-4 text-slate-400" />
-            <h2 className="text-sm font-medium text-slate-300">Change password</h2>
+            <Lock className="w-4 h-4 text-text-muted" />
+            <h2 className="text-sm font-medium text-text-primary">Change password</h2>
           </div>
           <div className="card p-5 space-y-3">
             {pwMsg && (
@@ -496,15 +496,15 @@ export default function SettingsPage() {
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Current password</label>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">Current password</label>
               <input type="password" className="input-field text-sm" placeholder="••••••••" value={pwCurrent} onChange={e => setPwCurrent(e.target.value)} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">New password</label>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">New password</label>
               <input type="password" className="input-field text-sm" placeholder="At least 8 characters" value={pwNew} onChange={e => setPwNew(e.target.value)} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Confirm new password</label>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">Confirm new password</label>
               <input type="password" className="input-field text-sm" placeholder="••••••••" value={pwConfirm} onChange={e => setPwConfirm(e.target.value)} />
             </div>
             <button type="button" onClick={changePassword} disabled={pwBusy || !pwCurrent || !pwNew || !pwConfirm}
@@ -517,15 +517,15 @@ export default function SettingsPage() {
         {/* Security info */}
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <Archive className="w-4 h-4 text-slate-400" />
-            <h2 className="text-sm font-medium text-slate-300">Security overview</h2>
+            <Archive className="w-4 h-4 text-text-muted" />
+            <h2 className="text-sm font-medium text-text-primary">Security overview</h2>
           </div>
-          <div className="card p-4 space-y-2 text-xs text-slate-500">
-            <p>Passwords hashed with <strong className="text-slate-400">bcrypt</strong>.</p>
-            <p>Session cookies are <strong className="text-slate-400">HttpOnly</strong>, <strong className="text-slate-400">SameSite=Lax</strong>.</p>
-            <p>Backups encrypted with <strong className="text-slate-400">AES-256-GCM</strong> + PBKDF2 key derivation when a passphrase is set.</p>
-            <p>Only Caddy exposes public ports. All app containers use <strong className="text-slate-400">expose:</strong> only.</p>
-            <p>Login rate-limited to <strong className="text-slate-400">10 attempts / IP / minute</strong>.</p>
+          <div className="card p-4 space-y-2 text-xs text-text-muted">
+            <p>Passwords hashed with <strong className="text-text-muted">bcrypt</strong>.</p>
+            <p>Session cookies are <strong className="text-text-muted">HttpOnly</strong>, <strong className="text-text-muted">SameSite=Lax</strong>.</p>
+            <p>Backups encrypted with <strong className="text-text-muted">AES-256-GCM</strong> + PBKDF2 key derivation when a passphrase is set.</p>
+            <p>Only Caddy exposes public ports. All app containers use <strong className="text-text-muted">expose:</strong> only.</p>
+            <p>Login rate-limited to <strong className="text-text-muted">10 attempts / IP / minute</strong>.</p>
           </div>
         </section>
 

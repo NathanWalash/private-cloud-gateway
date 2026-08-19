@@ -31,8 +31,8 @@ export default function InstallDialog({ blueprints, onClose, onInstalled }: Inst
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="card w-full max-w-lg">
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="font-semibold text-slate-100">Install App</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors p-1 rounded-md hover:bg-white/5">
+          <h2 className="font-semibold text-text-primary">Install App</h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors p-1 rounded-md hover:bg-white/5">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -41,7 +41,7 @@ export default function InstallDialog({ blueprints, onClose, onInstalled }: Inst
           {blueprints.length === 0 ? (
             <div className="text-center py-6">
               <Package className="w-8 h-8 text-slate-600 mx-auto mb-3" />
-              <p className="text-sm text-slate-400 mb-1">No blueprints found</p>
+              <p className="text-sm text-text-muted mb-1">No blueprints found</p>
               <p className="text-xs text-slate-600">Add <code className="bg-surface px-1 rounded">*.yaml</code> files to the <code className="bg-surface px-1 rounded">blueprints/</code> directory.</p>
             </div>
           ) : (
@@ -54,10 +54,10 @@ export default function InstallDialog({ blueprints, onClose, onInstalled }: Inst
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Package className="w-5 h-5 text-slate-400 shrink-0" />
+                    <Package className="w-5 h-5 text-text-muted shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-200">{bp.name}</p>
-                      {bp.description && <p className="text-xs text-slate-500 mt-0.5 truncate">{bp.description}</p>}
+                      <p className="text-sm font-medium text-text-primary">{bp.name}</p>
+                      {bp.description && <p className="text-xs text-text-muted mt-0.5 truncate">{bp.description}</p>}
                     </div>
                     {selected === bp.id && <Check className="w-4 h-4 text-accent ml-auto shrink-0" />}
                   </div>
@@ -75,7 +75,7 @@ export default function InstallDialog({ blueprints, onClose, onInstalled }: Inst
         </div>
 
         <div className="flex items-center justify-end gap-3 p-5 border-t border-border">
-          <button onClick={onClose} className="text-sm text-slate-400 hover:text-slate-200 px-4 py-2 transition-colors">
+          <button onClick={onClose} className="text-sm text-text-muted hover:text-text-primary px-4 py-2 transition-colors">
             Cancel
           </button>
           <button

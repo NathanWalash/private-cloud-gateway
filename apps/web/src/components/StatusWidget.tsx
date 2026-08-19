@@ -18,7 +18,7 @@ export default function StatusWidget() {
     <div className="card p-5">
       <div className="flex items-center gap-2 mb-4">
         <Pulse className="w-3.5 h-3.5 text-emerald-400" />
-        <h3 className="text-sm font-medium text-slate-300">System</h3>
+        <h3 className="text-sm font-medium text-text-primary">System</h3>
       </div>
 
       {error && (
@@ -31,8 +31,8 @@ export default function StatusWidget() {
       {status && (
         <div className="space-y-2.5">
           <Stat icon={<Pulse className="w-3 h-3 text-emerald-400" />} label="Status" value="Healthy" valueClass="text-emerald-400" />
-          <Stat icon={<Clock className="w-3 h-3 text-slate-500" />} label="Uptime" value={status.uptime} />
-          <Stat icon={<Tag className="w-3 h-3 text-slate-500" />} label="Version" value={`v${status.version}`} />
+          <Stat icon={<Clock className="w-3 h-3 text-text-muted" />} label="Uptime" value={status.uptime} />
+          <Stat icon={<Tag className="w-3 h-3 text-text-muted" />} label="Version" value={`v${status.version}`} />
         </div>
       )}
 
@@ -50,7 +50,7 @@ export default function StatusWidget() {
   )
 }
 
-function Stat({ icon, label, value, valueClass = 'text-slate-200' }: {
+function Stat({ icon, label, value, valueClass = 'text-text-primary' }: {
   icon: React.ReactNode
   label: string
   value: string
@@ -58,7 +58,7 @@ function Stat({ icon, label, value, valueClass = 'text-slate-200' }: {
 }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="flex items-center gap-1.5 text-xs text-slate-500">{icon}{label}</span>
+      <span className="flex items-center gap-1.5 text-xs text-text-muted">{icon}{label}</span>
       <span className={`text-xs font-medium ${valueClass}`}>{value}</span>
     </div>
   )

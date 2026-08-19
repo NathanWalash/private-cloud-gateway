@@ -41,8 +41,8 @@ export default function MonitorWidget() {
     <div className="card p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Pulse className="w-3.5 h-3.5 text-slate-400" />
-          <h3 className="text-sm font-medium text-slate-300">API Monitors</h3>
+          <Pulse className="w-3.5 h-3.5 text-text-muted" />
+          <h3 className="text-sm font-medium text-text-primary">API Monitors</h3>
         </div>
         <button
           onClick={() => setShowAdd(v => !v)}
@@ -87,7 +87,7 @@ export default function MonitorWidget() {
                 : <div className="w-3.5 h-3.5 rounded-full bg-slate-600 shrink-0" />
             }
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-slate-300 truncate">{m.name}</p>
+              <p className="text-xs font-medium text-text-primary truncate">{m.name}</p>
               {m.latency_ms && <p className="text-xs text-slate-600">{m.latency_ms}ms</p>}
             </div>
             <button

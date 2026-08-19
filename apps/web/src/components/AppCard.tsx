@@ -9,9 +9,9 @@ import LogsModal from './LogsModal'
 
 const statusConfig = {
   running: { label: 'Running',  color: 'text-emerald-400', dot: 'bg-emerald-400' },
-  stopped: { label: 'Stopped',  color: 'text-slate-500',   dot: 'bg-slate-600' },
+  stopped: { label: 'Stopped',  color: 'text-text-muted',   dot: 'bg-slate-600' },
   starting:{ label: 'Starting', color: 'text-amber-400',   dot: 'bg-amber-400 animate-pulse' },
-  missing: { label: 'Missing',  color: 'text-slate-500',   dot: 'bg-slate-700' },
+  missing: { label: 'Missing',  color: 'text-text-muted',   dot: 'bg-slate-700' },
   error:   { label: 'Error',    color: 'text-red-400',     dot: 'bg-red-500' },
 }
 
@@ -56,7 +56,7 @@ export default function AppCard({ app, onStatusChange, updateAvailable = false }
                 title={`Health: ${app.health_status}`}
                 className={`text-xs ${
                   app.health_status === 'healthy' ? 'text-emerald-400' :
-                  app.health_status === 'unreachable' ? 'text-slate-500' :
+                  app.health_status === 'unreachable' ? 'text-text-muted' :
                   'text-amber-400'
                 }`}
               >
@@ -75,10 +75,10 @@ export default function AppCard({ app, onStatusChange, updateAvailable = false }
 
         {/* Name + URL */}
         <div>
-          <h3 className="font-medium text-slate-100">{app.name}</h3>
+          <h3 className="font-medium text-text-primary">{app.name}</h3>
           <a
             href={app.url} target="_blank" rel="noopener noreferrer"
-            className="text-xs text-slate-500 hover:text-accent transition-colors flex items-center gap-1 mt-0.5 truncate"
+            className="text-xs text-text-muted hover:text-accent transition-colors flex items-center gap-1 mt-0.5 truncate"
           >
             {app.url}
             <ArrowSquareOut className="w-3 h-3 shrink-0" />
@@ -95,16 +95,16 @@ export default function AppCard({ app, onStatusChange, updateAvailable = false }
         {/* Controls */}
         <div className="flex items-center gap-1 pt-1 border-t border-border flex-wrap">
           {busy
-            ? <CircleNotch className="w-3.5 h-3.5 animate-spin text-slate-500 ml-1" />
+            ? <CircleNotch className="w-3.5 h-3.5 animate-spin text-text-muted ml-1" />
             : app.status === 'running'
               ? <>
-                  <CtrlBtn icon={<Square className="w-3 h-3" />} label="Stop" onClick={() => action(() => api.stopApp(app.id))} className="text-slate-400 hover:text-slate-200 hover:bg-white/5" />
-                  <CtrlBtn icon={<ArrowCounterClockwise className="w-3 h-3" />} label="Restart" onClick={() => action(() => api.restartApp(app.id))} className="text-slate-400 hover:text-slate-200 hover:bg-white/5" />
+                  <CtrlBtn icon={<Square className="w-3 h-3" />} label="Stop" onClick={() => action(() => api.stopApp(app.id))} className="text-text-muted hover:text-text-primary hover:bg-white/5" />
+                  <CtrlBtn icon={<ArrowCounterClockwise className="w-3 h-3" />} label="Restart" onClick={() => action(() => api.restartApp(app.id))} className="text-text-muted hover:text-text-primary hover:bg-white/5" />
                 </>
               : <CtrlBtn icon={<Play className="w-3 h-3" />} label="Start" onClick={() => action(() => api.startApp(app.id))} className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" />
           }
-          <CtrlBtn icon={<Terminal className="w-3 h-3" />} label="Logs" onClick={() => setShowLogs(true)} className="text-slate-500 hover:text-slate-300 hover:bg-white/5" disabled={busy} />
-          <CtrlBtn icon={<ArrowsClockwise className="w-3 h-3" />} label="Update" onClick={() => action(() => api.updateApp(app.id))} className="text-slate-500 hover:text-blue-300 hover:bg-blue-500/10" disabled={busy} />
+          <CtrlBtn icon={<Terminal className="w-3 h-3" />} label="Logs" onClick={() => setShowLogs(true)} className="text-text-muted hover:text-text-primary hover:bg-white/5" disabled={busy} />
+          <CtrlBtn icon={<ArrowsClockwise className="w-3 h-3" />} label="Update" onClick={() => action(() => api.updateApp(app.id))} className="text-text-muted hover:text-blue-300 hover:bg-blue-500/10" disabled={busy} />
           <CtrlBtn icon={<Trash className="w-3 h-3" />} label="Remove" onClick={() => action(() => api.uninstallApp(app.id))} className="ml-auto text-red-400 hover:text-red-300 hover:bg-red-500/10" disabled={busy} />
         </div>
       </div>
