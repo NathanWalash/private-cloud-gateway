@@ -19,16 +19,24 @@ import (
 
 // fakeDocker records the blueprint passed to Install so we can assert what would
 // actually be sent to Docker.
-type fakeDocker struct{ installed *blueprint.Blueprint }
+type fakeDocker struct {
+	installed *blueprint.Blueprint
+	removed   string
+}
 
 func (f *fakeDocker) Install(_ context.Context, bp *blueprint.Blueprint) error {
 	f.installed = bp
 	return nil
 }
-func (f *fakeDocker) Start(context.Context, string) error                  { return nil }
-func (f *fakeDocker) Stop(context.Context, string) error                   { return nil }
-func (f *fakeDocker) Restart(context.Context, string) error                { return nil }
-func (f *fakeDocker) Remove(context.Context, string) error                 { return nil }
+func (f *fakeDocker) Start(context.Context, string) error { return nil }
+func (f *fakeDocker) Stop(context.Context, string) error  { return nil }
+func (f *fakeDocker) Restart(context.Context, string) error {
+	return nil
+}
+func (f *fakeDocker) Remove(_ context.Context, name string) error {
+	f.removed = name
+	return nil
+}
 func (f *fakeDocker) StatusAfterStart(context.Context, string, int) string { return "running" }
 func (f *fakeDocker) Logs(context.Context, string, int) (string, error)    { return "", nil }
 func (f *fakeDocker) LogsFollow(context.Context, string) (io.ReadCloser, error) {
