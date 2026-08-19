@@ -124,7 +124,11 @@ jobs:
           cache-dependency-path: apps/core/go.sum
 
       - name: Run tests
-        run: go test -v -race -count=1 ./...
+        run: go test -race -count=1 -coverprofile=coverage.out ./...
+        working-directory: apps/core
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
         working-directory: apps/core
 
   # ── Node type-check and build ─────────────────────────────────────────────
