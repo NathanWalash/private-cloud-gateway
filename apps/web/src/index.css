@@ -9,6 +9,7 @@
   --color-border: #24262c;
   --color-text-primary: #ededf0;
   --color-text-muted: #9a9ba3;
+  --color-accent: #5b5bd6;
 }
 
 /* Light theme */
@@ -28,6 +29,25 @@
 
   * {
     @apply box-border;
+  }
+
+  /* Accessibility floor: visible keyboard focus. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Respect the user's reduced-motion preference. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
