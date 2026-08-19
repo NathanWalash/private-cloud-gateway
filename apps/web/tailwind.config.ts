@@ -12,12 +12,13 @@ export default {
         'text-primary': 'var(--color-text-primary)',
         'text-muted': 'var(--color-text-muted)',
         accent: {
-          DEFAULT: '#6366f1',
-          hover: '#5254cc',
+          DEFAULT: '#5b5bd6',
+          hover: '#4f4fc4',
         },
       },
       fontFamily: {
         sans: ['system-ui', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
     },
   },

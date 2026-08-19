@@ -2,22 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dark theme (default) */
+/* Dark theme (default) — near-neutral greys, high-contrast text (see design.md) */
 :root {
-  --color-surface: #0f1117;
-  --color-card: #1a1d27;
-  --color-border: #2d3148;
-  --color-text-primary: #e2e8f0;
-  --color-text-muted: #94a3b8;
+  --color-surface: #0a0a0b;
+  --color-card: #141518;
+  --color-border: #24262c;
+  --color-text-primary: #ededf0;
+  --color-text-muted: #9a9ba3;
 }
 
 /* Light theme */
 :root.light {
-  --color-surface: #f1f5f9;
+  --color-surface: #fbfbfc;
   --color-card: #ffffff;
-  --color-border: #e2e8f0;
-  --color-text-primary: #0f172a;
-  --color-text-muted: #64748b;
+  --color-border: #ececef;
+  --color-text-primary: #0a0a0b;
+  --color-text-muted: #6b6c74;
 }
 
 @layer base {
@@ -32,20 +32,21 @@
 }
 
 @layer components {
+  /* One radius token everywhere: 10px (see design.md). */
   .btn-primary {
     @apply w-full py-2.5 px-4 bg-accent hover:bg-accent-hover text-white font-medium
-           rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed
+           rounded-[10px] transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed
            flex items-center justify-center;
   }
 
   .input-field {
-    @apply w-full px-3 py-2.5 bg-surface border border-border rounded-lg
+    @apply w-full px-3 py-2.5 bg-surface border border-border rounded-[10px]
            placeholder-[var(--color-text-muted)] outline-none focus:border-accent
            transition-colors duration-150 text-sm;
     color: var(--color-text-primary);
   }
 
   .card {
-    @apply bg-card border border-border rounded-xl;
+    @apply bg-card border border-border rounded-[10px];
   }
 }
