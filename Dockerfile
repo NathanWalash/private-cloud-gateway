@@ -34,7 +34,11 @@ COPY apps/core/ .
 # Replace placeholder with the real built web app
 COPY --from=web-builder /web/dist ./web/dist
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o cloud-core .
+# Build version, injected at link time (defaults to "dev" for local builds).
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s -X github.com/NathanWalash/private-cloud-gateway/apps/core/internal/version.Version=${VERSION}" \
+    -o cloud-core .
 
 # ── Test stage (CI: docker build --target tester) ─────────────────────────────
 # -race requires CGO; the race detector runs in the go-test CI job instead.

@@ -16,6 +16,7 @@ import (
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/auth"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/caddy"
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/docker"
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/version"
 )
 
 // Server wraps the HTTP mux and holds shared dependencies.
@@ -37,7 +38,7 @@ func New(
 	mux := http.NewServeMux()
 
 	authHandler := auth.NewHandler(db, loginURL, cookieDomain)
-	apiHandler := api.NewHandler(db, "0.2.0", dm, cm, blueprintDir, cookieDomain, scheme)
+	apiHandler := api.NewHandler(db, version.Version, dm, cm, blueprintDir, cookieDomain, scheme)
 
 	// ── Auth & setup ─────────────────────────────────────────────────────────
 	// When SPA mode is active, /login is handled by React Router — serve index.html.
