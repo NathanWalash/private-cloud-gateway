@@ -118,7 +118,11 @@ curl -fsSL https://raw.githubusercontent.com/NathanWalash/private-cloud-gateway/
 The installer prompts for your domain and admin email, generates secrets, and
 configures systemd + the firewall. Point `A yourdomain.com` and
 `A *.yourdomain.com` at the server, then visit `https://home.yourdomain.com`.
-Full details in [`infra/oracle/README.md`](infra/oracle/README.md).
+
+Updates are **deliberate and versioned** — production runs a pinned release tag
+and only moves when you deploy one (with backup + auto-rollback). See
+[`docs/deployment.md`](docs/deployment.md) for the dev → prod workflow, and
+[`infra/oracle/README.md`](infra/oracle/README.md) for VM specifics.
 
 ## Security
 
