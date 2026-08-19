@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Settings, Globe, Shield, Archive, ChevronLeft,
-  Save, Loader2, CheckCircle, AlertCircle,
-  ShieldCheck, ShieldOff, Key, Bell, Lock, Copy,
-} from 'lucide-react'
+  Gear, Globe, Shield, Archive, CaretLeft,
+  FloppyDisk, CircleNotch, CheckCircle, WarningCircle,
+  ShieldCheck, ShieldSlash, Key, Bell, Lock, Copy,
+} from '@phosphor-icons/react'
 import { api, ApiError } from '../api/client'
 
 interface SettingField {
@@ -143,9 +143,9 @@ export default function SettingsPage() {
       <header className="border-b border-border bg-card/50 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
           <button type="button" onClick={() => navigate('/')} className="text-slate-400 hover:text-slate-200 p-1.5 rounded-md hover:bg-white/5 transition-colors">
-            <ChevronLeft className="w-4 h-4" />
+            <CaretLeft className="w-4 h-4" />
           </button>
-          <Settings className="w-4 h-4 text-slate-400" />
+          <Gear className="w-4 h-4 text-slate-400" />
           <h1 className="font-semibold text-sm text-slate-100">Settings</h1>
         </div>
       </header>
@@ -189,8 +189,8 @@ export default function SettingsPage() {
                     className="px-3 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-lg text-xs transition-colors shrink-0"
                   >
                     {saved === f.key ? <CheckCircle className="w-3.5 h-3.5" />
-                      : saving === f.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      : <Save className="w-3.5 h-3.5" />}
+                      : saving === f.key ? <CircleNotch className="w-3.5 h-3.5 animate-spin" />
+                      : <FloppyDisk className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
@@ -209,7 +209,7 @@ export default function SettingsPage() {
             <div className={`flex items-center gap-2 text-xs px-3 py-2.5 rounded-lg mb-4 border ${
               totpMsg.ok ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-red-400 bg-red-500/10 border-red-500/20'
             }`}>
-              {totpMsg.ok ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+              {totpMsg.ok ? <CheckCircle className="w-4 h-4 shrink-0" /> : <WarningCircle className="w-4 h-4 shrink-0" />}
               {totpMsg.text}
             </div>
           )}
@@ -236,7 +236,7 @@ export default function SettingsPage() {
                   />
                   <button type="button" onClick={disableTOTP} disabled={totpBusy || totpDisableCode.length < 6}
                     className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-xs transition-colors shrink-0">
-                    {totpBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5" />}
+                    {totpBusy ? <CircleNotch className="w-3.5 h-3.5 animate-spin" /> : <ShieldSlash className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
@@ -251,7 +251,7 @@ export default function SettingsPage() {
                 </div>
                 <button type="button" onClick={startTOTPSetup} disabled={totpBusy}
                   className="flex items-center gap-2 text-xs font-medium px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-lg transition-colors">
-                  {totpBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
+                  {totpBusy ? <CircleNotch className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
                   Set up authenticator app
                 </button>
               </div>
@@ -283,7 +283,7 @@ export default function SettingsPage() {
                     />
                     <button type="button" onClick={confirmTOTP} disabled={totpBusy || totpCode.length < 6}
                       className="px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-lg text-sm transition-colors shrink-0 disabled:opacity-50">
-                      {totpBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enable'}
+                      {totpBusy ? <CircleNotch className="w-4 h-4 animate-spin" /> : 'Enable'}
                     </button>
                   </div>
                 </div>
@@ -370,7 +370,7 @@ export default function SettingsPage() {
                     value={values[f.key] ?? ''} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))} />
                   <button type="button" onClick={() => saveSetting(f.key, values[f.key] ?? '')} disabled={saving === f.key}
                     className="px-3 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-lg text-xs transition-colors shrink-0">
-                    {saved === f.key ? <CheckCircle className="w-3.5 h-3.5" /> : saving === f.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    {saved === f.key ? <CheckCircle className="w-3.5 h-3.5" /> : saving === f.key ? <CircleNotch className="w-3.5 h-3.5 animate-spin" /> : <FloppyDisk className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
@@ -399,7 +399,7 @@ export default function SettingsPage() {
                     value={values[f.key] ?? ''} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))} />
                   <button type="button" onClick={() => saveSetting(f.key, values[f.key] ?? '')} disabled={saving === f.key}
                     className="px-3 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-lg text-xs transition-colors shrink-0">
-                    {saved === f.key ? <CheckCircle className="w-3.5 h-3.5" /> : saving === f.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    {saved === f.key ? <CheckCircle className="w-3.5 h-3.5" /> : saving === f.key ? <CircleNotch className="w-3.5 h-3.5 animate-spin" /> : <FloppyDisk className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
@@ -428,7 +428,7 @@ export default function SettingsPage() {
                     value={values[f.key] ?? ''} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))} />
                   <button type="button" onClick={() => saveSetting(f.key, values[f.key] ?? '')} disabled={saving === f.key}
                     className="px-3 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-lg text-xs transition-colors shrink-0">
-                    {saved === f.key ? <CheckCircle className="w-3.5 h-3.5" /> : saving === f.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    {saved === f.key ? <CheckCircle className="w-3.5 h-3.5" /> : saving === f.key ? <CircleNotch className="w-3.5 h-3.5 animate-spin" /> : <FloppyDisk className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
@@ -474,7 +474,7 @@ export default function SettingsPage() {
               ) : (
                 <button type="button" onClick={genBackupCodes} disabled={totpBusy}
                   className="flex items-center gap-2 text-xs font-medium px-4 py-2 bg-white/5 hover:bg-white/10 border border-border text-slate-300 rounded-lg transition-colors">
-                  {totpBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
+                  {totpBusy ? <CircleNotch className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
                   Generate new recovery codes
                 </button>
               )}
@@ -491,7 +491,7 @@ export default function SettingsPage() {
           <div className="card p-5 space-y-3">
             {pwMsg && (
               <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${pwMsg.ok ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-red-400 bg-red-500/10 border-red-500/20'}`}>
-                {pwMsg.ok ? <CheckCircle className="w-3.5 h-3.5 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 shrink-0" />}
+                {pwMsg.ok ? <CheckCircle className="w-3.5 h-3.5 shrink-0" /> : <WarningCircle className="w-3.5 h-3.5 shrink-0" />}
                 {pwMsg.text}
               </div>
             )}
@@ -509,7 +509,7 @@ export default function SettingsPage() {
             </div>
             <button type="button" onClick={changePassword} disabled={pwBusy || !pwCurrent || !pwNew || !pwConfirm}
               className="btn-primary !w-auto px-6 text-sm disabled:opacity-50">
-              {pwBusy ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating…</> : 'Update password'}
+              {pwBusy ? <><CircleNotch className="w-3.5 h-3.5 animate-spin" /> Updating…</> : 'Update password'}
             </button>
           </div>
         </section>

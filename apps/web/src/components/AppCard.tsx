@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import {
-  ExternalLink, Play, Square, RotateCcw, Trash2,
-  Loader2, Terminal, RefreshCw, AlertTriangle, HeartPulse, ArrowUpCircle,
-} from 'lucide-react'
+  ArrowSquareOut, Play, Square, ArrowCounterClockwise, Trash,
+  CircleNotch, Terminal, ArrowsClockwise, Warning, Heartbeat, ArrowCircleUp,
+} from '@phosphor-icons/react'
 import { App, api } from '../api/client'
 import AppIcon from './AppIcon'
 import LogsModal from './LogsModal'
@@ -47,7 +47,7 @@ export default function AppCard({ app, onStatusChange, updateAvailable = false }
             {/* Update available badge */}
             {updateAvailable && (
               <span title="Update available" className="text-blue-400">
-                <ArrowUpCircle className="w-3.5 h-3.5" />
+                <ArrowCircleUp className="w-3.5 h-3.5" />
               </span>
             )}
             {/* Health check indicator — only shown when running */}
@@ -60,12 +60,12 @@ export default function AppCard({ app, onStatusChange, updateAvailable = false }
                   'text-amber-400'
                 }`}
               >
-                <HeartPulse className="w-3 h-3" />
+                <Heartbeat className="w-3 h-3" />
               </span>
             )}
             <span className={`flex items-center gap-1.5 text-xs font-medium ${status.color}`}>
               {app.status === 'error'
-                ? <AlertTriangle className="w-3 h-3" />
+                ? <Warning className="w-3 h-3" />
                 : <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
               }
               {status.label}
@@ -81,7 +81,7 @@ export default function AppCard({ app, onStatusChange, updateAvailable = false }
             className="text-xs text-slate-500 hover:text-accent transition-colors flex items-center gap-1 mt-0.5 truncate"
           >
             {app.url}
-            <ExternalLink className="w-3 h-3 shrink-0" />
+            <ArrowSquareOut className="w-3 h-3 shrink-0" />
           </a>
         </div>
 
@@ -95,17 +95,17 @@ export default function AppCard({ app, onStatusChange, updateAvailable = false }
         {/* Controls */}
         <div className="flex items-center gap-1 pt-1 border-t border-border flex-wrap">
           {busy
-            ? <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500 ml-1" />
+            ? <CircleNotch className="w-3.5 h-3.5 animate-spin text-slate-500 ml-1" />
             : app.status === 'running'
               ? <>
                   <CtrlBtn icon={<Square className="w-3 h-3" />} label="Stop" onClick={() => action(() => api.stopApp(app.id))} className="text-slate-400 hover:text-slate-200 hover:bg-white/5" />
-                  <CtrlBtn icon={<RotateCcw className="w-3 h-3" />} label="Restart" onClick={() => action(() => api.restartApp(app.id))} className="text-slate-400 hover:text-slate-200 hover:bg-white/5" />
+                  <CtrlBtn icon={<ArrowCounterClockwise className="w-3 h-3" />} label="Restart" onClick={() => action(() => api.restartApp(app.id))} className="text-slate-400 hover:text-slate-200 hover:bg-white/5" />
                 </>
               : <CtrlBtn icon={<Play className="w-3 h-3" />} label="Start" onClick={() => action(() => api.startApp(app.id))} className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" />
           }
           <CtrlBtn icon={<Terminal className="w-3 h-3" />} label="Logs" onClick={() => setShowLogs(true)} className="text-slate-500 hover:text-slate-300 hover:bg-white/5" disabled={busy} />
-          <CtrlBtn icon={<RefreshCw className="w-3 h-3" />} label="Update" onClick={() => action(() => api.updateApp(app.id))} className="text-slate-500 hover:text-blue-300 hover:bg-blue-500/10" disabled={busy} />
-          <CtrlBtn icon={<Trash2 className="w-3 h-3" />} label="Remove" onClick={() => action(() => api.uninstallApp(app.id))} className="ml-auto text-red-400 hover:text-red-300 hover:bg-red-500/10" disabled={busy} />
+          <CtrlBtn icon={<ArrowsClockwise className="w-3 h-3" />} label="Update" onClick={() => action(() => api.updateApp(app.id))} className="text-slate-500 hover:text-blue-300 hover:bg-blue-500/10" disabled={busy} />
+          <CtrlBtn icon={<Trash className="w-3 h-3" />} label="Remove" onClick={() => action(() => api.uninstallApp(app.id))} className="ml-auto text-red-400 hover:text-red-300 hover:bg-red-500/10" disabled={busy} />
         </div>
       </div>
 

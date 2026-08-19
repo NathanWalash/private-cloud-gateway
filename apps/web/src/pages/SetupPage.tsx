@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Globe, AlertCircle, Loader2, ShieldCheck } from 'lucide-react'
+import { Globe, WarningCircle, CircleNotch, ShieldCheck } from '@phosphor-icons/react'
 import { api, ApiError } from '../api/client'
 
 interface SetupPageProps {
@@ -60,7 +60,7 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
 
           {error && (
             <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-3 py-2.5 rounded-lg mb-5">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+              <WarningCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>
           )}
@@ -114,7 +114,7 @@ export default function SetupPage({ onComplete }: SetupPageProps) {
 
             <button type="submit" disabled={loading} className="btn-primary mt-2">
               {loading
-                ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Creating account…</span>
+                ? <span className="flex items-center justify-center gap-2"><CircleNotch className="w-4 h-4 animate-spin" />Creating account…</span>
                 : 'Create account & get started'}
             </button>
           </form>

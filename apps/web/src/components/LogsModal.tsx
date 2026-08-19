@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { X, RefreshCw, Loader2, Terminal, Wifi, WifiOff } from 'lucide-react'
+import { X, ArrowsClockwise, CircleNotch, Terminal, WifiHigh, WifiSlash } from '@phosphor-icons/react'
 import { api } from '../api/client'
 
 interface LogsModalProps {
@@ -65,7 +65,7 @@ export default function LogsModal({ appId, appName, onClose }: LogsModalProps) {
             <h2 className="font-medium text-slate-200 text-sm">{appName} — logs</h2>
             {streaming && (
               <span className={`flex items-center gap-1 text-xs ${connected ? 'text-emerald-400' : 'text-amber-400'}`}>
-                {connected ? <><Wifi className="w-3 h-3" /> live</> : <><WifiOff className="w-3 h-3" /> reconnecting…</>}
+                {connected ? <><WifiHigh className="w-3 h-3" /> live</> : <><WifiSlash className="w-3 h-3" /> reconnecting…</>}
               </span>
             )}
           </div>
@@ -78,17 +78,17 @@ export default function LogsModal({ appId, appName, onClose }: LogsModalProps) {
                   {[50, 100, 300, 500].map(n => <option key={n} value={n}>Last {n} lines</option>)}
                 </select>
                 <button type="button" onClick={() => loadStatic()} className="text-slate-400 hover:text-slate-200 p-1.5 rounded-md hover:bg-white/5" title="Refresh">
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  <ArrowsClockwise className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                 </button>
                 <button type="button" onClick={startStream}
                   className="text-xs px-2.5 py-1.5 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-md transition-colors flex items-center gap-1">
-                  <Wifi className="w-3 h-3" /> Live
+                  <WifiHigh className="w-3 h-3" /> Live
                 </button>
               </>
             ) : (
               <button type="button" onClick={stopStream}
                 className="text-xs px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-md transition-colors flex items-center gap-1">
-                <WifiOff className="w-3 h-3" /> Stop
+                <WifiSlash className="w-3 h-3" /> Stop
               </button>
             )}
             <button type="button" onClick={onClose} title="Close logs" className="text-slate-500 hover:text-slate-300 p-1.5 rounded-md hover:bg-white/5">
@@ -98,7 +98,7 @@ export default function LogsModal({ appId, appName, onClose }: LogsModalProps) {
         </div>
         <div className="flex-1 overflow-y-auto bg-surface p-4 font-mono text-xs text-slate-300 leading-relaxed">
           {loading && !lines.length && (
-            <div className="flex items-center gap-2 text-slate-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…</div>
+            <div className="flex items-center gap-2 text-slate-500"><CircleNotch className="w-3.5 h-3.5 animate-spin" /> Loading…</div>
           )}
           {lines.length > 0 ? (
             <pre className="whitespace-pre-wrap break-all">{lines.join('\n')}</pre>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Activity, Clock, Tag, AlertTriangle } from 'lucide-react'
+import { Pulse, Clock, Tag, Warning } from '@phosphor-icons/react'
 import { api, ServerStatus } from '../api/client'
 
 export default function StatusWidget() {
@@ -17,20 +17,20 @@ export default function StatusWidget() {
   return (
     <div className="card p-5">
       <div className="flex items-center gap-2 mb-4">
-        <Activity className="w-3.5 h-3.5 text-emerald-400" />
+        <Pulse className="w-3.5 h-3.5 text-emerald-400" />
         <h3 className="text-sm font-medium text-slate-300">System</h3>
       </div>
 
       {error && (
         <div className="flex items-center gap-2 text-xs text-red-400">
-          <AlertTriangle className="w-3.5 h-3.5" />
+          <Warning className="w-3.5 h-3.5" />
           Could not load status
         </div>
       )}
 
       {status && (
         <div className="space-y-2.5">
-          <Stat icon={<Activity className="w-3 h-3 text-emerald-400" />} label="Status" value="Healthy" valueClass="text-emerald-400" />
+          <Stat icon={<Pulse className="w-3 h-3 text-emerald-400" />} label="Status" value="Healthy" valueClass="text-emerald-400" />
           <Stat icon={<Clock className="w-3 h-3 text-slate-500" />} label="Uptime" value={status.uptime} />
           <Stat icon={<Tag className="w-3 h-3 text-slate-500" />} label="Version" value={`v${status.version}`} />
         </div>
