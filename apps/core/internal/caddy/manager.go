@@ -88,6 +88,14 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 	var sb strings.Builder
 	proto := "http"
 
+	// HSTS is only meaningful over HTTPS. In production, tell browsers to force
+	// HTTPS for this domain and all subdomains for a year. Omitted in dev (HTTP).
+	// No `preload` — that's a hard-to-reverse commitment we don't want to bake in.
+	hsts := ""
+	if m.https {
+		hsts = "\theader Strict-Transport-Security \"max-age=31536000; includeSubDomains\"\n"
+	}
+
 	if m.https {
 		// Production: HTTPS with Let's Encrypt, admin API off public internet
 		fmt.Fprintf(&sb, `{
@@ -114,7 +122,7 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 	}
 
 	// Dashboard and auth — always present.
-	fmt.Fprintf(&sb, "%s://home.%s {\n\treverse_proxy core:8080\n}\n\n", proto, m.cookieDomain)
+	fmt.Fprintf(&sb, "%s://home.%s {\n%s\treverse_proxy core:8080\n}\n\n", proto, m.cookieDomain, hsts)
 
 	if !m.https {
 		// Test app — local dev only. Only add if no installed app uses the 'files' subdomain.
@@ -133,16 +141,16 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 
 	// One block per installed app.
 	for _, app := range apps {
-		fmt.Fprintf(&sb, "%s://%s.%s {\n\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy %s:%d\n}\n\n",
-			proto, app.Subdomain, m.cookieDomain,
+		fmt.Fprintf(&sb, "%s://%s.%s {\n%s\tforward_auth core:8080 {\n\t\turi /api/auth/verify\n\t\tcopy_headers X-Auth-User-ID\n\t}\n\treverse_proxy %s:%d\n}\n\n",
+			proto, app.Subdomain, m.cookieDomain, hsts,
 			app.ContainerName, app.InternalPort)
 	}
 
 	// Catch-all: any unrecognised subdomain redirects to the home dashboard.
 	// This handles: apps not yet installed, typos, and Caddy redirecting /login
 	// to home.* for the React setup wizard to handle.
-	fmt.Fprintf(&sb, "%s://*.%s {\n\tredir %s://home.%s{uri} temporary\n}\n\n",
-		proto, m.cookieDomain,
+	fmt.Fprintf(&sb, "%s://*.%s {\n%s\tredir %s://home.%s{uri} temporary\n}\n\n",
+		proto, m.cookieDomain, hsts,
 		proto, m.cookieDomain)
 
 	return sb.String()

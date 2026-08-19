@@ -15,6 +15,7 @@
 
 # Dashboard — Caddy gets a cert for this automatically.
 https://home.{$CLOUD_CORE_COOKIE_DOMAIN} {
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
 	reverse_proxy core:8080
 }
 

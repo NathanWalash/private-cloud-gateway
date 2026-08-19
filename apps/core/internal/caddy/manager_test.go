@@ -54,6 +54,10 @@ func TestBuildCaddyfile_DevMode(t *testing.T) {
 	if !strings.Contains(config, "redir") {
 		t.Error("dev Caddyfile catch-all missing redir directive")
 	}
+	// HSTS must NOT be sent in dev (HTTP only).
+	if strings.Contains(config, "Strict-Transport-Security") {
+		t.Error("dev Caddyfile must not contain HSTS header")
+	}
 }
 
 func TestBuildCaddyfile_ProductionMode(t *testing.T) {
@@ -88,6 +92,10 @@ func TestBuildCaddyfile_ProductionMode(t *testing.T) {
 	}
 	if !strings.Contains(config, "https://home.nathan.me") || !strings.Contains(config, "redir") {
 		t.Error("production Caddyfile catch-all must redir to https home")
+	}
+	// Production sends HSTS on the dashboard and app routes.
+	if !strings.Contains(config, "Strict-Transport-Security") {
+		t.Error("production Caddyfile missing HSTS header")
 	}
 }
 
