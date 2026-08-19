@@ -35,7 +35,7 @@ export default function AppCard({ app, onStatusChange, updateAvailable = false }
 
   return (
     <>
-      <div className={`card p-5 flex flex-col gap-3 hover:border-slate-600 transition-colors duration-150 ${
+      <div className={`card p-5 flex flex-col gap-3 hover:border-text-muted transition-colors duration-150 ${
         app.status === 'error' ? 'border-red-900/50 bg-red-950/10' : ''
       }`}>
         {/* Header row */}
