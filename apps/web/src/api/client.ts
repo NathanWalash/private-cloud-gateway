@@ -75,11 +75,12 @@ export { ApiError }
 export const api = {
   auth: {
     me: (): Promise<User> => request('/api/auth/me'),
-    needsSetup: (): Promise<{ needs_setup: boolean }> => request('/api/auth/setup'),
-    setup: (email: string, password: string, firstName: string, lastName: string) =>
+    needsSetup: (): Promise<{ needs_setup: boolean; token_required: boolean }> =>
+      request('/api/auth/setup'),
+    setup: (email: string, password: string, firstName: string, lastName: string, token?: string) =>
       request('/api/auth/setup', {
         method: 'POST',
-        body: JSON.stringify({ email, password, first_name: firstName, last_name: lastName }),
+        body: JSON.stringify({ email, password, first_name: firstName, last_name: lastName, token }),
       }),
     login: (email: string, password: string): Promise<{ status: string; needs_totp?: boolean; totp_token?: string }> =>
       request('/api/auth/login', {

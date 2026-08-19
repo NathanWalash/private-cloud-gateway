@@ -35,6 +35,7 @@ func main() {
 		blueprintDir:      getenv("CLOUD_CORE_BLUEPRINT_DIR", "/blueprints"),
 		adminEmail:        os.Getenv("CLOUD_CORE_ADMIN_EMAIL"),
 		backupSchedule:    getenv("CLOUD_CORE_BACKUP_SCHEDULE", ""), // e.g. "24h", "12h" — empty disables
+		setupToken:        os.Getenv("CLOUD_CORE_SETUP_TOKEN"),      // gates first-run setup in production
 	}
 
 	setupLogging(cfg.env)
@@ -91,6 +92,7 @@ func main() {
 		cfg.loginURL,
 		cfg.cookieDomain,
 		scheme,
+		cfg.setupToken,
 		web.FS(),
 		dm,
 		cm,
@@ -212,6 +214,7 @@ type config struct {
 	blueprintDir      string
 	adminEmail        string // Let's Encrypt email (production only)
 	backupSchedule    string // duration string, e.g. "24h"
+	setupToken        string // gates first-run setup (production)
 }
 
 // runScheduledBackups runs backups on a fixed interval until the process exits.

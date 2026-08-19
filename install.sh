@@ -65,6 +65,7 @@ read -rp "  Admin email for Let's Encrypt (cert expiry notices): " ADMIN_EMAIL
   || error "Invalid email: $ADMIN_EMAIL"
 
 SESSION_SECRET=$(openssl rand -hex 32)
+SETUP_TOKEN=$(openssl rand -hex 16)
 
 echo ""
 
@@ -103,6 +104,11 @@ CLOUD_CORE_ADMIN_EMAIL=$ADMIN_EMAIL
 CLOUD_CORE_DATABASE_PATH=/data/cloud-core.db
 CLOUD_CORE_SESSION_SECRET=$SESSION_SECRET
 CLOUD_CORE_CADDY_ADMIN=caddy:2019
+
+# Setup token — required to claim the admin account on first run.
+# This closes the first-run race: without it, anyone reaching the exposed
+# instance before you could create the admin account. Printed once below.
+CLOUD_CORE_SETUP_TOKEN=$SETUP_TOKEN
 CLOUD_CORE_BLUEPRINT_DIR=/blueprints
 
 # Backup passphrase — change to something secret before first backup
@@ -162,10 +168,15 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "  Dashboard: https://home.$DOMAIN"
 echo ""
+echo -e "  ${YELLOW}Setup token (needed to create your admin account):${NC}"
+echo -e "      ${GREEN}$SETUP_TOKEN${NC}"
+echo "  Enter this on the setup screen. It's also in $INSTALL_DIR/.env"
+echo "  (CLOUD_CORE_SETUP_TOKEN). Keep it secret until setup is complete."
+echo ""
 echo "  Next steps:"
 echo "  1. Point DNS: A $DOMAIN → $(curl -s ifconfig.me 2>/dev/null || echo 'YOUR_IP')"
 echo "     and:        A *.$DOMAIN → same IP"
-echo "  2. Visit https://home.$DOMAIN to complete setup"
+echo "  2. Visit https://home.$DOMAIN to complete setup (enter the token above)"
 echo "  3. Set CLOUD_CORE_BACKUP_PASSPHRASE in $INSTALL_DIR/.env"
 echo "     then: sudo systemctl restart $SERVICE_NAME"
 echo ""

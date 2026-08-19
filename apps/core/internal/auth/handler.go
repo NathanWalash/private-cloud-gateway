@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/subtle"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -19,11 +20,18 @@ type Handler struct {
 	db           *sql.DB
 	loginURL     string
 	cookieDomain string
-	secure       bool // set the Secure flag on cookies (true in production HTTPS)
+	secure       bool   // set the Secure flag on cookies (true in production HTTPS)
+	setupToken   string // if non-empty, required to complete first-run setup
 }
 
-func NewHandler(db *sql.DB, loginURL, cookieDomain string, secure bool) *Handler {
-	return &Handler{db: db, loginURL: loginURL, cookieDomain: cookieDomain, secure: secure}
+func NewHandler(db *sql.DB, loginURL, cookieDomain string, secure bool, setupToken string) *Handler {
+	return &Handler{
+		db:           db,
+		loginURL:     loginURL,
+		cookieDomain: cookieDomain,
+		secure:       secure,
+		setupToken:   setupToken,
+	}
 }
 
 // LoginPage serves the HTML login form (used as a fallback if JS fails).
@@ -77,7 +85,7 @@ func (h *Handler) NeedsSetup(w http.ResponseWriter, _ *http.Request) {
 	var count int
 	h.db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count) //nolint:errcheck
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = fmt.Fprintf(w, `{"needs_setup":%v}`, count == 0)
+	_, _ = fmt.Fprintf(w, `{"needs_setup":%v,"token_required":%v}`, count == 0, h.setupToken != "")
 }
 
 // Setup creates the first admin account. Only works when no users exist.
@@ -95,9 +103,18 @@ func (h *Handler) Setup(w http.ResponseWriter, r *http.Request) {
 		Password  string `json:"password"`
 		FirstName string `json:"first_name"`
 		LastName  string `json:"last_name"`
+		Token     string `json:"token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+		return
+	}
+	// When a setup token is configured (production), it must match. This closes
+	// the first-run race where anyone could claim the admin account before the
+	// owner completes setup on a freshly-exposed instance.
+	if h.setupToken != "" && subtle.ConstantTimeCompare([]byte(req.Token), []byte(h.setupToken)) != 1 {
+		slog.Warn("setup rejected: invalid token", "ip", realIP(r))
+		http.Error(w, `{"error":"invalid setup token"}`, http.StatusForbidden)
 		return
 	}
 	if req.Email == "" || req.Password == "" || req.FirstName == "" {
