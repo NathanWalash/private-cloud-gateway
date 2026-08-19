@@ -25,24 +25,31 @@ type Handler struct {
 	db           *sql.DB
 	startTime    time.Time
 	version      string
-	docker       *docker.Manager
-	caddy        *caddy.Manager
+	docker       dockerManager
+	caddy        caddyManager
 	blueprintDir string
 	cookieDomain string
 	scheme       string // "https" in production, "http" in local dev
 }
 
 func NewHandler(db *sql.DB, version string, dm *docker.Manager, cm *caddy.Manager, blueprintDir, cookieDomain, scheme string) *Handler {
-	return &Handler{
+	h := &Handler{
 		db:           db,
 		startTime:    time.Now(),
 		version:      version,
-		docker:       dm,
-		caddy:        cm,
 		blueprintDir: blueprintDir,
 		cookieDomain: cookieDomain,
 		scheme:       scheme,
 	}
+	// Assign only when non-nil so the fields stay true nil interfaces when Docker
+	// or Caddy are unavailable (avoids the typed-nil trap in `== nil` checks).
+	if dm != nil {
+		h.docker = dm
+	}
+	if cm != nil {
+		h.caddy = cm
+	}
+	return h
 }
 
 // ── Status ────────────────────────────────────────────────────────────────────
