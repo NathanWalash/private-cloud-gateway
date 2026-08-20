@@ -324,32 +324,42 @@ func runHealthPolling(ctx context.Context, database *sql.DB, dm *docker.Manager)
 			if len(statuses) == 0 {
 				continue
 			}
+			// Collect apps and close the rows before issuing any UPDATE: the DB
+			// pool is one connection, so writing while these rows are open would
+			// deadlock and hang every other DB request.
+			type appRow struct {
+				id   int64
+				name string
+			}
 			rows, err := database.QueryContext(context.Background(), "SELECT id, container_name FROM apps")
 			if err != nil {
 				continue
 			}
+			var apps []appRow
 			for rows.Next() {
-				var id int64
-				var name string
-				if rows.Scan(&id, &name) != nil {
-					continue
-				}
-				if status, ok := statuses[name]; ok {
-					res, _ := database.ExecContext(context.Background(),
-						"UPDATE apps SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!=?",
-						status, id, status)
-					if n, _ := res.RowsAffected(); n > 0 {
-						apiPkg.BroadcastStatus(id, status)
-					}
-				} else {
-					res, _ := database.ExecContext(context.Background(),
-						"UPDATE apps SET status='missing', updated_at=CURRENT_TIMESTAMP WHERE id=?", id)
-					if n, _ := res.RowsAffected(); n > 0 {
-						apiPkg.BroadcastStatus(id, "missing")
-					}
+				var a appRow
+				if rows.Scan(&a.id, &a.name) == nil {
+					apps = append(apps, a)
 				}
 			}
 			rows.Close()
+
+			for _, a := range apps {
+				if status, ok := statuses[a.name]; ok {
+					res, _ := database.ExecContext(context.Background(),
+						"UPDATE apps SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!=?",
+						status, a.id, status)
+					if n, _ := res.RowsAffected(); n > 0 {
+						apiPkg.BroadcastStatus(a.id, status)
+					}
+				} else {
+					res, _ := database.ExecContext(context.Background(),
+						"UPDATE apps SET status='missing', updated_at=CURRENT_TIMESTAMP WHERE id=?", a.id)
+					if n, _ := res.RowsAffected(); n > 0 {
+						apiPkg.BroadcastStatus(a.id, "missing")
+					}
+				}
+			}
 		} // end select case block
 	}
 }
