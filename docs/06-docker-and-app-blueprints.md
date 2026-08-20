@@ -31,6 +31,13 @@ container:
   image: frooodle/s-pdf:latest
   environment: []
   volumes: []
+  # Optional hardening. Secure defaults apply when omitted:
+  # no-new-privileges is always on unless allow_privilege_escalation is true.
+  security:
+    allow_privilege_escalation: false  # default false → no-new-privileges on
+    read_only_rootfs: false            # opt-in; many images write to /
+    cap_drop: []                       # e.g. ["ALL"]
+    cap_add: []                        # e.g. ["NET_BIND_SERVICE"]
 
 lifecycle:
   policy: scale-to-zero
