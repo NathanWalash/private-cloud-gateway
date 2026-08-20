@@ -1,0 +1,14 @@
+{
+  "name": "pcg-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Browser end-to-end tests (Playwright) for Private Cloud Gateway",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

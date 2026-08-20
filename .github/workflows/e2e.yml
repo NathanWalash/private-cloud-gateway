@@ -71,6 +71,33 @@ jobs:
           E2E_EMAIL: ${{ inputs.email }}
           E2E_PASSWORD: ${{ inputs.password }}
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: Run Playwright browser E2E
+        working-directory: e2e
+        run: npx playwright test
+        env:
+          E2E_BASE_URL: http://home.localtest.me
+          E2E_EMAIL: ${{ inputs.email }}
+          E2E_PASSWORD: ${{ inputs.password }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7
+
       - name: Tear down
         if: always()
         run: docker compose -f infra/docker/docker-compose.yml down -v
