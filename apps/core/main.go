@@ -68,6 +68,21 @@ func main() {
 		}
 	}
 
+	// Fail closed: in production the setup-token gate is the only thing between a
+	// freshly-exposed instance and an attacker claiming the admin account. If no
+	// user exists yet and no token is configured, refuse to start rather than
+	// silently allowing tokenless first-run setup. (Once a user exists, setup is
+	// already closed, so the token is no longer required to boot.)
+	if cfg.env == "production" && cfg.setupToken == "" {
+		var userCount int
+		_ = database.QueryRow("SELECT COUNT(*) FROM users").Scan(&userCount)
+		if userCount == 0 {
+			slog.Error("refusing to start: set CLOUD_CORE_SETUP_TOKEN before first-run setup in production",
+				"hint", "install.sh generates one; add it to .env and restart")
+			os.Exit(1)
+		}
+	}
+
 	var dm *docker.Manager
 	dm, err = docker.New()
 	if err != nil {

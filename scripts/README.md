@@ -1,10 +1,27 @@
 # Scripts
 
-Expected scripts:
+Operational scripts for local development and production deploys.
 
-- `dev-up.sh` starts local development stack.
-- `dev-down.sh` stops local development stack.
-- `test.sh` runs tests.
-- `backup-now.sh` triggers a local backup test.
-- `restore.sh` restores from a backup archive.
-- `lint.sh` runs format/lint checks.
+## Development
+
+- `dev-up.sh` — start the local development stack.
+- `dev-down.sh` — stop the local development stack.
+- `test.sh` — run tests.
+- `lint.sh` — run format/lint checks.
+
+## Production deploy
+
+Run on the VM; see [`docs/deployment.md`](../docs/deployment.md).
+
+- `deploy.sh` — deploy a pinned release tag with a pre-deploy backup, health
+  check, and automatic rollback on failure.
+- `rollback.sh` — roll back to the previously deployed tag.
+
+## Backups
+
+Backup and restore are handled by the running app, not by shell scripts —
+archives are AES-256-GCM encrypted and (de)encrypted by the Go core.
+
+- Create/restore from the dashboard: **Settings → Backup**.
+- Scheduled backups run automatically (`CLOUD_CORE_BACKUP_SCHEDULE`, default 24h).
+- `backup-now.sh` / `restore.sh` print these instructions.

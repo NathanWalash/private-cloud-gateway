@@ -143,8 +143,13 @@ func (bp *Blueprint) Validate() error {
 	if bp.Container.Image == "" {
 		errs = append(errs, errors.New("container.image is required"))
 	}
-	if bp.Route.Subdomain == "" {
+	switch bp.Route.Subdomain {
+	case "":
 		errs = append(errs, errors.New("route.subdomain is required"))
+	case "home":
+		// "home" is reserved for the dashboard — a blueprint using it would emit
+		// a duplicate Caddy site block and shadow/break the dashboard route.
+		errs = append(errs, errors.New(`route.subdomain "home" is reserved for the dashboard`))
 	}
 	if bp.Route.InternalPort == 0 {
 		errs = append(errs, errors.New("route.internal_port is required"))

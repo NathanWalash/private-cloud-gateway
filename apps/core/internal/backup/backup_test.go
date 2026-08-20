@@ -1,6 +1,7 @@
 package backup_test
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/backup"
+	_ "modernc.org/sqlite"
 )
 
 func setupTestData(t *testing.T) (dbPath, bpDir, backupDir string) {
@@ -39,6 +41,51 @@ func TestCreate_Unencrypted(t *testing.T) {
 	}
 	if info.Size() == 0 {
 		t.Error("backup file is empty")
+	}
+}
+
+// TestCreate_CheckpointsWAL ensures committed data still sitting in the -wal
+// file is captured by the backup. Without the pre-copy checkpoint, the raw .db
+// copy would miss the row and the restored DB wouldn't have the table.
+func TestCreate_CheckpointsWAL(t *testing.T) {
+	_, bpDir, backupDir := setupTestData(t)
+
+	dbPath := filepath.Join(t.TempDir(), "wal.db")
+	live, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_busy_timeout=5000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := live.Exec("CREATE TABLE t(v TEXT)"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := live.Exec("INSERT INTO t(v) VALUES('hello-wal')"); err != nil {
+		t.Fatal(err)
+	}
+	// Keep `live` open (simulating the running server) so the write stays in WAL.
+	defer live.Close()
+
+	dest := filepath.Join(backupDir, "wal.pcg-backup")
+	if err := backup.Create(dbPath, bpDir, dest, "", nil, nil); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	restoreDir := t.TempDir()
+	restored := filepath.Join(restoreDir, "restored.db")
+	if err := backup.Restore(dest, "", restored, restoreDir); err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+
+	rdb, err := sql.Open("sqlite", restored)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rdb.Close()
+	var v string
+	if err := rdb.QueryRow("SELECT v FROM t").Scan(&v); err != nil {
+		t.Fatalf("row missing from backup — WAL not checkpointed: %v", err)
+	}
+	if v != "hello-wal" {
+		t.Errorf("got %q, want hello-wal", v)
 	}
 }
 

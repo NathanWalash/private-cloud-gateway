@@ -190,15 +190,23 @@ func isAPIPath(path string) bool {
 	return len(path) > 4 && path[:5] == "/api/"
 }
 
-// ListenAndServe starts the HTTP server with timeouts and graceful shutdown.
-func (s *Server) ListenAndServe(addr string) error {
-	srv := &http.Server{
+// httpServer builds the configured *http.Server that ListenAndServe runs.
+// Kept separate so tests can assert the served handler is the wrapped one
+// (s.Handler), not the raw mux — serving s.mux would silently drop the
+// security-header and body-size-limit middleware in production.
+func (s *Server) httpServer(addr string) *http.Server {
+	return &http.Server{
 		Addr:         addr,
-		Handler:      s.mux,
+		Handler:      s.Handler(),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
+}
+
+// ListenAndServe starts the HTTP server with timeouts and graceful shutdown.
+func (s *Server) ListenAndServe(addr string) error {
+	srv := s.httpServer(addr)
 
 	done := make(chan struct{})
 	go func() {

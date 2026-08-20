@@ -54,3 +54,19 @@ route:
 		t.Error("expected error parsing blueprint with path-traversal id, got nil")
 	}
 }
+
+func TestParse_RejectsReservedHomeSubdomain(t *testing.T) {
+	yaml := `
+id: homeassistant
+name: Home Assistant
+container:
+  image: ghcr.io/home-assistant/home-assistant:stable
+route:
+  subdomain: home
+  internal_port: 8123
+`
+	_, err := blueprint.Parse([]byte(yaml))
+	if err == nil {
+		t.Error(`expected error for reserved "home" subdomain, got nil`)
+	}
+}
