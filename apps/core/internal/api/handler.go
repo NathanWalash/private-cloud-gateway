@@ -163,7 +163,11 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 	// This handles the case where a previous install partially succeeded.
 	_ = h.docker.Remove(r.Context(), bp.ContainerName())
 
-	if err := h.docker.Install(r.Context(), bp.Render(h.cookieDomain, h.scheme)); err != nil {
+	rendered := bp.Render(h.cookieDomain, h.scheme)
+	for _, msg := range rendered.WeakSecrets() {
+		slog.Warn("weak secret in blueprint", "app", bp.ID, "detail", msg)
+	}
+	if err := h.docker.Install(r.Context(), rendered); err != nil {
 		slog.Error("docker install failed", "app", bp.ID, "err", err)
 		jsonErr(w, "app installation failed", http.StatusInternalServerError)
 		return

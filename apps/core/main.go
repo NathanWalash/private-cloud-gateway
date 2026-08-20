@@ -40,6 +40,12 @@ func main() {
 
 	setupLogging(cfg.env)
 
+	// Nudge: in production, backups written without a passphrase are unencrypted.
+	// Anyone who obtains a backup file could read all app data and the user DB.
+	if cfg.env == "production" && os.Getenv("CLOUD_CORE_BACKUP_PASSPHRASE") == "" {
+		slog.Warn("CLOUD_CORE_BACKUP_PASSPHRASE is not set — backups will be UNENCRYPTED; set it in .env and restart")
+	}
+
 	database, err := db.Open(cfg.dbPath)
 	if err != nil {
 		slog.Error("open database", "err", err)

@@ -12,6 +12,9 @@ container:
   image: couchdb:3.5.2
   environment:
     - COUCHDB_USER=admin
+    # CHANGE THIS before syncing over the internet. Core logs a warning on
+    # install while this is left at the default. Use the same password in your
+    # Obsidian Self-hosted LiveSync settings.
     - COUCHDB_PASSWORD=changeme
   volumes:
     - pcg-couchdb-data:/opt/couchdb/data

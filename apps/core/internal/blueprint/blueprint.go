@@ -78,6 +78,36 @@ type Resources struct {
 	MemoryLimit string `yaml:"memory_limit"`
 }
 
+// weakSecretValues are placeholder/default secret values that must be changed
+// before an app is exposed to the internet.
+var weakSecretValues = map[string]bool{
+	"changeme": true, "change-me": true, "changethis": true, "change-this": true,
+	"password": true, "passwd": true, "admin": true, "secret": true,
+	"default": true, "test": true, "123456": true, "root": true, "example": true,
+}
+
+// secretKeyHint matches environment variable names that hold a secret.
+var secretKeyHint = regexp.MustCompile(`(?i)(password|passwd|secret|token|apikey|api_key|access_key|_key)`)
+
+// WeakSecrets scans the container environment for secret-looking variables whose
+// value is a known weak default (e.g. COUCHDB_PASSWORD=changeme) and returns a
+// human-readable message per finding. Callers should warn the operator so the
+// value gets changed before the app faces the internet. Render the blueprint
+// first so ${DOMAIN}/${SCHEME} are already substituted.
+func (bp *Blueprint) WeakSecrets() []string {
+	var out []string
+	for _, e := range bp.Container.Environment {
+		k, v, ok := strings.Cut(e, "=")
+		if !ok {
+			continue
+		}
+		if secretKeyHint.MatchString(k) && weakSecretValues[strings.ToLower(strings.TrimSpace(v))] {
+			out = append(out, fmt.Sprintf("%s uses a weak default value (%q) — change it before exposing this app", k, v))
+		}
+	}
+	return out
+}
+
 // Parse decodes YAML blueprint data and validates it.
 func Parse(data []byte) (*Blueprint, error) {
 	var bp Blueprint
