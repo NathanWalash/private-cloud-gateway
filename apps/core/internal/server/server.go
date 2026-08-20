@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -21,7 +22,8 @@ import (
 
 // Server wraps the HTTP mux and holds shared dependencies.
 type Server struct {
-	mux *http.ServeMux
+	mux          *http.ServeMux
+	cookieDomain string
 }
 
 // New wires up all routes and returns a ready Server.
@@ -147,12 +149,48 @@ func New(
 		}))
 	}
 
-	return &Server{mux: mux}
+	return &Server{mux: mux, cookieDomain: cookieDomain}
 }
 
-// Handler returns the HTTP handler with security headers and body size limits.
+// Handler returns the HTTP handler with security headers, CSRF origin checks,
+// and body size limits.
 func (s *Server) Handler() http.Handler {
-	return securityHeaders(limitBody(s.mux))
+	return securityHeaders(csrfGuard(s.cookieDomain, limitBody(s.mux)))
+}
+
+// csrfGuard rejects state-changing cross-site requests. Browsers set Origin (and
+// Referer) on such requests, so for mutating methods the Origin/Referer host must
+// be the dashboard domain or a subdomain of it. Requests with neither header
+// (non-browser clients — curl, API tests — which carry no ambient session cookie)
+// are allowed. Together with SameSite=Lax this closes CSRF on the mutating API
+// without needing a token store.
+func csrfGuard(cookieDomain string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+			if !sameSiteRequest(r, cookieDomain) {
+				http.Error(w, `{"error":"cross-site request blocked"}`, http.StatusForbidden)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func sameSiteRequest(r *http.Request, cookieDomain string) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		origin = r.Header.Get("Referer")
+	}
+	if origin == "" {
+		return true // non-browser client; no ambient-cookie CSRF risk
+	}
+	u, err := url.Parse(origin)
+	if err != nil || u.Hostname() == "" {
+		return false
+	}
+	host := u.Hostname()
+	return host == cookieDomain || strings.HasSuffix(host, "."+cookieDomain)
 }
 
 // limitBody caps request bodies at 10 MB to prevent memory exhaustion.
