@@ -2,20 +2,22 @@
 
 Operational scripts for local development and production deploys.
 
-**Development**
+## Development
 
 - `dev-up.sh` — start the local development stack.
 - `dev-down.sh` — stop the local development stack.
 - `test.sh` — run tests.
 - `lint.sh` — run format/lint checks.
 
-**Production deploy** (run on the VM; see [`docs/deployment.md`](../docs/deployment.md))
+## Production deploy
+
+Run on the VM; see [`docs/deployment.md`](../docs/deployment.md).
 
 - `deploy.sh` — deploy a pinned release tag with a pre-deploy backup, health
   check, and automatic rollback on failure.
 - `rollback.sh` — roll back to the previously deployed tag.
 
-**Backups**
+## Backups
 
 Backup and restore are handled by the running app, not by shell scripts —
 archives are AES-256-GCM encrypted and (de)encrypted by the Go core.
