@@ -50,7 +50,9 @@ func UseBackupCode(db *sql.DB, userID int64, code string) bool {
 	if err != nil {
 		return false
 	}
-	defer rows.Close()
+	// Find the matching code, then close the rows BEFORE the UPDATE — the DB pool
+	// is one connection, so writing while these rows are open would deadlock.
+	matchID := int64(-1)
 	for rows.Next() {
 		var id int64
 		var hash string
@@ -58,12 +60,16 @@ func UseBackupCode(db *sql.DB, userID int64, code string) bool {
 			continue
 		}
 		if bcrypt.CompareHashAndPassword([]byte(hash), []byte(code)) == nil {
-			// Mark as used
-			db.Exec("UPDATE totp_backup_codes SET used_at=? WHERE id=?", time.Now(), id) //nolint:errcheck
-			return true
+			matchID = id
+			break
 		}
 	}
-	return false
+	rows.Close()
+	if matchID < 0 {
+		return false
+	}
+	db.Exec("UPDATE totp_backup_codes SET used_at=? WHERE id=?", time.Now(), matchID) //nolint:errcheck
+	return true
 }
 
 // BackupCodeStatus returns how many backup codes remain unused.

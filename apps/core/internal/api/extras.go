@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -395,27 +396,41 @@ func PollAllMonitors(db *sql.DB) {
 
 // PollAllMonitorsWithNotify checks every monitor and sends Telegram notifications on state changes.
 func PollAllMonitorsWithNotify(db *sql.DB, notifier Notifier, prevStatus map[int64]string) {
+	// Collect all monitors and close the rows before doing any checks: the DB
+	// pool is one connection, and the per-monitor goroutines below write to it.
+	// Holding the rows open would deadlock once the semaphore fills (the loop
+	// would block spawning goroutines that are themselves blocked on the DB).
+	type monitorRow struct {
+		id            int64
+		name, u, prev string
+	}
 	rows, err := db.QueryContext(context.Background(), "SELECT id, name, url, status FROM monitors")
 	if err != nil {
 		return
 	}
-	defer rows.Close()
-	sem := make(chan struct{}, 10)
+	var monitors []monitorRow
 	for rows.Next() {
-		var id int64
-		var name, u, prev string
-		if rows.Scan(&id, &name, &u, &prev) != nil {
-			continue
+		var m monitorRow
+		if rows.Scan(&m.id, &m.name, &m.u, &m.prev) == nil {
+			monitors = append(monitors, m)
 		}
-		monID, monURL, monName := id, u, name
-		oldStatus := prev
+	}
+	rows.Close()
+
+	sem := make(chan struct{}, 10)
+	var wg sync.WaitGroup
+	for _, m := range monitors {
+		monID, monURL, monName := m.id, m.u, m.name
+		oldStatus := m.prev
 		if prevStatus != nil {
-			if s, ok := prevStatus[id]; ok {
+			if s, ok := prevStatus[m.id]; ok {
 				oldStatus = s
 			}
 		}
 		sem <- struct{}{}
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			defer func() { <-sem }()
 			RunMonitorCheck(db, monID, monURL)
 			// Check if status changed and notify
@@ -438,4 +453,5 @@ func PollAllMonitorsWithNotify(db *sql.DB, notifier Notifier, prevStatus map[int
 			}
 		}()
 	}
+	wg.Wait()
 }

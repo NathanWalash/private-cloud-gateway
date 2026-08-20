@@ -25,28 +25,36 @@ var updateClient = &http.Client{Timeout: 10 * time.Second}
 // CheckAppUpdates fetches the latest digest for each installed app's image from Docker Hub.
 // Called from main.go on a timer (every 6 hours).
 func CheckAppUpdates(db *sql.DB) {
+	// Collect rows and close them before the per-app work below: the DB pool is
+	// capped at one connection, so writing while these rows are open deadlocks.
+	type appImage struct {
+		id          int64
+		bpID, image string
+	}
 	rows, err := db.QueryContext(context.Background(),
 		"SELECT id, blueprint_id, image FROM apps WHERE status='running'")
 	if err != nil {
 		return
 	}
-	defer rows.Close()
-
+	var apps []appImage
 	for rows.Next() {
-		var id int64
-		var bpID, image string
-		if rows.Scan(&id, &bpID, &image) != nil {
-			continue
+		var a appImage
+		if rows.Scan(&a.id, &a.bpID, &a.image) == nil {
+			apps = append(apps, a)
 		}
-		digest, err := getLatestDigest(image)
+	}
+	rows.Close()
+
+	for _, a := range apps {
+		digest, err := getLatestDigest(a.image)
 		if err != nil {
-			slog.Debug("update check failed", "image", image, "err", err)
+			slog.Debug("update check failed", "image", a.image, "err", err)
 			continue
 		}
 		_, _ = db.Exec(
 			`INSERT INTO settings(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP)
 			 ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
-			"UPDATE_DIGEST_"+bpID, digest,
+			"UPDATE_DIGEST_"+a.bpID, digest,
 		)
 	}
 }
@@ -54,31 +62,39 @@ func CheckAppUpdates(db *sql.DB) {
 // AppUpdateStatus returns whether updates are available for all installed apps.
 // GET /api/apps/updates.
 func (h *Handler) AppUpdateStatus(w http.ResponseWriter, r *http.Request) {
+	// Collect rows and close them before the per-app queries below (single DB
+	// connection — a nested query while these rows are open would deadlock).
+	type appImage struct {
+		id          int64
+		bpID, image string
+	}
 	rows, err := h.db.QueryContext(r.Context(),
 		"SELECT id, blueprint_id, image FROM apps WHERE status='running'")
 	if err != nil {
 		jsonOK(w, []UpdateInfo{})
 		return
 	}
-	defer rows.Close()
+	var apps []appImage
+	for rows.Next() {
+		var a appImage
+		if rows.Scan(&a.id, &a.bpID, &a.image) == nil {
+			apps = append(apps, a)
+		}
+	}
+	rows.Close()
 
 	var updates []UpdateInfo
-	for rows.Next() {
-		var id int64
-		var bpID, image string
-		if rows.Scan(&id, &bpID, &image) != nil {
-			continue
-		}
+	for _, a := range apps {
 		var cached string
 		h.db.QueryRowContext(r.Context(),
-			"SELECT value FROM settings WHERE key=?", "UPDATE_DIGEST_"+bpID).Scan(&cached) //nolint:errcheck
+			"SELECT value FROM settings WHERE key=?", "UPDATE_DIGEST_"+a.bpID).Scan(&cached) //nolint:errcheck
 
-		currentDigest, _ := getLatestDigest(image)
+		currentDigest, _ := getLatestDigest(a.image)
 		avail := cached != "" && currentDigest != "" && cached != currentDigest
 		updates = append(updates, UpdateInfo{
-			AppID:        id,
-			BlueprintID:  bpID,
-			CurrentImage: image,
+			AppID:        a.id,
+			BlueprintID:  a.bpID,
+			CurrentImage: a.image,
 			LatestDigest: currentDigest,
 			UpdateAvail:  avail,
 		})
