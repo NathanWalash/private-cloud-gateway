@@ -17,21 +17,33 @@ import (
 // RunAppHealthChecks polls the health endpoint of every running app.
 // Called on a timer from main.go — every 60 seconds.
 func RunAppHealthChecks(db *sql.DB, blueprintDir string, notifier *notify.Service) {
+	// Read all running apps into memory and CLOSE the rows before doing any
+	// per-app work. The DB pool is capped at one connection (SetMaxOpenConns(1)
+	// for SQLite), so issuing the UPDATE below while these rows are still open
+	// would deadlock: the UPDATE waits for the connection the open rows hold and
+	// never gets it, which then hangs every other DB request (login, setup, …).
+	type runningApp struct {
+		id                              int64
+		bpID, containerName, prevHealth string
+	}
 	rows, err := db.QueryContext(context.Background(),
 		"SELECT id, blueprint_id, container_name, health_status FROM apps WHERE status='running'")
 	if err != nil {
 		return
 	}
-	defer rows.Close()
+	var apps []runningApp
+	for rows.Next() {
+		var a runningApp
+		if rows.Scan(&a.id, &a.bpID, &a.containerName, &a.prevHealth) == nil {
+			apps = append(apps, a)
+		}
+	}
+	rows.Close()
 
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	for rows.Next() {
-		var id int64
-		var bpID, containerName, prevHealth string
-		if rows.Scan(&id, &bpID, &containerName, &prevHealth) != nil {
-			continue
-		}
+	for _, a := range apps {
+		id, bpID, containerName, prevHealth := a.id, a.bpID, a.containerName, a.prevHealth
 
 		// Load blueprint to get health endpoint
 		bpPath := filepath.Join(blueprintDir, bpID+".yaml")
