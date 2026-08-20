@@ -8,6 +8,9 @@ Operational scripts for local development and production deploys.
 - `dev-down.sh` — stop the local development stack.
 - `test.sh` — run tests.
 - `lint.sh` — run format/lint checks.
+- `e2e-local.sh` — run the full end-to-end suite (Go container-lifecycle +
+  Playwright browser click-through) against a running dev stack. Slow; this is
+  the per-release confidence check, not a per-PR gate.
 
 ## Production deploy
 
