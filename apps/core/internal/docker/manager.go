@@ -59,6 +59,68 @@ func (m *Manager) Ping(ctx context.Context) error {
 	return checkStatus(resp, http.StatusOK)
 }
 
+// hostConfig mirrors the subset of Docker's HostConfig we set.
+type hostConfig struct {
+	Binds          []string       `json:"Binds,omitempty"`
+	RestartPolicy  map[string]any `json:"RestartPolicy"`
+	Memory         int64          `json:"Memory,omitempty"`
+	NetworkMode    string         `json:"NetworkMode"`
+	SecurityOpt    []string       `json:"SecurityOpt,omitempty"`
+	CapDrop        []string       `json:"CapDrop,omitempty"`
+	CapAdd         []string       `json:"CapAdd,omitempty"`
+	ReadonlyRootfs bool           `json:"ReadonlyRootfs,omitempty"`
+}
+
+type endpointSettings struct{}
+
+type networkingConfig struct {
+	EndpointsConfig map[string]*endpointSettings `json:"EndpointsConfig"`
+}
+
+type createBody struct {
+	Image            string            `json:"Image"`
+	Env              []string          `json:"Env,omitempty"`
+	Labels           map[string]string `json:"Labels,omitempty"`
+	HostConfig       hostConfig        `json:"HostConfig"`
+	NetworkingConfig networkingConfig  `json:"NetworkingConfig"`
+}
+
+// buildCreateBody assembles the Docker create request from a blueprint,
+// applying the blueprint's security settings. no-new-privileges is on by
+// default (unless the blueprint explicitly allows escalation).
+func buildCreateBody(bp *blueprint.Blueprint) createBody {
+	sec := bp.Container.Security
+
+	var securityOpt []string
+	if !sec.AllowPrivilegeEscalation {
+		securityOpt = append(securityOpt, "no-new-privileges:true")
+	}
+
+	return createBody{
+		Image: bp.Container.Image,
+		Env:   bp.Container.Environment,
+		Labels: map[string]string{
+			"pcg.app":     bp.ID,
+			"pcg.managed": "true",
+		},
+		HostConfig: hostConfig{
+			Binds:          bp.Container.Volumes,
+			RestartPolicy:  map[string]any{"Name": "unless-stopped"},
+			Memory:         parseMemoryLimit(bp.Resources.MemoryLimit),
+			NetworkMode:    privateNetwork,
+			SecurityOpt:    securityOpt,
+			CapDrop:        sec.CapDrop,
+			CapAdd:         sec.CapAdd,
+			ReadonlyRootfs: sec.ReadOnlyRootfs,
+		},
+		NetworkingConfig: networkingConfig{
+			EndpointsConfig: map[string]*endpointSettings{
+				privateNetwork: {},
+			},
+		},
+	}
+}
+
 // Install pulls the image and creates the container (does not start it).
 func (m *Manager) Install(ctx context.Context, bp *blueprint.Blueprint) error {
 	// Pull image — stream is discarded; we just wait for completion.
@@ -74,43 +136,7 @@ func (m *Manager) Install(ctx context.Context, bp *blueprint.Blueprint) error {
 	}
 
 	// Build container config.
-	type hostConfig struct {
-		Binds         []string       `json:"Binds,omitempty"`
-		RestartPolicy map[string]any `json:"RestartPolicy"`
-		Memory        int64          `json:"Memory,omitempty"`
-		NetworkMode   string         `json:"NetworkMode"`
-	}
-	type endpointSettings struct{}
-	type networkingConfig struct {
-		EndpointsConfig map[string]*endpointSettings `json:"EndpointsConfig"`
-	}
-	type createBody struct {
-		Image            string            `json:"Image"`
-		Env              []string          `json:"Env,omitempty"`
-		Labels           map[string]string `json:"Labels,omitempty"`
-		HostConfig       hostConfig        `json:"HostConfig"`
-		NetworkingConfig networkingConfig  `json:"NetworkingConfig"`
-	}
-
-	body := createBody{
-		Image: bp.Container.Image,
-		Env:   bp.Container.Environment,
-		Labels: map[string]string{
-			"pcg.app":     bp.ID,
-			"pcg.managed": "true",
-		},
-		HostConfig: hostConfig{
-			Binds:         bp.Container.Volumes,
-			RestartPolicy: map[string]any{"Name": "unless-stopped"},
-			Memory:        parseMemoryLimit(bp.Resources.MemoryLimit),
-			NetworkMode:   privateNetwork,
-		},
-		NetworkingConfig: networkingConfig{
-			EndpointsConfig: map[string]*endpointSettings{
-				privateNetwork: {},
-			},
-		},
-	}
+	body := buildCreateBody(bp)
 
 	createURL := fmt.Sprintf("/containers/create?name=%s", bp.ContainerName())
 	resp2, err := m.do(ctx, "POST", createURL, body)

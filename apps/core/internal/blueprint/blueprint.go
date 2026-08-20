@@ -39,6 +39,22 @@ type Container struct {
 	Image       string   `yaml:"image"`
 	Environment []string `yaml:"environment"`
 	Volumes     []string `yaml:"volumes"`
+	Security    Security `yaml:"security"`
+}
+
+// Security controls container hardening. The zero value is the secure default:
+// privilege escalation is blocked (no-new-privileges). Root filesystem and
+// capabilities stay permissive unless a blueprint opts in, because many
+// third-party images write to their root FS or need specific capabilities.
+type Security struct {
+	// AllowPrivilegeEscalation, when true, disables the no-new-privileges flag.
+	// Default false → no-new-privileges is ON. Web apps almost never need setuid.
+	AllowPrivilegeEscalation bool `yaml:"allow_privilege_escalation"`
+	// ReadOnlyRootfs mounts the container's root filesystem read-only.
+	ReadOnlyRootfs bool `yaml:"read_only_rootfs"`
+	// CapDrop / CapAdd tune Linux capabilities (e.g. CapDrop: ["ALL"]).
+	CapDrop []string `yaml:"cap_drop"`
+	CapAdd  []string `yaml:"cap_add"`
 }
 
 type Lifecycle struct {
