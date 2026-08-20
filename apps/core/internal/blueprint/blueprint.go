@@ -14,6 +14,18 @@ import (
 // This prevents path traversal (../../etc/passwd) and Docker name injection.
 var blueprintIDRegex = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 
+// imageRefRegex restricts container images to the safe character set of a Docker
+// image reference (registry/repo:tag@digest). It blocks spaces and URL
+// metacharacters (?, &, #, …) that would otherwise be interpolated raw into the
+// Docker Engine /images/create URL and could inject query params or a rogue
+// registry.
+var imageRefRegex = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/:@-]*$`)
+
+// volumeSourceRegex matches a Docker *named volume* (no path separators). Bind
+// mounts of host paths are rejected so a blueprint can't mount the host root or
+// the Docker socket into an app container.
+var volumeSourceRegex = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)
+
 // Blueprint defines an installable app.
 type Blueprint struct {
 	ID          string    `yaml:"id"`
@@ -142,6 +154,19 @@ func (bp *Blueprint) Validate() error {
 	}
 	if bp.Container.Image == "" {
 		errs = append(errs, errors.New("container.image is required"))
+	} else if !imageRefRegex.MatchString(bp.Container.Image) {
+		errs = append(errs, fmt.Errorf("container.image %q contains invalid characters", bp.Container.Image))
+	}
+	// Only named volumes are allowed — reject host-path bind mounts (e.g.
+	// "/:/host" or the docker socket), which would let an app escape onto the host.
+	for _, v := range bp.Container.Volumes {
+		src := v
+		if i := strings.Index(v, ":"); i >= 0 {
+			src = v[:i]
+		}
+		if !volumeSourceRegex.MatchString(src) {
+			errs = append(errs, fmt.Errorf("container.volumes: %q must use a named volume, not a host path", v))
+		}
 	}
 	switch bp.Route.Subdomain {
 	case "":

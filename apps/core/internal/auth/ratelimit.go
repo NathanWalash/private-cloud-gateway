@@ -25,8 +25,10 @@ type rlEntry struct {
 
 var loginLimiter = newRateLimiter()
 
-// totpLimiter is stricter — TOTP codes can be brute-forced (10^6 possibilities).
-var totpLimiter = &rateLimiter{entries: make(map[string]*rlEntry)}
+// totpLimiter guards TOTP verification (codes are brute-forceable). It MUST be
+// built via newRateLimiter so its cleanup goroutine runs — a bare struct literal
+// would leak one map entry per distinct IP forever.
+var totpLimiter = newRateLimiter()
 
 // ResetLimiters clears all rate limiter state. Intended for use in tests only.
 func ResetLimiters() {

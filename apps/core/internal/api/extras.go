@@ -419,13 +419,20 @@ func PollAllMonitorsWithNotify(db *sql.DB, notifier Notifier, prevStatus map[int
 
 	sem := make(chan struct{}, 10)
 	var wg sync.WaitGroup
+	// prevStatus is shared across the worker goroutines below; Go maps are not
+	// safe for concurrent access (even distinct keys), so every read/write is
+	// guarded. Without this the process crashes ("concurrent map writes") once
+	// two monitors change state in the same poll.
+	var statusMu sync.Mutex
 	for _, m := range monitors {
 		monID, monURL, monName := m.id, m.u, m.name
 		oldStatus := m.prev
 		if prevStatus != nil {
+			statusMu.Lock()
 			if s, ok := prevStatus[m.id]; ok {
 				oldStatus = s
 			}
+			statusMu.Unlock()
 		}
 		sem <- struct{}{}
 		wg.Add(1)
@@ -438,7 +445,9 @@ func PollAllMonitorsWithNotify(db *sql.DB, notifier Notifier, prevStatus map[int
 				var newStatus string
 				db.QueryRowContext(context.Background(), "SELECT status FROM monitors WHERE id=?", monID).Scan(&newStatus) //nolint:errcheck
 				if prevStatus != nil {
+					statusMu.Lock()
 					prevStatus[monID] = newStatus
+					statusMu.Unlock()
 				}
 				if oldStatus != newStatus && oldStatus != "" {
 					switch newStatus {

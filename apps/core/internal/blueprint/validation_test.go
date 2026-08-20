@@ -55,6 +55,59 @@ route:
 	}
 }
 
+func bpYAML(image, volume string) string {
+	vols := "[]"
+	if volume != "" {
+		vols = "[" + volume + "]"
+	}
+	return "id: testapp\nname: Test\ncontainer:\n  image: " + image +
+		"\n  volumes: " + vols + "\nroute:\n  subdomain: test\n  internal_port: 80\n"
+}
+
+func TestParse_RejectsMaliciousImage(t *testing.T) {
+	bad := []string{
+		"evil image",          // space
+		"repo:tag?injected=1", // query injection
+		"repo:tag&x=1",        // ampersand
+		"repo:tag#frag",       // fragment
+		`repo";rm -rf`,        // shell-ish junk
+	}
+	for _, img := range bad {
+		if _, err := blueprint.Parse([]byte(bpYAML(img, ""))); err == nil {
+			t.Errorf("expected image %q to be rejected", img)
+		}
+	}
+	good := []string{
+		"excalidraw/excalidraw:sha-4bfc5bb",
+		"ghcr.io/home-assistant/home-assistant:stable",
+		"couchdb:3.5.2",
+		"nginx",
+	}
+	for _, img := range good {
+		if _, err := blueprint.Parse([]byte(bpYAML(img, ""))); err != nil {
+			t.Errorf("expected image %q to be accepted, got %v", img, err)
+		}
+	}
+}
+
+func TestParse_RejectsHostPathVolume(t *testing.T) {
+	bad := []string{
+		`"/:/host"`,                 // host root
+		`"/var/run/docker.sock:/x"`, // docker socket
+		`"./data:/data"`,            // relative host path
+		`"../escape:/data"`,         // traversal
+	}
+	for _, v := range bad {
+		if _, err := blueprint.Parse([]byte(bpYAML("nginx", v))); err == nil {
+			t.Errorf("expected volume %s to be rejected", v)
+		}
+	}
+	// Named volumes are allowed.
+	if _, err := blueprint.Parse([]byte(bpYAML("nginx", `"pcg-data:/opt/data"`))); err != nil {
+		t.Errorf("expected named volume to be accepted, got %v", err)
+	}
+}
+
 func TestParse_RejectsReservedHomeSubdomain(t *testing.T) {
 	yaml := `
 id: homeassistant
