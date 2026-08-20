@@ -145,6 +145,10 @@ func (bp *Blueprint) Validate() error {
 	}
 	if bp.Route.Subdomain == "" {
 		errs = append(errs, errors.New("route.subdomain is required"))
+	} else if bp.Route.Subdomain == "home" {
+		// "home" is reserved for the dashboard — a blueprint using it would emit
+		// a duplicate Caddy site block and shadow/break the dashboard route.
+		errs = append(errs, errors.New(`route.subdomain "home" is reserved for the dashboard`))
 	}
 	if bp.Route.InternalPort == 0 {
 		errs = append(errs, errors.New("route.internal_port is required"))

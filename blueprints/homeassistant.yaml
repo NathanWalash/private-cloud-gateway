@@ -5,7 +5,7 @@ icon: "🏠"
 category: automation
 
 route:
-  subdomain: home
+  subdomain: ha
   internal_port: 8123
 
 container:

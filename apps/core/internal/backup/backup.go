@@ -10,14 +10,17 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
 
 	"golang.org/x/crypto/pbkdf2"
+	_ "modernc.org/sqlite" // registers the "sqlite" driver for checkpointWAL
 )
 
 // Manifest describes what is inside a backup archive.
@@ -107,7 +110,13 @@ func writeZip(w io.Writer, dbPath, blueprintsDir string, volumes []AppVolume, re
 		return err
 	}
 
-	// SQLite database
+	// SQLite database. The live DB runs in WAL mode, so committed transactions
+	// may still be sitting in the -wal file (not yet folded into the main .db).
+	// Checkpoint first so the byte-for-byte copy below is consistent — otherwise
+	// the backup can silently miss the most recent writes.
+	if err := checkpointWAL(dbPath); err != nil {
+		slog.Warn("backup: wal checkpoint failed; backup may miss recent writes", "err", err)
+	}
 	if err := addFile(zw, dbPath, dbFile); err != nil {
 		return fmt.Errorf("add db: %w", err)
 	}
@@ -145,6 +154,20 @@ func writeZip(w io.Writer, dbPath, blueprintsDir string, volumes []AppVolume, re
 	}
 
 	return zw.Close()
+}
+
+// checkpointWAL folds any committed WAL frames back into the main database file
+// so a file copy of the DB is consistent. It opens a short-lived connection to
+// the same file; WAL is shared across connections, so this flushes writes made
+// by the running server. Safe no-op if the DB isn't in WAL mode.
+func checkpointWAL(dbPath string) error {
+	db, err := sql.Open("sqlite", dbPath+"?_busy_timeout=5000")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	_, err = db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
+	return err
 }
 
 func addFile(zw *zip.Writer, src, dst string) error {
