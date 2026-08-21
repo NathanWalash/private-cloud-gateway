@@ -1,14 +1,13 @@
 import {
   HardDrive, Wrench, FileText, Pulse, Shield,
   CurrencyDollar, Lightning, Globe, Package,
-  Bookmark, Database, Wallet, ChartLine, ChartBar,
+  Database, Wallet, ChartLine, ChartBar,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react'
 
 const ICONS_BY_ID: Record<string, PhosphorIcon> = {
   filebrowser:     HardDrive,
   'stirling-pdf':  ChartLine,
-  shiori:          Bookmark,
   'uptime-kuma':   ChartBar,
   vaultwarden:     Wallet,
   silverbullet:    FileText,
@@ -17,6 +16,12 @@ const ICONS_BY_ID: Record<string, PhosphorIcon> = {
   'actual-budget': CurrencyDollar,
   excalidraw:      Wrench,
   couchdb:         Database,
+  'it-tools':      Wrench,
+  cyberchef:       Wrench,
+  adminer:         Database,
+  gatus:           Pulse,
+  umami:           ChartBar,
+  outline:         FileText,
 }
 
 const ICONS_BY_CATEGORY: Record<string, PhosphorIcon> = {

@@ -1,7 +1,6 @@
 id: couchdb
 name: CouchDB
 description: Database backend for Obsidian LiveSync. Install this, then connect your Obsidian vault using the Self-hosted LiveSync plugin to sync across all your devices.
-icon: "🛋️"
 category: storage
 
 route:

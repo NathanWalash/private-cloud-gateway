@@ -20,7 +20,7 @@ export E2E_PASSWORD="${E2E_PASSWORD:-e2e-test-pass-123}"
 echo "▸ Target: $E2E_BASE_URL (user: $E2E_EMAIL)"
 
 if ! curl -sf "$E2E_BASE_URL/healthz" >/dev/null; then
-  echo "✗ Stack not reachable at $E2E_BASE_URL — run 'make dev-up' first." >&2
+  echo "[x] Stack not reachable at $E2E_BASE_URL — run 'make dev-up' first." >&2
   exit 1
 fi
 
@@ -30,4 +30,4 @@ echo "▸ Go container-lifecycle E2E…"
 echo "▸ Playwright browser E2E…"
 ( cd "$REPO_ROOT/e2e" && npm install --silent && npx playwright install chromium >/dev/null 2>&1 && npx playwright test )
 
-echo "✓ End-to-end suite passed."
+echo "[ok] End-to-end suite passed."

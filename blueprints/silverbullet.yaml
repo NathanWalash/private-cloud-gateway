@@ -1,7 +1,6 @@
 id: silverbullet
 name: SilverBullet
 description: Obsidian-style markdown notes in your browser. Backlinks, live queries, plugins. Your notes stay on your server.
-icon: "📝"
 category: productivity
 
 route:

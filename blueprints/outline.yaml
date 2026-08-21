@@ -1,7 +1,6 @@
 id: outline
 name: Outline
 description: A fast, collaborative knowledge base and wiki for your projects — documents, notes, and great search. Self-hosted team documentation.
-icon: "📖"
 category: productivity
 
 # Coming soon: Outline needs external PostgreSQL + Redis, which the

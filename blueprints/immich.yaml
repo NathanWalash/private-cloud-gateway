@@ -1,7 +1,6 @@
 id: immich
 name: Immich
 description: High-performance self-hosted photo and video backup solution. Works with the Immich mobile app for automatic backup.
-icon: "📷"
 category: storage
 
 # Coming soon: Immich needs external Postgres + Redis, which the single-container

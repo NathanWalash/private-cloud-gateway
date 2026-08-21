@@ -29,8 +29,8 @@ PASS=0
 FAIL=0
 SKIP=0
 
-pass()  { echo -e "${GREEN}✓${NC} $1"; PASS=$((PASS+1)); }
-fail()  { echo -e "${RED}✗${NC} $1 — $2"; FAIL=$((FAIL+1)); }
+pass()  { echo -e "${GREEN}[ok]${NC} $1"; PASS=$((PASS+1)); }
+fail()  { echo -e "${RED}[x]${NC} $1 — $2"; FAIL=$((FAIL+1)); }
 skip()  { echo -e "${YELLOW}⊘${NC} $1 (skipped: $2)"; SKIP=$((SKIP+1)); }
 section() { echo -e "\n${BLUE}── $1 ──${NC}"; }
 

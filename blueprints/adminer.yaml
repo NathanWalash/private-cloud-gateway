@@ -1,7 +1,6 @@
 id: adminer
 name: Adminer
 description: Lightweight web UI for managing SQL databases (MySQL, PostgreSQL, SQLite, and more). Connect to any database you run on your server.
-icon: "🗄️"
 category: utilities
 
 route:

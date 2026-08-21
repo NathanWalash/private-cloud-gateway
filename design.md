@@ -106,10 +106,15 @@ No bouncing, no long fades. Respect `prefers-reduced-motion`.
 Use **[@phosphor-icons/react](https://phosphoricons.com)** — a distinctive but
 neutral set (Lucide is over-used and part of the "template" look). Rules:
 
+- **No emojis. Anywhere.** Not in the UI, blueprints, docs, README, code
+  comments, commit messages, PR bodies, or CLI output. Use real icon components
+  (Phosphor) where a UI needs an icon, and plain text everywhere else (write
+  "warning"/"done", not a symbol). This is a hard rule.
 - One **weight** everywhere for chrome — `regular` (don't mix regular/bold/fill).
 - One **size** per context — 16px inline, 20px for primary nav/actions.
-- App icons in blueprints keep their brand marks; the dashboard chrome is
-  Phosphor only.
+- App icons are chosen in code, not data: `AppIcon` maps a blueprint's id (then
+  its category) to a Phosphor icon. Blueprints do **not** carry an `icon` field —
+  add a mapping in `apps/web/src/components/AppIcon.tsx` when adding an app.
 - Import per-icon (`import { Gear } from "@phosphor-icons/react"`) so tree-shaking
   keeps the bundle small.
 

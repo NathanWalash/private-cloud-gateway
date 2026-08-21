@@ -194,14 +194,13 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 	// caused by permission errors, missing config, etc.
 	initialStatus := h.docker.StatusAfterStart(r.Context(), bp.ContainerName(), 5)
 
-	icon := bp.Icon
-	if icon == "" {
-		icon = "📦"
-	}
+	// icon is legacy/unused — the web UI renders Phosphor icons keyed by
+	// blueprint id/category (see AppIcon), so store whatever the blueprint has
+	// (normally empty) without substituting anything.
 	res, err := h.db.ExecContext(r.Context(),
 		`INSERT INTO apps (blueprint_id, name, icon, subdomain, internal_port, image, container_name, status)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		bp.ID, bp.Name, icon, bp.Route.Subdomain, bp.Route.InternalPort,
+		bp.ID, bp.Name, bp.Icon, bp.Route.Subdomain, bp.Route.InternalPort,
 		bp.Container.Image, bp.ContainerName(), initialStatus,
 	)
 	if err != nil {

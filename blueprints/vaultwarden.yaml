@@ -1,7 +1,6 @@
 id: vaultwarden
 name: Vaultwarden
 description: Self-hosted Bitwarden-compatible password manager. Use the official Bitwarden apps and browser extensions with your own server.
-icon: "🔐"
 category: security
 
 route:

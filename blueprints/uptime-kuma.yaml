@@ -1,7 +1,6 @@
 id: uptime-kuma
 name: Uptime Kuma
 description: Self-hosted uptime monitor for websites, APIs, TCP ports, DNS, ping, and containers. Get notified when anything goes down.
-icon: "📡"
 category: monitoring
 
 route:

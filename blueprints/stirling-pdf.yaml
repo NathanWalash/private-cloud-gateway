@@ -1,7 +1,6 @@
 id: stirling-pdf
 name: Stirling PDF
 description: Merge, split, compress, convert, and edit PDFs. Over 50 PDF tools in one place.
-icon: "📄"
 category: utilities
 
 route:

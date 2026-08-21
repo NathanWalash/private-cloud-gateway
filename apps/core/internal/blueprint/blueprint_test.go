@@ -10,7 +10,6 @@ const validYAML = `
 id: test-app
 name: Test App
 description: A test application
-icon: "🧪"
 category: testing
 
 route:

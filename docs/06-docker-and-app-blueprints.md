@@ -20,7 +20,6 @@ A blueprint tells Cloud Core:
 id: stirling-pdf
 name: PDF Tools
 description: Merge, split, compress and convert PDFs
-icon: file-text
 category: utilities
 
 route:

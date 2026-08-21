@@ -1,7 +1,6 @@
 id: cyberchef
 name: CyberChef
 description: The "Cyber Swiss Army Knife" — encode/decode, encryption, hashing, data conversion, and 300+ operations, all offline in your browser.
-icon: "🔬"
 category: utilities
 
 route:
