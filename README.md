@@ -155,6 +155,12 @@ Designed so a single small VM can face the internet safely.
 - **Supply chain.** `gosec` and `govulncheck` run in CI alongside the
   race-enabled test suite; Dependabot keeps dependencies current.
 
+> **Single-operator by design.** Every account is full-trust — login is
+> authentication, not per-app authorization, so anyone who can sign in can reach
+> every app and the dashboard. Don't create an account for someone you wouldn't
+> give full control of the server. See
+> [`docs/04-security-model.md`](docs/04-security-model.md#user-model-and-trust-boundary).
+
 See [`docs/04-security-model.md`](docs/04-security-model.md). Report
 vulnerabilities via [`SECURITY.md`](SECURITY.md).
 
