@@ -1,23 +1,32 @@
 name: E2E Tests
 
 on:
+  # Run automatically: nightly, and on every release tag.
+  schedule:
+    - cron: "0 4 * * *"
+  push:
+    tags:
+      - "v*"
+  # Also runnable on demand; inputs are optional (bootstrap creds default below).
   workflow_dispatch:
     inputs:
       email:
-        description: "Admin email to test with"
-        required: true
+        description: "Admin email to test with (optional)"
+        required: false
       password:
-        description: "Admin password to test with"
-        required: true
+        description: "Admin password to test with (optional)"
+        required: false
         type: string
-
-# NOT triggered on push/PR — run manually via Actions tab after deploying.
-# Usage: Actions → E2E Tests → Run workflow
 
 jobs:
   e2e:
     name: End-to-end tests
     runs-on: ubuntu-latest
+    # Bootstrap credentials — use the provided inputs, or defaults for
+    # scheduled/tag runs that have no inputs.
+    env:
+      TEST_EMAIL: ${{ inputs.email || 'e2e@test.local' }}
+      TEST_PASSWORD: ${{ inputs.password || 'e2e-test-pass-1234' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -26,8 +35,8 @@ jobs:
         run: |
           cp .env.example .env
           echo "CLOUD_CORE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
-          echo "CLOUD_CORE_BOOTSTRAP_EMAIL=${{ inputs.email }}" >> .env
-          echo "CLOUD_CORE_BOOTSTRAP_PASSWORD=${{ inputs.password }}" >> .env
+          echo "CLOUD_CORE_BOOTSTRAP_EMAIL=$TEST_EMAIL" >> .env
+          echo "CLOUD_CORE_BOOTSTRAP_PASSWORD=$TEST_PASSWORD" >> .env
           echo "CLOUD_CORE_LOGIN_URL=http://home.localtest.me/login" >> .env
           echo "CLOUD_CORE_COOKIE_DOMAIN=localtest.me" >> .env
 
@@ -63,13 +72,17 @@ jobs:
 
       - name: Run Go E2E tests
         run: |
-          go test -v -tags e2e -timeout 60s ./e2e/...
+          go test -v -tags e2e -timeout 900s ./e2e/...
         working-directory: apps/core
         env:
           E2E_BASE_URL: http://home.localtest.me
           E2E_FILES_URL: http://files.localtest.me
-          E2E_EMAIL: ${{ inputs.email }}
-          E2E_PASSWORD: ${{ inputs.password }}
+          E2E_RESOLVE: 127.0.0.1
+          E2E_EMAIL: ${{ env.TEST_EMAIL }}
+          E2E_PASSWORD: ${{ env.TEST_PASSWORD }}
+          # A static app + a multi-container app (Postgres sidecar) exercise both
+          # the single- and multi-container install paths in CI.
+          E2E_APPS: excalidraw,umami
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -79,7 +92,7 @@ jobs:
       - name: Install Playwright
         working-directory: e2e
         run: |
-          npm install
+          npm ci
           npx playwright install --with-deps chromium
 
       - name: Run Playwright browser E2E
@@ -87,8 +100,9 @@ jobs:
         run: npx playwright test
         env:
           E2E_BASE_URL: http://home.localtest.me
-          E2E_EMAIL: ${{ inputs.email }}
-          E2E_PASSWORD: ${{ inputs.password }}
+          E2E_RESOLVE: 127.0.0.1
+          E2E_EMAIL: ${{ env.TEST_EMAIL }}
+          E2E_PASSWORD: ${{ env.TEST_PASSWORD }}
 
       - name: Upload Playwright report
         if: always()

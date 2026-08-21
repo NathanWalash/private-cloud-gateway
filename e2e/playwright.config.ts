@@ -16,6 +16,15 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL || 'http://home.localtest.me',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // When E2E_RESOLVE is set (e.g. 127.0.0.1), map *.localtest.me to it in the
+    // browser so tests work even when public DNS for localtest.me is unavailable.
+    launchOptions: process.env.E2E_RESOLVE
+      ? {
+          args: [
+            `--host-resolver-rules=MAP *.localtest.me ${process.env.E2E_RESOLVE}, MAP localtest.me ${process.env.E2E_RESOLVE}`,
+          ],
+        }
+      : {},
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 })
