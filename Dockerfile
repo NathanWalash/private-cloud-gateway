@@ -36,7 +36,13 @@ COPY --from=web-builder /web/dist ./web/dist
 
 # Build version, injected at link time (defaults to "dev" for local builds).
 ARG VERSION=dev
+# COVERPKG, when set (e.g. "./..."), builds a coverage-instrumented binary that
+# writes coverage data to $GOCOVERDIR on graceful shutdown. Used only by
+# scripts/coverage.sh to measure how much the E2E suite exercises; empty for all
+# normal/release builds, which stay uninstrumented.
+ARG COVERPKG=
 RUN CGO_ENABLED=0 GOOS=linux go build \
+    ${COVERPKG:+-cover -covermode=atomic -coverpkg=${COVERPKG}} \
     -ldflags="-w -s -X github.com/NathanWalash/private-cloud-gateway/apps/core/internal/version.Version=${VERSION}" \
     -o cloud-core .
 
