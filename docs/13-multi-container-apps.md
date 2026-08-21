@@ -94,13 +94,30 @@ group is discoverable.
 memory limits, named-volume-only). Validation (image charset, named volumes)
 applies to services too.
 
-### Backup
+### Backup (engine-aware dumps)
 
-Backup already enumerates an app's volumes; extend it to include sidecar volumes.
-For v0.8 this is a **volume snapshot** (filesystem copy of the DB volume), which
-can be slightly inconsistent for a live database — documented, with the
-recommendation to snapshot during low activity. Engine-aware dumps (pg_dump,
-mysqldump) are a later enhancement.
+Databases are backed up with **engine-native dumps**, not raw volume copies, so
+backups are consistent. A service declares how to dump/restore itself:
+
+```yaml
+services:
+  - name: db
+    image: postgres:16-alpine
+    environment: [POSTGRES_USER=umami, POSTGRES_PASSWORD=..., POSTGRES_DB=umami]
+    backup:
+      dump:    ["pg_dump", "-U", "umami", "umami"]      # stdout -> services/db/dump.sql
+      restore: ["psql", "-U", "umami", "-d", "umami"]   # dump.sql piped to stdin
+```
+
+- **Backup:** `docker exec` the `dump` command and stream stdout into the archive
+  at `services/<name>/dump.sql` (encrypted with the rest of the archive).
+- **Restore:** after the app + services are (re)created and the DB is accepting
+  connections, `docker exec -i` the `restore` command with `dump.sql` on stdin.
+  This makes restore multi-step (create group -> wait for DB ready -> load dumps
+  -> start app), so restore grows a readiness wait and a load phase.
+- Redis and other caches declare no `backup` block and are simply recreated
+  empty (their data is disposable).
+- Non-DB app volumes still use the existing volume-snapshot path.
 
 ### Migrating the coming-soon apps
 
@@ -123,12 +140,11 @@ gone).
   (2) backup of sidecar volumes; (3) migrate the 5 apps off `coming_soon`, each
   verified. Cut v0.8.0 once all five pass.
 
-## Open decisions
+## Decisions (resolved)
 
-1. **DB backup fidelity:** volume snapshot (simple, minor inconsistency risk) vs
-   engine dumps (pg_dump/mysqldump — better, more work). Proposed: volume
-   snapshot for v0.8, dumps later.
-2. **Sidecar volumes on uninstall:** remove with the app (clean reinstalls) vs
-   keep (data survives an accidental uninstall). Proposed: remove with the app,
-   matching how the app container is removed today; rely on the backup feature
-   for safety.
+1. **Approach:** sidecar services declared in the blueprint (approach 1).
+2. **DB backup fidelity:** engine-native dumps (pg_dump / mysqldump) via a
+   per-service `backup.dump`/`backup.restore` command — consistent backups.
+   Restore therefore becomes multi-step (see Backup).
+3. **Sidecar volumes on uninstall:** removed with the app, for clean reinstalls;
+   the backup feature is the safety net.
