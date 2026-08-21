@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -38,9 +39,28 @@ func getenv(key, fallback string) string {
 	return fallback
 }
 
+// e2eTransport returns an HTTP transport that, when E2E_RESOLVE is set (e.g.
+// "127.0.0.1"), dials that host for every request while leaving the Host header
+// (and thus Caddy routing) untouched. This lets the suite run when *.localtest.me
+// public DNS is unavailable — set E2E_RESOLVE=127.0.0.1.
+func e2eTransport() *http.Transport {
+	tr := &http.Transport{}
+	if resolve := os.Getenv("E2E_RESOLVE"); resolve != "" {
+		tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			port := "80"
+			if _, p, err := net.SplitHostPort(addr); err == nil {
+				port = p
+			}
+			return (&net.Dialer{}).DialContext(ctx, network, net.JoinHostPort(resolve, port))
+		}
+	}
+	return tr
+}
+
 // client is a test HTTP client that does not follow redirects.
 var client = &http.Client{
-	Timeout: 10 * time.Second,
+	Timeout:   10 * time.Second,
+	Transport: e2eTransport(),
 	CheckRedirect: func(*http.Request, []*http.Request) error {
 		return http.ErrUseLastResponse
 	},

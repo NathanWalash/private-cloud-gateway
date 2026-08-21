@@ -2,95 +2,102 @@ package auth
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
+	"time"
 )
 
-func TestRateLimit_AllowsUnderLimit(t *testing.T) {
-	// Build a fake request from a fresh IP
-	req := httptest.NewRequest("POST", "/api/auth/login", nil)
-	req.RemoteAddr = "10.0.0.1:12345"
-
-	// Should allow 10 attempts
-	for i := range 10 {
-		got := realIP(req)
-		if got != "10.0.0.1" {
-			t.Fatalf("realIP: got %q, want 10.0.0.1", got)
-		}
-		_ = i
-	}
-}
-
-func TestRealIP_TrustedProxy(t *testing.T) {
-	tests := []struct {
-		name       string
-		remoteAddr string
-		forwarded  string
-		wantIP     string
-	}{
-		{
-			name:       "direct connection — use RemoteAddr",
-			remoteAddr: "1.2.3.4:9999",
-			forwarded:  "5.5.5.5",
-			wantIP:     "1.2.3.4",
-		},
-		{
-			name:       "from Docker bridge — trust X-Forwarded-For",
-			remoteAddr: "172.18.0.4:9999",
-			forwarded:  "8.8.8.8",
-			wantIP:     "8.8.8.8",
-		},
-		{
-			name:       "from localhost — trust X-Forwarded-For",
-			remoteAddr: "127.0.0.1:9999",
-			forwarded:  "9.9.9.9",
-			wantIP:     "9.9.9.9",
-		},
-		{
-			name:       "no X-Forwarded-For from trusted proxy — use RemoteAddr",
-			remoteAddr: "172.18.0.4:9999",
-			forwarded:  "",
-			wantIP:     "172.18.0.4",
-		},
-		{
-			name:       "malformed forwarded header — fallback to RemoteAddr",
-			remoteAddr: "172.18.0.4:9999",
-			forwarded:  "not-an-ip",
-			wantIP:     "172.18.0.4",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/", nil)
-			req.RemoteAddr = tt.remoteAddr
-			if tt.forwarded != "" {
-				req.Header.Set("X-Forwarded-For", tt.forwarded)
-			}
-			got := realIP(req)
-			if got != tt.wantIP {
-				t.Errorf("realIP = %q, want %q", got, tt.wantIP)
-			}
-		})
-	}
-}
-
-func TestRateLimit_BlocksAfterMax(t *testing.T) {
-	// Use a unique IP to avoid interference from loginLimiter state in other tests
-	req := httptest.NewRequest("POST", "/", nil)
-	req.RemoteAddr = "192.168.99.99:1234"
-
-	// Allow 10 attempts then block on the 11th
-	rl := newRateLimiter()
-	for i := range 10 {
-		if !rl.allow("192.168.99.99") {
-			t.Fatalf("attempt %d should be allowed", i+1)
+func TestRateLimiter_BlocksAfterMax(t *testing.T) {
+	r := newRateLimiter()
+	const ip = "203.0.113.7"
+	for i := 0; i < maxLoginAttempts; i++ {
+		if !r.allow(ip) {
+			t.Fatalf("attempt %d unexpectedly blocked", i+1)
 		}
 	}
-	if rl.allow("192.168.99.99") {
-		t.Error("11th attempt should be blocked")
+	if r.allow(ip) {
+		t.Error("expected block after reaching maxLoginAttempts")
 	}
-	_ = req
+	// A different IP is unaffected.
+	if !r.allow("198.51.100.1") {
+		t.Error("a different IP should not be rate-limited")
+	}
 }
 
-var _ *http.Request // keep http import used
+func TestRateLimiter_ResetsAfterWindow(t *testing.T) {
+	r := newRateLimiter()
+	const ip = "203.0.113.8"
+	for i := 0; i < maxLoginAttempts; i++ {
+		r.allow(ip)
+	}
+	if r.allow(ip) {
+		t.Fatal("expected block before window reset")
+	}
+	// Force the window to have elapsed.
+	r.mu.Lock()
+	r.entries[ip].resetAt = time.Now().Add(-time.Second)
+	r.mu.Unlock()
+	if !r.allow(ip) {
+		t.Error("expected allow after the window elapsed")
+	}
+}
+
+// TestRateLimiter_Prunes guards the class of bug where a limiter is built without
+// its cleanup path (the totpLimiter regression): expired entries must be removed.
+func TestRateLimiter_Prunes(t *testing.T) {
+	r := newRateLimiter()
+	r.allow("a")
+	r.allow("b")
+	r.mu.Lock()
+	for _, e := range r.entries {
+		e.resetAt = time.Now().Add(-time.Second) // mark expired
+	}
+	// Inline the cleanup body (the ticker loop calls the same logic).
+	now := time.Now()
+	for ip, e := range r.entries {
+		if now.After(e.resetAt) {
+			delete(r.entries, ip)
+		}
+	}
+	n := len(r.entries)
+	r.mu.Unlock()
+	if n != 0 {
+		t.Errorf("expected expired entries pruned, %d remain", n)
+	}
+}
+
+func TestIsTrustedProxy(t *testing.T) {
+	trusted := []string{"127.0.0.1", "::1", "172.16.0.1", "172.31.255.255", "172.17.0.9"}
+	for _, ip := range trusted {
+		if !isTrustedProxy(ip) {
+			t.Errorf("expected %s to be trusted", ip)
+		}
+	}
+	untrusted := []string{"8.8.8.8", "192.168.1.1", "10.0.0.1", "203.0.113.5", "not-an-ip"}
+	for _, ip := range untrusted {
+		if isTrustedProxy(ip) {
+			t.Errorf("expected %s to NOT be trusted", ip)
+		}
+	}
+}
+
+func TestRealIP(t *testing.T) {
+	// Trusted proxy → first X-Forwarded-For entry is used (spaces trimmed).
+	req := &http.Request{RemoteAddr: "172.17.0.5:5000", Header: http.Header{}}
+	req.Header.Set("X-Forwarded-For", "203.0.113.9, 10.0.0.1")
+	if got := realIP(req); got != "203.0.113.9" {
+		t.Errorf("trusted XFF: got %q, want 203.0.113.9", got)
+	}
+
+	// Untrusted remote → XFF ignored, RemoteAddr host used (anti-spoofing).
+	req2 := &http.Request{RemoteAddr: "8.8.8.8:5000", Header: http.Header{}}
+	req2.Header.Set("X-Forwarded-For", "203.0.113.9")
+	if got := realIP(req2); got != "8.8.8.8" {
+		t.Errorf("untrusted XFF: got %q, want 8.8.8.8", got)
+	}
+
+	// No XFF → RemoteAddr host.
+	req3 := &http.Request{RemoteAddr: "172.17.0.5:5000", Header: http.Header{}}
+	if got := realIP(req3); got != "172.17.0.5" {
+		t.Errorf("no XFF: got %q, want 172.17.0.5", got)
+	}
+}

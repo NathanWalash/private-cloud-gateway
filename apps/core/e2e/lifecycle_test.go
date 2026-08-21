@@ -22,7 +22,8 @@ const lifecycleBlueprint = "excalidraw"
 
 // installClient allows a long timeout — installing pulls the image synchronously.
 var installClient = &http.Client{
-	Timeout: 5 * time.Minute,
+	Timeout:   5 * time.Minute,
+	Transport: e2eTransport(),
 	CheckRedirect: func(*http.Request, []*http.Request) error {
 		return http.ErrUseLastResponse
 	},
@@ -32,7 +33,8 @@ var installClient = &http.Client{
 // so a momentarily busy server (containers pulling/starting, health checks
 // running) doesn't fail the poll — the loop just retries on the next tick.
 var pollClient = &http.Client{
-	Timeout: 30 * time.Second,
+	Timeout:   30 * time.Second,
+	Transport: e2eTransport(),
 	CheckRedirect: func(*http.Request, []*http.Request) error {
 		return http.ErrUseLastResponse
 	},

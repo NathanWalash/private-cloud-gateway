@@ -51,6 +51,24 @@ Valid: allow proxy
 Invalid: redirect to login
 ```
 
+## User model and trust boundary
+
+**Every account is full-trust. This is a single-operator system.**
+
+`forward_auth` performs *authentication*, not *authorization*: `/api/auth/verify`
+returns success for any valid session, regardless of which app subdomain is being
+requested. There are no per-user or per-app access controls. Consequently:
+
+- **Any user who can log in can reach every installed app and the full dashboard**
+  (install/remove apps, backups, settings, monitors).
+- The intended deployment is a single owner (or a small group who all fully trust
+  each other and are all effectively admins).
+
+Do **not** create an account for someone you would not give complete control of
+the server and every hosted app. Per-user authorization / multi-tenancy is out of
+scope for v1; if it is ever added, `Verify` must take the target host into an
+access decision and the `X-Auth-User-ID` header must be consumed for authz.
+
 ## Session requirements
 
 - HTTP-only cookies.
