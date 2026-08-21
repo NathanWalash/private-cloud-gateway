@@ -64,6 +64,21 @@ func Verify(secret, code string, t time.Time) bool {
 	return false
 }
 
+// GenerateCode returns the current TOTP code for the given base32 secret at
+// time t. It is the inverse of Verify — Verify accepts GenerateCode(secret, t)
+// within its skew window — and is useful for tooling and tests.
+func GenerateCode(secret string, t time.Time) (string, error) {
+	secret = strings.ToUpper(strings.TrimSpace(secret))
+	if len(secret) < MinSecretLen {
+		return "", fmt.Errorf("secret too short")
+	}
+	key, err := base32.StdEncoding.DecodeString(secret)
+	if err != nil {
+		return "", fmt.Errorf("invalid secret: %w", err)
+	}
+	return hotp(key, t.Unix()/stepSecs), nil
+}
+
 // hotp computes HOTP(key, counter) as a zero-padded decimal string.
 func hotp(key []byte, counter int64) string {
 	msg := make([]byte, 8)

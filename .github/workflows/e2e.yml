@@ -27,9 +27,15 @@ jobs:
     env:
       TEST_EMAIL: ${{ inputs.email || 'e2e@test.local' }}
       TEST_PASSWORD: ${{ inputs.password || 'e2e-test-pass-1234' }}
+      # Layer the coverage overlay so the core runs a coverage-instrumented
+      # build; it flushes to .coverage/e2e on graceful shutdown (teardown).
+      COMPOSE_FILES: "-f infra/docker/docker-compose.yml -f infra/docker/docker-compose.coverage.yml"
 
     steps:
       - uses: actions/checkout@v7
+
+      - name: Prepare coverage dirs
+        run: mkdir -p .coverage/unit .coverage/e2e
 
       - name: Create .env
         run: |
@@ -46,7 +52,7 @@ jobs:
           echo "127.0.0.1 files.localtest.me" | sudo tee -a /etc/hosts
 
       - name: Start stack
-        run: docker compose -f infra/docker/docker-compose.yml up -d --build
+        run: docker compose $COMPOSE_FILES up -d --build
         timeout-minutes: 5
 
       - name: Wait for stack healthy
@@ -59,7 +65,7 @@ jobs:
             sleep 2
           done
           echo "Stack did not become healthy"
-          docker compose -f infra/docker/docker-compose.yml logs core
+          docker compose $COMPOSE_FILES logs core
           exit 1
 
       - name: Run shell E2E tests (unauthenticated)
@@ -70,9 +76,18 @@ jobs:
           go-version: "1.26"
           cache-dependency-path: apps/core/go.sum
 
+      # Unit coverage in atomic covdata format, so it merges with the
+      # instrumented E2E stack's data after teardown. -count=1 defeats the test
+      # cache (a cached run writes no coverage).
+      - name: Unit-test coverage
+        working-directory: apps/core
+        run: >
+          go test -count=1 -cover -covermode=atomic -coverpkg=./... ./...
+          -args -test.gocoverdir="$GITHUB_WORKSPACE/.coverage/unit"
+
       - name: Run Go E2E tests
         run: |
-          go test -v -tags e2e -timeout 900s ./e2e/...
+          go test -count=1 -v -tags e2e -timeout 900s ./e2e/...
         working-directory: apps/core
         env:
           E2E_BASE_URL: http://home.localtest.me
@@ -112,6 +127,42 @@ jobs:
           path: e2e/playwright-report/
           retention-days: 7
 
+      # Teardown sends SIGTERM; the instrumented core shuts down gracefully and
+      # flushes its coverage counters to .coverage/e2e (a bind mount, so -v does
+      # not wipe them).
       - name: Tear down
         if: always()
-        run: docker compose -f infra/docker/docker-compose.yml down -v
+        run: docker compose $COMPOSE_FILES down -v
+
+      - name: Combined coverage report
+        if: always()
+        working-directory: apps/core
+        run: |
+          UNIT="$GITHUB_WORKSPACE/.coverage/unit"
+          E2E="$GITHUB_WORKSPACE/.coverage/e2e"
+          MERGED="$GITHUB_WORKSPACE/.coverage/merged"
+          mkdir -p "$MERGED"
+          INPUTS="$UNIT"
+          if compgen -G "$E2E/covcounters.*" >/dev/null; then
+            INPUTS="$UNIT,$E2E"
+          else
+            echo "warning: no E2E coverage counters — reporting unit only"
+          fi
+          go tool covdata merge -i="$INPUTS" -o="$MERGED"
+          go tool covdata textfmt -i="$MERGED" -o="$GITHUB_WORKSPACE/.coverage/coverage.txt"
+          {
+            echo "## Combined coverage (unit + E2E)"
+            echo '```'
+            go tool covdata percent -i="$MERGED" | sort
+            echo '```'
+            printf '**Total:** '
+            go tool cover -func="$GITHUB_WORKSPACE/.coverage/coverage.txt" | tail -1 | awk '{print $NF}'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: .coverage/coverage.txt
+          retention-days: 7
