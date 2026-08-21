@@ -6,7 +6,7 @@ category: storage
 
 route:
   subdomain: files
-  internal_port: 8080
+  internal_port: 80
 
 container:
   image: filebrowser/filebrowser:v2.63.23

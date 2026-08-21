@@ -35,4 +35,4 @@ backup:
     - /home/node/.n8n
 
 resources:
-  memory_limit: 512m
+  memory_limit: 1024m

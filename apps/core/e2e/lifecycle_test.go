@@ -222,9 +222,16 @@ func verifyAppLifecycle(t *testing.T, cookie, bpID string) {
 		_, ok := findApp(cookie, bpID)
 		return !ok
 	})
-	waitUntil(t, "subdomain stops routing", 30*time.Second, func() bool {
-		status, loc, ok := appRequest(app.Subdomain, cookie)
-		return ok && isCatchAll(status, loc)
-	})
-	t.Logf("%s uninstalled and no longer routing — lifecycle complete", bpID)
+	// The "files" subdomain is special in dev mode: the whoami test route
+	// reclaims it once no app uses it, so it keeps serving instead of falling
+	// through to the catch-all. Skip the stops-routing assertion there.
+	if app.Subdomain == "files" {
+		t.Logf("%s uninstalled (skipping stops-routing check — dev whoami reclaims files.*)", bpID)
+	} else {
+		waitUntil(t, "subdomain stops routing", 30*time.Second, func() bool {
+			status, loc, ok := appRequest(app.Subdomain, cookie)
+			return ok && isCatchAll(status, loc)
+		})
+		t.Logf("%s uninstalled and no longer routing — lifecycle complete", bpID)
+	}
 }

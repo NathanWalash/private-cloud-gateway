@@ -27,28 +27,48 @@ per-app check, not a per-PR gate (it pulls images and starts containers).
 
 ## Status
 
-Legend: ✅ verified · ⏳ not yet verified · ⚠️ needs external services/config
+Legend: ✅ verified (full lifecycle: install → running → routed → healthy →
+uninstalled) · ❌ does not work as a single container
 
-Last verified batch: 2026-08-20 (local dev stack).
+Last verified: 2026-08-21 (local dev stack).
+
+**16 of 19 verified working.** The 3 failures all need external databases the
+single-container blueprint model can't provide (see below).
 
 | App | Subdomain | Health check | Status | Notes |
 |---|---|---|---|---|
-| excalidraw | `draw` | `/` 200 | ✅ | static, single container |
-| memos | `memos` | `/` 200 | ✅ | single container + sqlite |
-| uptime-kuma | `status` | `/` 200 | ✅ | single container + sqlite |
-| vaultwarden | `vault` | `/alive` 200 | ✅ | single container + sqlite |
-| gitea | `git` | `/api/healthz` 200 | ✅ | single container + sqlite |
-| shiori | `bookmarks` | `/` 200 | ✅ | single container + sqlite |
-| filebrowser | `files` | `/` 200 | ⏳ | single container |
-| actual-budget | `budget` | `/` 200 | ⏳ | single container |
-| silverbullet | `notes` | `/` 200 | ⏳ | single container |
-| couchdb | `couchdb` | `/` 200 | ⏳ | database; set a real password before exposing |
-| freshrss | `rss` | `/` 200 | ⏳ | single container |
-| n8n | `n8n` | `/healthz` 200 | ⏳ | single container + sqlite |
-| stirling-pdf | `pdf` | `/` 200 | ⏳ | large image, slow first pull |
-| jellyfin | `media` | `/health` 200 | ⏳ | large image |
-| nextcloud | `cloud` | `/status.php` 200 | ⏳ | slow first-boot init |
-| ghost | `blog` | `/ghost/api/v4/admin/site/` 200 | ⏳ | verify it comes up without an external DB |
-| homeassistant | `ha` | `/api/` 401 | ⏳ | slow first-boot; 401 is the healthy signal |
-| paperless | `docs` | `/api/` 200 | ⚠️ | normally needs Redis + a database — verify standalone |
-| immich | `photos` | `/api/server-info/ping` 200 | ⚠️ | normally needs Postgres + Redis — verify standalone |
+| excalidraw | `draw` | `/` 200 | ✅ | static |
+| memos | `memos` | `/` 200 | ✅ | sqlite |
+| uptime-kuma | `status` | `/` 200 | ✅ | sqlite |
+| vaultwarden | `vault` | `/alive` 200 | ✅ | sqlite |
+| gitea | `git` | `/api/healthz` 200 | ✅ | sqlite |
+| shiori | `bookmarks` | `/` 200 | ✅ | sqlite |
+| filebrowser | `files` | `/` 200 | ✅ | fixed: internal_port 8080→80 |
+| actual-budget | `budget` | `/` 200 | ✅ | |
+| silverbullet | `notes` | `/` 200 | ✅ | |
+| couchdb | `couchdb` | `/` 200 | ✅ | set a real password before exposing |
+| freshrss | `rss` | `/` 200 | ✅ | |
+| n8n | `n8n` | `/healthz` 200 | ✅ | fixed: memory 512m→1024m (was OOM crash-loop) |
+| stirling-pdf | `pdf` | `/api/v1/info/status` 200 | ✅ | fixed: JVM metaspace + memory 2g + health path (`/` returns 401 via its own login) |
+| jellyfin | `media` | `/health` 200 | ✅ | |
+| nextcloud | `cloud` | `/status.php` 200 | ✅ | |
+| homeassistant | `ha` | `/api/` 401 | ✅ | 401 is the healthy signal (no token) |
+| ghost | `blog` | `/ghost/api/v4/admin/site/` 200 | ❌ | crash-loops — Ghost needs an external **MySQL** |
+| paperless | `docs` | `/api/` 200 | ❌ | needs **Redis** (+ a database) |
+| immich | `photos` | `/api/server-info/ping` 200 | ❌ | needs **Postgres + Redis** (`DB_HOSTNAME=localhost` in its own container) |
+
+## Not supported as single containers (ghost, paperless, immich)
+
+These three are **multi-container apps**: they expect an external database (and
+Redis) that the current one-container-per-blueprint model doesn't provision.
+`ghost` crash-loops connecting to MySQL at `127.0.0.1:3306`; `immich`/`paperless`
+similarly expect Postgres/Redis. They cannot work as bundled today.
+
+Options (a v1 decision):
+
+1. **Quarantine for v1** — remove them from the bundled set (or hide behind an
+   "experimental/unsupported" flag) so users don't install a broken app.
+2. **Add multi-container blueprint support post-v1** — let a blueprint declare
+   sidecar services (Postgres/Redis) on the app's private network and point the
+   app's env at them. The blueprint schema already has a `depends_on` field to
+   build on.
