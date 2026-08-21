@@ -290,6 +290,14 @@ func (h *Handler) loadServiceDump(ctx context.Context, appID, service string, da
 	if h.docker == nil {
 		return nil
 	}
+	// appID/service come from the uploaded archive's entry paths — validate them
+	// before using them in a file path or a container name (path-traversal guard).
+	if err := blueprint.ValidateBlueprintID(appID); err != nil {
+		return fmt.Errorf("invalid app id %q in archive: %w", appID, err)
+	}
+	if !blueprint.ValidServiceName(service) {
+		return fmt.Errorf("invalid service name %q in archive", service)
+	}
 	bp, err := blueprint.Parse(mustReadFile(filepath.Join(h.blueprintDir, appID+".yaml")))
 	if err != nil {
 		return err

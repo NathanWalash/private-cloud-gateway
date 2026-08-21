@@ -135,14 +135,20 @@ var secretKeyHint = regexp.MustCompile(`(?i)(password|passwd|secret|token|apikey
 // first so ${DOMAIN}/${SCHEME} are already substituted.
 func (bp *Blueprint) WeakSecrets() []string {
 	var out []string
-	for _, e := range bp.Container.Environment {
-		k, v, ok := strings.Cut(e, "=")
-		if !ok {
-			continue
+	scan := func(where string, env []string) {
+		for _, e := range env {
+			k, v, ok := strings.Cut(e, "=")
+			if !ok {
+				continue
+			}
+			if secretKeyHint.MatchString(k) && weakSecretValues[strings.ToLower(strings.TrimSpace(v))] {
+				out = append(out, fmt.Sprintf("%s%s uses a weak default value (%q) — change it before exposing this app", where, k, v))
+			}
 		}
-		if secretKeyHint.MatchString(k) && weakSecretValues[strings.ToLower(strings.TrimSpace(v))] {
-			out = append(out, fmt.Sprintf("%s uses a weak default value (%q) — change it before exposing this app", k, v))
-		}
+	}
+	scan("", bp.Container.Environment)
+	for _, s := range bp.Services {
+		scan("services."+s.Name+".", s.Environment)
 	}
 	return out
 }
@@ -166,6 +172,12 @@ func ValidateBlueprintID(id string) error {
 		return fmt.Errorf("blueprint id %q is invalid: must match %s", id, blueprintIDRegex)
 	}
 	return nil
+}
+
+// ValidServiceName reports whether name is a safe sidecar service name (used in
+// container names and network aliases).
+func ValidServiceName(name string) bool {
+	return serviceNameRegex.MatchString(name)
 }
 
 // validateVolumes rejects host-path bind mounts; only named volumes are allowed.

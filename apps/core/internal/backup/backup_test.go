@@ -170,3 +170,48 @@ func TestServiceDumpRoundTrip(t *testing.T) {
 		t.Errorf("dump content not archived/round-tripped: %q", got)
 	}
 }
+
+func TestPrune(t *testing.T) {
+	dir := t.TempDir()
+	// Names sort chronologically (FileName format), so these are oldest..newest.
+	names := []string{
+		"pcg-backup-20260101-000000.pcg-backup",
+		"pcg-backup-20260102-000000.pcg-backup",
+		"pcg-backup-20260103-000000.pcg-backup",
+		"pcg-backup-20260104-000000.pcg-backup",
+	}
+	for _, n := range names {
+		if err := os.WriteFile(filepath.Join(dir, n), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A non-backup file must be left alone.
+	os.WriteFile(filepath.Join(dir, "keep.txt"), []byte("x"), 0o600)
+
+	if err := backup.Prune(dir, 2); err != nil {
+		t.Fatal(err)
+	}
+	left := map[string]bool{}
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		left[e.Name()] = true
+	}
+	if !left["pcg-backup-20260104-000000.pcg-backup"] || !left["pcg-backup-20260103-000000.pcg-backup"] {
+		t.Error("Prune should keep the 2 newest archives")
+	}
+	if left["pcg-backup-20260101-000000.pcg-backup"] || left["pcg-backup-20260102-000000.pcg-backup"] {
+		t.Error("Prune should delete the 2 oldest archives")
+	}
+	if !left["keep.txt"] {
+		t.Error("Prune must not touch non-backup files")
+	}
+
+	// keep=0 disables pruning.
+	os.WriteFile(filepath.Join(dir, "pcg-backup-20260105-000000.pcg-backup"), []byte("x"), 0o600)
+	before, _ := backup.ListBackups(dir)
+	_ = backup.Prune(dir, 0)
+	after, _ := backup.ListBackups(dir)
+	if len(before) != len(after) {
+		t.Error("Prune(0) should keep all")
+	}
+}

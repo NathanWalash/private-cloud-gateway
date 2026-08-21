@@ -66,6 +66,7 @@ read -rp "  Admin email for Let's Encrypt (cert expiry notices): " ADMIN_EMAIL
 
 SESSION_SECRET=$(openssl rand -hex 32)
 SETUP_TOKEN=$(openssl rand -hex 16)
+BACKUP_PASSPHRASE=$(openssl rand -hex 24)
 
 echo ""
 
@@ -89,6 +90,15 @@ else
   git clone --depth 1 "$REPO" "$INSTALL_DIR"
 fi
 
+# ── Resolve the release image to pin ──────────────────────────────────────────
+# Pin PCG_VERSION to the latest published release so the first boot pulls a real,
+# immutable image instead of a floating :latest.
+info "Resolving latest release..."
+PCG_VERSION=$(curl -fsSL https://api.github.com/repos/NathanWalash/private-cloud-gateway/releases/latest 2>/dev/null \
+  | grep -m1 '"tag_name"' | cut -d'"' -f4)
+[ -z "$PCG_VERSION" ] && PCG_VERSION=latest
+info "Deploying version $PCG_VERSION"
+
 # ── Write .env ───────────────────────────────────────────────────────────────
 info "Writing configuration..."
 cat > "$INSTALL_DIR/.env" <<EOF
@@ -97,6 +107,9 @@ cat > "$INSTALL_DIR/.env" <<EOF
 
 CLOUD_CORE_ENV=production
 CLOUD_CORE_PORT=8080
+
+# Pinned release image tag (deploy.sh updates this on deploy/rollback).
+PCG_VERSION=$PCG_VERSION
 CLOUD_CORE_COOKIE_DOMAIN=$DOMAIN
 CLOUD_CORE_LOGIN_URL=https://home.$DOMAIN/login
 CLOUD_CORE_ADMIN_EMAIL=$ADMIN_EMAIL
@@ -111,11 +124,14 @@ CLOUD_CORE_CADDY_ADMIN=caddy:2019
 CLOUD_CORE_SETUP_TOKEN=$SETUP_TOKEN
 CLOUD_CORE_BLUEPRINT_DIR=/blueprints
 
-# Backup passphrase — change to something secret before first backup
-CLOUD_CORE_BACKUP_PASSPHRASE=
+# Backup passphrase — encrypts every backup. Generated below; SAVE IT (you need
+# it to restore). Losing it means losing access to your backups.
+CLOUD_CORE_BACKUP_PASSPHRASE=$BACKUP_PASSPHRASE
 
-# Scheduled backups — e.g. "24h" for daily, empty to disable
+# Scheduled backups — e.g. "24h" for daily, empty to disable.
 CLOUD_CORE_BACKUP_SCHEDULE=24h
+# How many backup archives to keep (older ones are pruned). 0 keeps all.
+CLOUD_CORE_BACKUP_KEEP=7
 
 # Bootstrap (optional — use the setup wizard instead)
 # CLOUD_CORE_BOOTSTRAP_EMAIL=
@@ -173,12 +189,17 @@ echo -e "      ${GREEN}$SETUP_TOKEN${NC}"
 echo "  Enter this on the setup screen. It's also in $INSTALL_DIR/.env"
 echo "  (CLOUD_CORE_SETUP_TOKEN). Keep it secret until setup is complete."
 echo ""
+echo -e "  ${YELLOW}Backup passphrase (SAVE THIS — required to restore backups):${NC}"
+echo -e "      ${GREEN}$BACKUP_PASSPHRASE${NC}"
+echo "  Stored in $INSTALL_DIR/.env (CLOUD_CORE_BACKUP_PASSPHRASE)."
+echo ""
 echo "  Next steps:"
-echo "  1. Point DNS: A $DOMAIN → $(curl -s ifconfig.me 2>/dev/null || echo 'YOUR_IP')"
+echo "  1. In the Oracle Cloud console, add ingress rules to your subnet's"
+echo "     Security List for TCP 80 and 443 (only 22 is open by default),"
+echo "     or the site is unreachable and HTTPS can't be issued."
+echo "  2. Point DNS: A $DOMAIN → $(curl -s --max-time 5 ifconfig.me 2>/dev/null || echo 'YOUR_IP')"
 echo "     and:        A *.$DOMAIN → same IP"
-echo "  2. Visit https://home.$DOMAIN to complete setup (enter the token above)"
-echo "  3. Set CLOUD_CORE_BACKUP_PASSPHRASE in $INSTALL_DIR/.env"
-echo "     then: sudo systemctl restart $SERVICE_NAME"
+echo "  3. Visit https://home.$DOMAIN to complete setup (enter the token above)"
 echo ""
 echo "  Manage:"
 echo "  sudo systemctl status $SERVICE_NAME"

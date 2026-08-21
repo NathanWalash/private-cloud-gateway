@@ -63,7 +63,8 @@ const (
 	bpDir        = "blueprints"
 	volumesDir   = "volumes"
 	servicesDir  = "services"
-	keyLen       = 32 // AES-256
+	maxDumpBytes = 512 << 20 // cap a single decompressed dump.sql (zip-bomb guard)
+	keyLen       = 32        // AES-256
 	saltLen      = 32
 	iterations   = 100_000
 	archiveExt   = ".pcg-backup"
@@ -229,13 +230,17 @@ func ForEachServiceDump(srcPath, passphrase string, fn func(appID, service strin
 		return err
 	}
 	for _, file := range zr.File {
+		if strings.Contains(file.Name, "..") {
+			continue // defend against crafted entry names
+		}
 		parts := strings.Split(file.Name, "/")
 		if len(parts) == 4 && parts[0] == servicesDir && parts[3] == "dump.sql" {
 			rc, err := file.Open()
 			if err != nil {
 				continue
 			}
-			b, readErr := io.ReadAll(rc)
+			// Cap decompressed size so a crafted archive can't exhaust memory.
+			b, readErr := io.ReadAll(io.LimitReader(rc, maxDumpBytes))
 			rc.Close()
 			if readErr != nil {
 				continue
@@ -475,6 +480,25 @@ func FileName(t time.Time) string {
 }
 
 // ListBackups returns all backup files in dir, newest first.
+// Prune keeps the newest `keep` backup archives in dir and deletes the rest,
+// so scheduled backups can't fill the disk. keep <= 0 disables pruning.
+func Prune(dir string, keep int) error {
+	if keep <= 0 {
+		return nil
+	}
+	list, err := ListBackups(dir) // newest-first
+	if err != nil {
+		return err
+	}
+	if len(list) <= keep {
+		return nil
+	}
+	for _, b := range list[keep:] {
+		_ = os.Remove(filepath.Join(dir, b.Name))
+	}
+	return nil
+}
+
 func ListBackups(dir string) ([]BackupInfo, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {

@@ -23,6 +23,7 @@ services:
       - POSTGRES_DB=umami
     volumes:
       - pcg-umami-db:/var/lib/postgresql/data
+    memory_limit: 512m
     backup:
       dump: ["pg_dump", "-U", "umami", "umami"]
       restore: ["psql", "-U", "umami", "-d", "umami"]

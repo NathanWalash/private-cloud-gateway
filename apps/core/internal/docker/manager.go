@@ -26,20 +26,28 @@ const (
 
 // Manager manages Docker containers via the REST API.
 type Manager struct {
-	client *http.Client
+	client       *http.Client // control-plane ops (short timeout)
+	streamClient *http.Client // long/streaming ops: image pulls, exec dumps, volume copies
 }
 
 // New creates a Manager that dials the host Docker socket.
 func New() (*Manager, error) {
-	c := &http.Client{
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return (&net.Dialer{}).DialContext(ctx, "unix", socketPath)
-			},
-		},
-		Timeout: 60 * time.Second,
+	dial := func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "unix", socketPath)
 	}
-	m := &Manager{client: c}
+	m := &Manager{
+		client: &http.Client{
+			Transport: &http.Transport{DialContext: dial},
+			Timeout:   60 * time.Second,
+		},
+		// Image pulls and database dumps legitimately take minutes; a short
+		// timeout here would silently truncate a dump or abort a pull. Use a
+		// generous ceiling and rely on request context for cancellation.
+		streamClient: &http.Client{
+			Transport: &http.Transport{DialContext: dial},
+			Timeout:   60 * time.Minute,
+		},
+	}
 	// Verify connectivity.
 	if err := m.Ping(context.Background()); err != nil {
 		return nil, fmt.Errorf("docker socket unavailable: %w", err)
@@ -226,13 +234,35 @@ func (m *Manager) Install(ctx context.Context, bp *blueprint.Blueprint) error {
 
 func (m *Manager) pull(ctx context.Context, image string) error {
 	slog.Info("pulling image", "image", image)
-	resp, err := m.do(ctx, "POST", "/images/create?fromImage="+image, nil)
+	resp, err := m.doStream(ctx, "POST", "/images/create?fromImage="+image, nil)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	_, err = io.Copy(io.Discard, resp.Body)
-	return err
+	return drainPullStream(resp.Body, image)
+}
+
+// drainPullStream reads the /images/create progress stream and surfaces any
+// error. Docker returns HTTP 200 even for a failed pull and reports the failure
+// as an {"error":...} JSON object inside the stream, so we must inspect it —
+// otherwise a bad image looks like a successful pull and only fails later at
+// container-create with an opaque "no such image".
+func drainPullStream(r io.Reader, image string) error {
+	dec := json.NewDecoder(r)
+	for {
+		var msg struct {
+			Error string `json:"error"`
+		}
+		if err := dec.Decode(&msg); err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return fmt.Errorf("pull %s: %w", image, err)
+		}
+		if msg.Error != "" {
+			return fmt.Errorf("pull %s: %s", image, msg.Error)
+		}
+	}
 }
 
 func (m *Manager) createContainer(ctx context.Context, name string, body createBody) error {
@@ -538,7 +568,7 @@ func (m *Manager) ExecCapture(ctx context.Context, container string, cmd []strin
 		return err
 	}
 
-	startResp, err := m.do(ctx, "POST", "/exec/"+created.ID+"/start", map[string]any{"Detach": false, "Tty": false})
+	startResp, err := m.doStream(ctx, "POST", "/exec/"+created.ID+"/start", map[string]any{"Detach": false, "Tty": false})
 	if err != nil {
 		return err
 	}
@@ -575,7 +605,7 @@ func (m *Manager) CopyToContainer(ctx context.Context, container, destDir string
 		return err
 	}
 	req.Header.Set("Content-Type", "application/x-tar")
-	resp, err := m.client.Do(req)
+	resp, err := m.streamClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -589,7 +619,7 @@ func (m *Manager) CopyToContainer(ctx context.Context, container, destDir string
 // CopyFromContainer returns a tar stream of the given path inside the container.
 // The caller is responsible for closing the returned ReadCloser.
 func (m *Manager) CopyFromContainer(ctx context.Context, containerName, srcPath string) (io.ReadCloser, error) {
-	resp, err := m.do(ctx, "GET", "/containers/"+containerName+"/archive?path="+srcPath, nil)
+	resp, err := m.doStream(ctx, "GET", "/containers/"+containerName+"/archive?path="+srcPath, nil)
 	if err != nil {
 		return nil, fmt.Errorf("archive %s:%s: %w", containerName, srcPath, err)
 	}
@@ -643,13 +673,12 @@ done:
 // UpdateImage pulls the latest version of a container's image.
 // The container must be stopped and removed before calling Install again.
 func (m *Manager) UpdateImage(ctx context.Context, image string) error {
-	resp, err := m.do(ctx, "POST", "/images/create?fromImage="+image, nil)
+	resp, err := m.doStream(ctx, "POST", "/images/create?fromImage="+image, nil)
 	if err != nil {
 		return fmt.Errorf("pull %s: %w", image, err)
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-	return nil
+	return drainPullStream(resp.Body, image)
 }
 
 // StatusAll returns a map of containerName → status for quick bulk polling.
@@ -688,6 +717,16 @@ func (m *Manager) StatusAll(ctx context.Context) map[string]string {
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func (m *Manager) do(ctx context.Context, method, path string, body any) (*http.Response, error) {
+	return m.doWith(m.client, ctx, method, path, body)
+}
+
+// doStream is for long-running/streaming requests (image pulls, exec dumps)
+// that must not be cut off by the short control-plane timeout.
+func (m *Manager) doStream(ctx context.Context, method, path string, body any) (*http.Response, error) {
+	return m.doWith(m.streamClient, ctx, method, path, body)
+}
+
+func (m *Manager) doWith(client *http.Client, ctx context.Context, method, path string, body any) (*http.Response, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -705,7 +744,7 @@ func (m *Manager) do(ctx context.Context, method, path string, body any) (*http.
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	return m.client.Do(req)
+	return client.Do(req)
 }
 
 func checkStatus(resp *http.Response, expected int) error {

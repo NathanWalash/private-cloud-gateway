@@ -36,6 +36,9 @@ if [ -f "$INSTALL_DIR/data/cloud-core.db" ]; then
   ts="$(date +%Y%m%d-%H%M%S)"
   cp "$INSTALL_DIR/data/cloud-core.db" "$INSTALL_DIR/backups/pre-deploy-$ts-cloud-core.db"
   echo "==> Backed up cloud-core.db"
+  # Retention: keep only the 5 most recent pre-deploy snapshots (disk-fill guard).
+  ls -1t "$INSTALL_DIR"/backups/pre-deploy-*-cloud-core.db 2>/dev/null \
+    | tail -n +6 | xargs -r rm -f
 fi
 
 set_version() {

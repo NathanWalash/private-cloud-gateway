@@ -146,12 +146,15 @@ func (m *Manager) buildCaddyfile(apps []AppRoute) string {
 			app.ContainerName, app.InternalPort)
 	}
 
-	// Catch-all: any unrecognised subdomain redirects to the home dashboard.
-	// This handles: apps not yet installed, typos, and Caddy redirecting /login
-	// to home.* for the React setup wizard to handle.
-	fmt.Fprintf(&sb, "%s://*.%s {\n%s\tredir %s://home.%s{uri} temporary\n}\n\n",
-		proto, m.cookieDomain, hsts,
-		proto, m.cookieDomain)
+	// Catch-all: any unrecognised subdomain redirects to the home dashboard
+	// (apps not yet installed, typos, /login redirected to home.* for the setup
+	// wizard). Deliberately HTTP-only: a wildcard `https://*.domain` block would
+	// make Caddy attempt an un-issuable `*.domain` cert (HTTP-01 can't do
+	// wildcards, and there's no DNS-01 provider), producing repeated ACME
+	// failures. Real app subdomains have their own https blocks above and get
+	// per-host certs; unknown ones just redirect over http.
+	fmt.Fprintf(&sb, "http://*.%s {\n\tredir %s://home.%s{uri} temporary\n}\n\n",
+		m.cookieDomain, proto, m.cookieDomain)
 
 	return sb.String()
 }
