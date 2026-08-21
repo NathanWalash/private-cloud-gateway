@@ -123,3 +123,55 @@ route:
 		t.Error(`expected error for reserved "home" subdomain, got nil`)
 	}
 }
+
+func TestParse_Services(t *testing.T) {
+	valid := `
+id: umami
+name: Umami
+container:
+  image: umami:latest
+services:
+  - name: db
+    image: postgres:16-alpine
+    volumes: ["pcg-umami-db:/var/lib/postgresql/data"]
+route:
+  subdomain: analytics
+  internal_port: 3000
+`
+	if _, err := blueprint.Parse([]byte(valid)); err != nil {
+		t.Errorf("valid services blueprint rejected: %v", err)
+	}
+
+	badName := `
+id: umami
+name: Umami
+container:
+  image: umami:latest
+services:
+  - name: "Bad Name"
+    image: postgres:16
+route:
+  subdomain: analytics
+  internal_port: 3000
+`
+	if _, err := blueprint.Parse([]byte(badName)); err == nil {
+		t.Error("expected invalid service name to be rejected")
+	}
+
+	hostVol := `
+id: umami
+name: Umami
+container:
+  image: umami:latest
+services:
+  - name: db
+    image: postgres:16
+    volumes: ["/var/run/docker.sock:/x"]
+route:
+  subdomain: analytics
+  internal_port: 3000
+`
+	if _, err := blueprint.Parse([]byte(hostVol)); err == nil {
+		t.Error("expected host-path service volume to be rejected")
+	}
+}

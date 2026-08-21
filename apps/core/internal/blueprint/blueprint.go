@@ -26,6 +26,10 @@ var imageRefRegex = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/:@-]*$`)
 // the Docker socket into an app container.
 var volumeSourceRegex = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)
 
+// serviceNameRegex constrains sidecar service names — they become a Docker
+// network alias (the hostname the app uses) and part of the container name.
+var serviceNameRegex = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,30}$`)
+
 // Blueprint defines an installable app.
 type Blueprint struct {
 	ID          string    `yaml:"id"`
@@ -37,10 +41,32 @@ type Blueprint struct {
 	ComingSoon  bool      `yaml:"coming_soon"` // listed in the marketplace but not installable yet
 	Route       Route     `yaml:"route"`
 	Container   Container `yaml:"container"`
+	Services    []Service `yaml:"services"` // private sidecar containers (db/redis/…) created with the app
 	Lifecycle   Lifecycle `yaml:"lifecycle"`
 	Health      Health    `yaml:"health"`
 	Backup      Backup    `yaml:"backup"`
 	Resources   Resources `yaml:"resources"`
+}
+
+// Service is a private sidecar container (e.g. Postgres, Redis) created and torn
+// down with the app on its per-app network. The app reaches it by Name as
+// hostname. Sidecars are never exposed through Caddy.
+type Service struct {
+	Name        string        `yaml:"name"`
+	Image       string        `yaml:"image"`
+	Environment []string      `yaml:"environment"`
+	Volumes     []string      `yaml:"volumes"`
+	Security    Security      `yaml:"security"`
+	MemoryLimit string        `yaml:"memory_limit"`
+	Backup      ServiceBackup `yaml:"backup"`
+}
+
+// ServiceBackup declares how to dump/restore a stateful service (a database).
+// Both are argv run inside the service container: dump's stdout is archived,
+// restore receives the dump on stdin. Omit for stateless services (e.g. Redis).
+type ServiceBackup struct {
+	Dump    []string `yaml:"dump"`
+	Restore []string `yaml:"restore"`
 }
 
 type Route struct {
@@ -142,6 +168,21 @@ func ValidateBlueprintID(id string) error {
 	return nil
 }
 
+// validateVolumes rejects host-path bind mounts; only named volumes are allowed.
+func validateVolumes(field string, volumes []string) []error {
+	var errs []error
+	for _, v := range volumes {
+		src := v
+		if i := strings.Index(v, ":"); i >= 0 {
+			src = v[:i]
+		}
+		if !volumeSourceRegex.MatchString(src) {
+			errs = append(errs, fmt.Errorf("%s: %q must use a named volume, not a host path", field, v))
+		}
+	}
+	return errs
+}
+
 // Validate checks that required fields are present and safe.
 func (bp *Blueprint) Validate() error {
 	var errs []error
@@ -160,14 +201,24 @@ func (bp *Blueprint) Validate() error {
 	}
 	// Only named volumes are allowed — reject host-path bind mounts (e.g.
 	// "/:/host" or the docker socket), which would let an app escape onto the host.
-	for _, v := range bp.Container.Volumes {
-		src := v
-		if i := strings.Index(v, ":"); i >= 0 {
-			src = v[:i]
+	errs = append(errs, validateVolumes("container.volumes", bp.Container.Volumes)...)
+
+	// Sidecar services: safe name, valid image, named volumes only.
+	seen := map[string]bool{}
+	for i, s := range bp.Services {
+		if !serviceNameRegex.MatchString(s.Name) {
+			errs = append(errs, fmt.Errorf("services[%d].name %q is invalid (lowercase letters, digits, hyphens)", i, s.Name))
 		}
-		if !volumeSourceRegex.MatchString(src) {
-			errs = append(errs, fmt.Errorf("container.volumes: %q must use a named volume, not a host path", v))
+		if seen[s.Name] {
+			errs = append(errs, fmt.Errorf("services: duplicate service name %q", s.Name))
 		}
+		seen[s.Name] = true
+		if s.Image == "" {
+			errs = append(errs, fmt.Errorf("services[%d].image is required", i))
+		} else if !imageRefRegex.MatchString(s.Image) {
+			errs = append(errs, fmt.Errorf("services[%d].image %q contains invalid characters", i, s.Image))
+		}
+		errs = append(errs, validateVolumes(fmt.Sprintf("services[%d].volumes", i), s.Volumes)...)
 	}
 	switch bp.Route.Subdomain {
 	case "":
