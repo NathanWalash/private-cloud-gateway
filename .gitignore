@@ -81,3 +81,5 @@ ehthumbs.db
 
 # Go coverage
 coverage.out
+# Combined unit + E2E coverage output (scripts/coverage.sh)
+.coverage/
