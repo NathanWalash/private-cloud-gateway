@@ -90,18 +90,22 @@ the private Docker network — Caddy is the single service bound to host ports.
 
 ## Built-in apps
 
+**16 apps, each verified end-to-end** (install → running → routed → healthy → uninstalled):
+
 | App | Subdomain | App | Subdomain |
 |---|---|---|---|
-| Nextcloud | `cloud.*` | Immich | `photos.*` |
-| Jellyfin | `media.*` | Vaultwarden | `vault.*` |
-| Paperless-ngx | `docs.*` | Gitea | `git.*` |
-| Ghost | `blog.*` | FreshRSS | `rss.*` |
-| n8n | `n8n.*` | Home Assistant | `ha.*` |
-| File Browser | `files.*` | Stirling PDF | `pdf.*` |
-| Actual Budget | `budget.*` | Uptime Kuma | `status.*` |
-| Memos | `memos.*` | SilverBullet | `notes.*` |
-| Shiori | `bookmarks.*` | Excalidraw | `draw.*` |
-| CouchDB | `couchdb.*` | | |
+| Nextcloud | `cloud.*` | Jellyfin | `media.*` |
+| Vaultwarden | `vault.*` | Gitea | `git.*` |
+| FreshRSS | `rss.*` | n8n | `n8n.*` |
+| Home Assistant | `ha.*` | File Browser | `files.*` |
+| Stirling PDF | `pdf.*` | Actual Budget | `budget.*` |
+| Uptime Kuma | `status.*` | Memos | `memos.*` |
+| SilverBullet | `notes.*` | Shiori | `bookmarks.*` |
+| Excalidraw | `draw.*` | CouchDB | `couchdb.*` |
+
+**Coming soon** (listed in the marketplace, not yet installable — they need
+multi-container support for their external databases): **Immich**, **Paperless-ngx**,
+**Ghost**.
 
 Adding an app is one YAML file in [`blueprints/`](blueprints/) — see
 [`blueprints/README.md`](blueprints/README.md) or run the `/new-blueprint`

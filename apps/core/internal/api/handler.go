@@ -139,6 +139,13 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Coming-soon apps are listed in the marketplace but not yet installable
+	// (e.g. they need multi-container support that doesn't exist yet).
+	if bp.ComingSoon {
+		jsonErr(w, "this app is coming soon and cannot be installed yet", http.StatusConflict)
+		return
+	}
+
 	// Check not already installed in DB.
 	var existing int
 	_ = h.db.QueryRowContext(r.Context(),
@@ -321,6 +328,7 @@ func (h *Handler) Blueprints(w http.ResponseWriter, r *http.Request) {
 		Icon        string   `json:"icon"`
 		Category    string   `json:"category"`
 		DependsOn   []string `json:"depends_on,omitempty"`
+		ComingSoon  bool     `json:"coming_soon,omitempty"`
 	}
 
 	var summaries []bpSummary
@@ -343,6 +351,7 @@ func (h *Handler) Blueprints(w http.ResponseWriter, r *http.Request) {
 			Icon:        bp.Icon,
 			Category:    bp.Category,
 			DependsOn:   bp.DependsOn,
+			ComingSoon:  bp.ComingSoon,
 		})
 	}
 

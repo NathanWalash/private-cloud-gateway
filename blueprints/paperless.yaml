@@ -4,6 +4,10 @@ description: Transform physical documents into a searchable archive. Scan, uploa
 icon: "📁"
 category: productivity
 
+# Coming soon: Paperless-ngx needs an external Redis (and database), which the
+# single-container model can't provision yet. Listed but not installable.
+coming_soon: true
+
 route:
   subdomain: docs
   internal_port: 8000
