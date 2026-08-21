@@ -90,7 +90,7 @@ the private Docker network — Caddy is the single service bound to host ports.
 
 ## Built-in apps
 
-**19 apps, each verified end-to-end** (install → running → routed → healthy → uninstalled):
+**22 apps, each verified end-to-end** (install → running → routed → healthy → uninstalled):
 
 | App | Subdomain | App | Subdomain |
 |---|---|---|---|
@@ -103,11 +103,15 @@ the private Docker network — Caddy is the single service bound to host ports.
 | SilverBullet | `notes.*` | Excalidraw | `draw.*` |
 | CouchDB | `couchdb.*` | IT-Tools | `tools.*` |
 | CyberChef | `cyberchef.*` | Adminer | `db.*` |
-| Gatus | `gatus.*` | | |
+| Gatus | `gatus.*` | Umami | `analytics.*` |
+| Ghost | `blog.*` | Paperless-ngx | `docs.*` |
 
-**Coming soon** (listed in the marketplace, not yet installable — they need
-multi-container support for their external databases): **Immich**, **Paperless-ngx**,
-**Ghost**, **Umami**, **Outline**.
+Umami, Ghost, and Paperless-ngx run as **multi-container** apps — their database
+and Redis run as private sidecars, provisioned and backed up automatically.
+
+**Coming soon** (listed, not yet installable): **Immich** (needs a vector-enabled
+Postgres + a machine-learning service) and **Outline** (needs an external auth
+provider).
 
 Adding an app is one YAML file in [`blueprints/`](blueprints/) — see
 [`blueprints/README.md`](blueprints/README.md) or run the `/new-blueprint`
