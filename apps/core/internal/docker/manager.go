@@ -495,6 +495,97 @@ func (m *Manager) StatusAfterStart(ctx context.Context, containerName string, ma
 	return "error"
 }
 
+// demuxStream splits Docker's multiplexed exec/attach stream (8-byte frame
+// header: type + 4-byte big-endian size) into stdout and stderr writers.
+func demuxStream(r io.Reader, stdout, stderr io.Writer) error {
+	header := make([]byte, 8)
+	for {
+		if _, err := io.ReadFull(r, header); err != nil {
+			if err == io.EOF || err == io.ErrUnexpectedEOF {
+				return nil
+			}
+			return err
+		}
+		size := int64(header[4])<<24 | int64(header[5])<<16 | int64(header[6])<<8 | int64(header[7])
+		w := stdout
+		if header[0] == 2 {
+			w = stderr
+		}
+		if _, err := io.CopyN(w, r, size); err != nil {
+			return err
+		}
+	}
+}
+
+// ExecCapture runs cmd inside a container and streams its stdout to out. stderr
+// is buffered for diagnostics. Returns an error if the command exits non-zero.
+// Used for engine-native database dumps (pg_dump, mysqldump, …).
+func (m *Manager) ExecCapture(ctx context.Context, container string, cmd []string, out io.Writer) error {
+	createResp, err := m.do(ctx, "POST", "/containers/"+container+"/exec", map[string]any{
+		"AttachStdout": true, "AttachStderr": true, "Tty": false, "Cmd": cmd,
+	})
+	if err != nil {
+		return err
+	}
+	defer createResp.Body.Close()
+	if createResp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("exec create in %s: status %d", container, createResp.StatusCode)
+	}
+	var created struct {
+		ID string `json:"Id"`
+	}
+	if err := json.NewDecoder(createResp.Body).Decode(&created); err != nil {
+		return err
+	}
+
+	startResp, err := m.do(ctx, "POST", "/exec/"+created.ID+"/start", map[string]any{"Detach": false, "Tty": false})
+	if err != nil {
+		return err
+	}
+	defer startResp.Body.Close()
+	if startResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("exec start in %s: status %d", container, startResp.StatusCode)
+	}
+	var stderr strings.Builder
+	if err := demuxStream(startResp.Body, out, &stderr); err != nil {
+		return err
+	}
+
+	insResp, err := m.do(ctx, "GET", "/exec/"+created.ID+"/json", nil)
+	if err != nil {
+		return err
+	}
+	defer insResp.Body.Close()
+	var ins struct {
+		ExitCode int `json:"ExitCode"`
+	}
+	_ = json.NewDecoder(insResp.Body).Decode(&ins)
+	if ins.ExitCode != 0 {
+		return fmt.Errorf("exec %v in %s exited %d: %s", cmd, container, ins.ExitCode, strings.TrimSpace(stderr.String()))
+	}
+	return nil
+}
+
+// CopyToContainer uploads a tar stream, extracting it at destDir in the
+// container. Used to place a dump file before running the restore command.
+func (m *Manager) CopyToContainer(ctx context.Context, container, destDir string, tarball io.Reader) error {
+	reqURL := "http://docker/" + apiVersion + "/containers/" + container + "/archive?path=" + url.QueryEscape(destDir)
+	req, err := http.NewRequestWithContext(ctx, "PUT", reqURL, tarball)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-tar")
+	resp, err := m.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("copy to %s:%s status %d", container, destDir, resp.StatusCode)
+	}
+	return nil
+}
+
 // CopyFromContainer returns a tar stream of the given path inside the container.
 // The caller is responsible for closing the returned ReadCloser.
 func (m *Manager) CopyFromContainer(ctx context.Context, containerName, srcPath string) (io.ReadCloser, error) {

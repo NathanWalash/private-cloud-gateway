@@ -2,6 +2,7 @@ package backup_test
 
 import (
 	"database/sql"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,7 +33,7 @@ func TestCreate_Unencrypted(t *testing.T) {
 	dbPath, bpDir, backupDir := setupTestData(t)
 	dest := filepath.Join(backupDir, "backup.pcg-backup")
 
-	if err := backup.Create(dbPath, bpDir, dest, "", nil, nil); err != nil {
+	if err := backup.Create(dbPath, bpDir, dest, "", nil, nil, nil, nil); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	info, err := os.Stat(dest)
@@ -65,7 +66,7 @@ func TestCreate_CheckpointsWAL(t *testing.T) {
 	defer live.Close()
 
 	dest := filepath.Join(backupDir, "wal.pcg-backup")
-	if err := backup.Create(dbPath, bpDir, dest, "", nil, nil); err != nil {
+	if err := backup.Create(dbPath, bpDir, dest, "", nil, nil, nil, nil); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
@@ -95,8 +96,8 @@ func TestCreate_Encrypted_LargerThanPlain(t *testing.T) {
 	plain := filepath.Join(backupDir, "plain.pcg-backup")
 	enc := filepath.Join(backupDir, "enc.pcg-backup")
 
-	backup.Create(dbPath, bpDir, plain, "", nil, nil)
-	backup.Create(dbPath, bpDir, enc, "my-passphrase", nil, nil)
+	backup.Create(dbPath, bpDir, plain, "", nil, nil, nil, nil)
+	backup.Create(dbPath, bpDir, enc, "my-passphrase", nil, nil, nil, nil)
 
 	plainInfo, _ := os.Stat(plain)
 	encInfo, _ := os.Stat(enc)
@@ -111,8 +112,8 @@ func TestListBackups(t *testing.T) {
 	_, _, backupDir := setupTestData(t)
 	dbPath, bpDir, _ := setupTestData(t)
 
-	backup.Create(dbPath, bpDir, filepath.Join(backupDir, "first.pcg-backup"), "", nil, nil)
-	backup.Create(dbPath, bpDir, filepath.Join(backupDir, "second.pcg-backup"), "", nil, nil)
+	backup.Create(dbPath, bpDir, filepath.Join(backupDir, "first.pcg-backup"), "", nil, nil, nil, nil)
+	backup.Create(dbPath, bpDir, filepath.Join(backupDir, "second.pcg-backup"), "", nil, nil, nil, nil)
 
 	list, err := backup.ListBackups(backupDir)
 	if err != nil {
@@ -135,5 +136,37 @@ func TestFileName(t *testing.T) {
 	}
 	if !strings.HasSuffix(name, ".pcg-backup") {
 		t.Errorf("unexpected extension in: %q", name)
+	}
+}
+
+func TestServiceDumpRoundTrip(t *testing.T) {
+	dbPath, bpDir, backupDir := setupTestData(t)
+	dest := filepath.Join(backupDir, "dumps.pcg-backup")
+
+	dumps := []backup.ServiceDump{
+		{AppID: "umami", Service: "db", ContainerName: "pcg-umami-db", Command: []string{"pg_dump"}},
+	}
+	// Fake dumper writes deterministic content instead of running docker exec.
+	dumper := func(container string, cmd []string, out io.Writer) error {
+		_, err := out.Write([]byte("-- dump for " + container + "\nSELECT 1;\n"))
+		return err
+	}
+
+	if err := backup.Create(dbPath, bpDir, dest, "", nil, nil, dumps, dumper); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	var got string
+	err := backup.ForEachServiceDump(dest, "", func(appID, service string, data []byte) error {
+		if appID == "umami" && service == "db" {
+			got = string(data)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("ForEachServiceDump: %v", err)
+	}
+	if !strings.Contains(got, "dump for pcg-umami-db") {
+		t.Errorf("dump content not archived/round-tripped: %q", got)
 	}
 }

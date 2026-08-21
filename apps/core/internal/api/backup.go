@@ -1,6 +1,8 @@
 package api
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -8,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/backup"
@@ -71,6 +74,55 @@ func (h *Handler) volumeReader(containerName, containerPath string) (io.ReadClos
 	return h.docker.CopyFromContainer(context.Background(), containerName, containerPath)
 }
 
+// collectServiceDumps builds the list of database dumps to include, one per
+// installed app service that declares a backup.dump command.
+func (h *Handler) collectServiceDumps(ctx context.Context) []backup.ServiceDump {
+	if h.docker == nil {
+		return nil
+	}
+	rows, err := h.db.QueryContext(ctx, "SELECT blueprint_id FROM apps WHERE status = 'running'")
+	if err != nil {
+		return nil
+	}
+	var appIDs []string
+	for rows.Next() {
+		var id string
+		if rows.Scan(&id) == nil {
+			appIDs = append(appIDs, id)
+		}
+	}
+	rows.Close()
+
+	var dumps []backup.ServiceDump
+	for _, bpID := range appIDs {
+		data, err := os.ReadFile(filepath.Join(h.blueprintDir, bpID+".yaml"))
+		if err != nil {
+			continue
+		}
+		bp, err := blueprint.Parse(data)
+		if err != nil {
+			continue
+		}
+		for _, s := range bp.Services {
+			if len(s.Backup.Dump) == 0 {
+				continue
+			}
+			dumps = append(dumps, backup.ServiceDump{
+				AppID:         bpID,
+				Service:       s.Name,
+				ContainerName: "pcg-" + bpID + "-" + s.Name,
+				Command:       s.Backup.Dump,
+			})
+		}
+	}
+	return dumps
+}
+
+// serviceDumper wraps docker.Manager.ExecCapture as a backup.ServiceDumper.
+func (h *Handler) serviceDumper(containerName string, cmd []string, out io.Writer) error {
+	return h.docker.ExecCapture(context.Background(), containerName, cmd, out)
+}
+
 // BackupCreate triggers a backup (DB + blueprints + app volumes).
 // POST /api/backup/create.
 func (h *Handler) BackupCreate(w http.ResponseWriter, r *http.Request) {
@@ -84,11 +136,14 @@ func (h *Handler) BackupCreate(w http.ResponseWriter, r *http.Request) {
 	volumes := h.collectVolumes(r.Context())
 
 	var vr backup.VolumeReader
+	var df backup.ServiceDumper
 	if h.docker != nil {
 		vr = h.volumeReader
+		df = h.serviceDumper
 	}
+	dumps := h.collectServiceDumps(r.Context())
 
-	if err := backup.Create(h.dbPath(), h.blueprintDir, destPath, h.backupPassphrase(), volumes, vr); err != nil {
+	if err := backup.Create(h.dbPath(), h.blueprintDir, destPath, h.backupPassphrase(), volumes, vr, dumps, df); err != nil {
 		slog.Error("backup create failed", "err", err)
 		jsonErr(w, "backup failed", http.StatusInternalServerError)
 		return
@@ -133,11 +188,14 @@ func (h *Handler) SafeEscape(w http.ResponseWriter, r *http.Request) {
 
 	volumes := h.collectVolumes(r.Context())
 	var vr backup.VolumeReader
+	var df backup.ServiceDumper
 	if h.docker != nil {
 		vr = h.volumeReader
+		df = h.serviceDumper
 	}
+	dumps := h.collectServiceDumps(r.Context())
 
-	if err := backup.Create(h.dbPath(), h.blueprintDir, tmpPath, h.backupPassphrase(), volumes, vr); err != nil {
+	if err := backup.Create(h.dbPath(), h.blueprintDir, tmpPath, h.backupPassphrase(), volumes, vr, dumps, df); err != nil {
 		slog.Error("safe escape failed", "err", err)
 		http.Error(w, "backup failed", http.StatusInternalServerError)
 		return
@@ -210,9 +268,75 @@ func (h *Handler) BackupRestore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Best-effort: load database dumps into any service containers that are
+	// currently running. (After a fresh restore the apps may not be recreated
+	// yet; reinstalling an app then restoring will load its data.)
+	_ = backup.ForEachServiceDump(tmp.Name(), passphrase, func(appID, service string, data []byte) error {
+		if err := h.loadServiceDump(r.Context(), appID, service, data); err != nil {
+			slog.Warn("restore: load service dump skipped", "app", appID, "service", service, "err", err)
+		}
+		return nil
+	})
+
 	slog.Info("backup restored — restart required")
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write([]byte(`{"status":"restored","message":"Restart the service to apply the restored database."}`))
+}
+
+// loadServiceDump loads a database dump into a running service container: it
+// copies the dump in and runs the blueprint's service restore command against
+// it. Best-effort — skipped if the blueprint/service/restore command is missing.
+func (h *Handler) loadServiceDump(ctx context.Context, appID, service string, data []byte) error {
+	if h.docker == nil {
+		return nil
+	}
+	bp, err := blueprint.Parse(mustReadFile(filepath.Join(h.blueprintDir, appID+".yaml")))
+	if err != nil {
+		return err
+	}
+	var restore []string
+	for _, s := range bp.Services {
+		if s.Name == service {
+			restore = s.Backup.Restore
+		}
+	}
+	if len(restore) == 0 {
+		return nil // nothing to do
+	}
+	container := "pcg-" + appID + "-" + service
+
+	// Copy the dump into the container as a tar, then run: <restore> < dump.
+	tar, err := singleFileTar("pcg-restore.sql", data)
+	if err != nil {
+		return err
+	}
+	if err := h.docker.CopyToContainer(ctx, container, "/tmp", tar); err != nil {
+		return err
+	}
+	cmd := []string{"sh", "-c", strings.Join(restore, " ") + " < /tmp/pcg-restore.sql"}
+	return h.docker.ExecCapture(ctx, container, cmd, io.Discard)
+}
+
+// mustReadFile returns file bytes or nil (Parse will then error cleanly).
+func mustReadFile(path string) []byte {
+	b, _ := os.ReadFile(path)
+	return b
+}
+
+// singleFileTar builds an in-memory tar archive containing one file.
+func singleFileTar(name string, data []byte) (io.Reader, error) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	if err := tw.WriteHeader(&tar.Header{Name: name, Mode: 0o600, Size: int64(len(data))}); err != nil {
+		return nil, err
+	}
+	if _, err := tw.Write(data); err != nil {
+		return nil, err
+	}
+	if err := tw.Close(); err != nil {
+		return nil, err
+	}
+	return &buf, nil
 }
 
 // BackupLastRun returns the timestamp of the most recent backup.

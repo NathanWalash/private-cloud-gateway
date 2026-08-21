@@ -17,6 +17,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/pbkdf2"
@@ -44,11 +45,24 @@ type AppVolume struct {
 // Injected by the caller so this package doesn't depend on Docker directly.
 type VolumeReader func(containerName, containerPath string) (io.ReadCloser, error)
 
+// ServiceDump describes an engine-native database dump to include in the backup.
+type ServiceDump struct {
+	AppID         string
+	Service       string
+	ContainerName string
+	Command       []string // e.g. ["pg_dump","-U","umami","umami"]
+}
+
+// ServiceDumper streams a dump command's stdout into out (via docker exec).
+// Injected by the caller so this package doesn't depend on Docker directly.
+type ServiceDumper func(containerName string, cmd []string, out io.Writer) error
+
 const (
 	manifestFile = "manifest.json"
 	dbFile       = "cloud-core.db"
 	bpDir        = "blueprints"
 	volumesDir   = "volumes"
+	servicesDir  = "services"
 	keyLen       = 32 // AES-256
 	saltLen      = 32
 	iterations   = 100_000
@@ -58,7 +72,7 @@ const (
 // Create builds a backup archive at destPath.
 // volumes and readVolume may be nil — if so, volume backup is skipped.
 // passphrase may be empty — if so the archive is written unencrypted.
-func Create(dbPath, blueprintsDir, destPath, passphrase string, volumes []AppVolume, readVolume VolumeReader) error {
+func Create(dbPath, blueprintsDir, destPath, passphrase string, volumes []AppVolume, readVolume VolumeReader, dumps []ServiceDump, dumpFn ServiceDumper) error {
 	tmpFile, err := os.CreateTemp("", "pcg-backup-*.zip")
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
@@ -66,7 +80,7 @@ func Create(dbPath, blueprintsDir, destPath, passphrase string, volumes []AppVol
 	defer os.Remove(tmpFile.Name())
 	defer tmpFile.Close()
 
-	if err := writeZip(tmpFile, dbPath, blueprintsDir, volumes, readVolume, passphrase != ""); err != nil {
+	if err := writeZip(tmpFile, dbPath, blueprintsDir, volumes, readVolume, dumps, dumpFn, passphrase != ""); err != nil {
 		return fmt.Errorf("write zip: %w", err)
 	}
 	if _, err := tmpFile.Seek(0, 0); err != nil {
@@ -86,7 +100,7 @@ func Create(dbPath, blueprintsDir, destPath, passphrase string, volumes []AppVol
 	return encryptStream(tmpFile, out, passphrase)
 }
 
-func writeZip(w io.Writer, dbPath, blueprintsDir string, volumes []AppVolume, readVolume VolumeReader, willEncrypt bool) error {
+func writeZip(w io.Writer, dbPath, blueprintsDir string, volumes []AppVolume, readVolume VolumeReader, dumps []ServiceDump, dumpFn ServiceDumper, willEncrypt bool) error {
 	zw := zip.NewWriter(w)
 
 	// Manifest
@@ -153,6 +167,24 @@ func writeZip(w io.Writer, dbPath, blueprintsDir string, volumes []AppVolume, re
 		}
 	}
 
+	// Service database dumps — services/{app-id}/{service}/dump.sql
+	if dumpFn != nil {
+		for _, d := range dumps {
+			if len(d.Command) == 0 {
+				continue
+			}
+			dst := filepath.Join(servicesDir, d.AppID, d.Service, "dump.sql")
+			w2, err := zw.Create(dst)
+			if err != nil {
+				return fmt.Errorf("add dump %s/%s: %w", d.AppID, d.Service, err)
+			}
+			if err := dumpFn(d.ContainerName, d.Command, w2); err != nil {
+				// Non-fatal: log via caller; skip this dump rather than fail the whole backup.
+				slog.Warn("backup: service dump failed", "app", d.AppID, "service", d.Service, "err", err)
+			}
+		}
+	}
+
 	return zw.Close()
 }
 
@@ -168,6 +200,52 @@ func checkpointWAL(dbPath string) error {
 	defer db.Close()
 	_, err = db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 	return err
+}
+
+// ForEachServiceDump iterates the database dumps in an archive, calling fn with
+// each app id, service name, and the dump bytes. Used by restore to load dumps
+// back into freshly-created service containers.
+func ForEachServiceDump(srcPath, passphrase string, fn func(appID, service string, data []byte) error) error {
+	f, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	var reader io.Reader = f
+	if passphrase != "" {
+		dec, err := decryptStream(f, passphrase)
+		if err != nil {
+			return fmt.Errorf("decrypt: %w", err)
+		}
+		reader = dec
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	zr, err := zip.NewReader(newBytesReader(data), int64(len(data)))
+	if err != nil {
+		return err
+	}
+	for _, file := range zr.File {
+		parts := strings.Split(file.Name, "/")
+		if len(parts) == 4 && parts[0] == servicesDir && parts[3] == "dump.sql" {
+			rc, err := file.Open()
+			if err != nil {
+				continue
+			}
+			b, readErr := io.ReadAll(rc)
+			rc.Close()
+			if readErr != nil {
+				continue
+			}
+			if err := fn(parts[1], parts[2], b); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func addFile(zw *zip.Writer, src, dst string) error {
