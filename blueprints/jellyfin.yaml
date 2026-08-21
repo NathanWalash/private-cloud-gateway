@@ -1,7 +1,6 @@
 id: jellyfin
 name: Jellyfin
 description: Free and open-source media server. Stream your movies, TV shows, music, and photos to any device.
-icon: "🎬"
 category: media
 
 route:

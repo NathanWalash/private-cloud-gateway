@@ -64,14 +64,14 @@ docker rmi private-cloud-gateway_core 2>/dev/null || true
 # ── 5. Check .env exists ──────────────────────────────────────────────────────
 if [ ! -f "$REPO_ROOT/.env" ]; then
   echo ""
-  echo "  ⚠  No .env found. Creating from .env.example..."
+  echo "  [!]  No .env found. Creating from .env.example..."
   cp "$REPO_ROOT/.env.example" "$REPO_ROOT/.env"
   echo "  Edit $REPO_ROOT/.env — set CLOUD_CORE_SESSION_SECRET and bootstrap credentials."
   WIPE_ONLY=true  # Don't start without a proper .env
 fi
 
 echo ""
-echo "✓ Wipe complete."
+echo "[ok] Wipe complete."
 echo ""
 
 [ "$WIPE_ONLY" = true ] && exit 0
@@ -81,5 +81,5 @@ echo "→ Rebuilding and starting fresh stack..."
 docker compose -f "$COMPOSE_FILE" up --build -d
 
 echo ""
-echo "✓ Stack is running. Open http://home.localtest.me"
+echo "[ok] Stack is running. Open http://home.localtest.me"
 echo ""

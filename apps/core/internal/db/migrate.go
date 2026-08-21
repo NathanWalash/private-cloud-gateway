@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS apps (
 	id              INTEGER  PRIMARY KEY AUTOINCREMENT,
 	blueprint_id    TEXT     NOT NULL UNIQUE,
 	name            TEXT     NOT NULL,
-	icon            TEXT     NOT NULL DEFAULT '📦',
+	icon            TEXT     NOT NULL DEFAULT '',
 	subdomain       TEXT     NOT NULL UNIQUE,
 	internal_port   INTEGER  NOT NULL,
 	image           TEXT     NOT NULL,

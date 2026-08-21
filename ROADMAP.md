@@ -1,6 +1,6 @@
 # Roadmap
 
-## Milestone 1: Local secured routing ✅
+## Milestone 1: Local secured routing
 
 Goal: prove that one login protects both the dashboard and app subdomains.
 
@@ -21,11 +21,11 @@ Tasks:
 Success criteria:
 
 ```text
-files.localtest.me redirects to login when logged out. ✅
-files.localtest.me opens the app when logged in. ✅
+files.localtest.me redirects to login when logged out.
+files.localtest.me opens the app when logged in.
 ```
 
-## Milestone 2: Dashboard foundation ✅
+## Milestone 2: Dashboard foundation
 
 Goal: create the first useful private dashboard.
 
@@ -40,10 +40,10 @@ Tasks:
 Success criteria:
 
 ```text
-User logs in and sees a polished dashboard with apps, links, and status cards. ✅
+User logs in and sees a polished dashboard with apps, links, and status cards.
 ```
 
-## Milestone 3: App blueprints ✅
+## Milestone 3: App blueprints
 
 Goal: install and manage apps from YAML blueprints.
 
@@ -60,10 +60,10 @@ Tasks:
 Success criteria:
 
 ```text
-A new app can be added by clicking Install and selecting a blueprint. ✅
+A new app can be added by clicking Install and selecting a blueprint.
 ```
 
-## Milestone 4: Backup and restore 🔜
+## Milestone 4: Backup and restore
 
 Goal: make data loss unlikely and recovery realistic.
 
@@ -85,7 +85,7 @@ Success criteria:
 A fresh server can be restored from a backup archive.
 ```
 
-## Milestone 5: Oracle Cloud deployment 🔜
+## Milestone 5: Oracle Cloud deployment
 
 Goal: deploy to a fresh Oracle Cloud Ubuntu VM.
 

@@ -1,7 +1,6 @@
 id: actual-budget
 name: Actual Budget
 description: Local-first personal finance and budgeting. Import bank transactions, track spending, plan budgets — your data never leaves your server.
-icon: "💰"
 category: finance
 
 route:

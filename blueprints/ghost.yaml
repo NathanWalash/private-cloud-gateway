@@ -1,7 +1,6 @@
 id: ghost
 name: Ghost
 description: Professional publishing platform. Create a blog, newsletter, or membership site with a clean modern editor.
-icon: "✍️"
 category: productivity
 
 # Coming soon: Ghost requires an external MySQL database, which the

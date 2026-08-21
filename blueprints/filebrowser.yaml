@@ -1,7 +1,6 @@
 id: filebrowser
 name: File Browser
 description: Private browser-based file manager
-icon: folder
 category: storage
 
 route:

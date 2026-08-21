@@ -1,7 +1,6 @@
 id: gitea
 name: Gitea
 description: Lightweight self-hosted Git service. Your own GitHub — repositories, issues, pull requests, CI/CD.
-icon: "🐙"
 category: development
 
 route:

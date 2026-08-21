@@ -29,7 +29,7 @@ func insertApp(t *testing.T, database *sql.DB, container string) int64 {
 	t.Helper()
 	res, err := database.Exec(
 		`INSERT INTO apps (blueprint_id, name, icon, subdomain, internal_port, image, container_name, status)
-		 VALUES ('memos','Memos','📝','memos',5230,'neosmemo/memos:0.30.0',?,'running')`, container)
+		 VALUES ('memos','Memos','','memos',5230,'neosmemo/memos:0.30.0',?,'running')`, container)
 	if err != nil {
 		t.Fatal(err)
 	}

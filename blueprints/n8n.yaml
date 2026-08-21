@@ -1,7 +1,6 @@
 id: n8n
 name: n8n
 description: Workflow automation. Connect apps, trigger on events, run code, and automate repetitive tasks. Like Zapier but self-hosted.
-icon: "⚡"
 category: automation
 
 route:

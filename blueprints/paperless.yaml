@@ -1,7 +1,6 @@
 id: paperless
 name: Paperless-ngx
 description: Transform physical documents into a searchable archive. Scan, upload, and auto-tag documents with OCR.
-icon: "📁"
 category: productivity
 
 # Coming soon: Paperless-ngx needs an external Redis (and database), which the

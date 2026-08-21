@@ -1,7 +1,6 @@
 id: gatus
 name: Gatus
 description: Automated status page and uptime monitoring, configured as code. Track endpoints, latency, and uptime with alerting. Add your checks in the config volume.
-icon: "📡"
 category: monitoring
 
 route:

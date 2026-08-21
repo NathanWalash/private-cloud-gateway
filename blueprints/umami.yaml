@@ -1,7 +1,6 @@
 id: umami
 name: Umami
 description: Privacy-friendly, cookie-free web analytics for your own sites — a lightweight self-hosted alternative to Google Analytics.
-icon: "📊"
 category: productivity
 
 # Coming soon: Umami needs an external PostgreSQL database, which the

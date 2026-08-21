@@ -27,41 +27,42 @@ per-app check, not a per-PR gate (it pulls images and starts containers).
 
 ## Status
 
-Legend: ✅ verified (full lifecycle: install → running → routed → healthy →
-uninstalled) · 🔜 coming soon (listed, install blocked — needs an external DB)
+Status column: **yes** = verified (full lifecycle: install -> running -> routed
+-> healthy -> uninstalled) · **soon** = coming soon (listed, install blocked,
+needs an external DB).
 
 Last verified: 2026-08-21 (local dev stack).
 
-**19 of 24 verified working; 5 coming soon.** Every ✅ app passed the full
-lifecycle. The 🔜 apps need an external database the single-container model
+**19 of 24 verified working; 5 coming soon.** Every "yes" app passed the full
+lifecycle. The "soon" apps need an external database the single-container model
 can't provision yet (see below).
 
 | App | Subdomain | Health check | Status | Notes |
 |---|---|---|---|---|
-| excalidraw | `draw` | `/` 200 | ✅ | static |
-| memos | `memos` | `/` 200 | ✅ | sqlite |
-| uptime-kuma | `status` | `/` 200 | ✅ | sqlite |
-| vaultwarden | `vault` | `/alive` 200 | ✅ | sqlite |
-| gitea | `git` | `/api/healthz` 200 | ✅ | sqlite |
-| filebrowser | `files` | `/` 200 | ✅ | fixed: internal_port 8080→80 |
-| actual-budget | `budget` | `/` 200 | ✅ | |
-| silverbullet | `notes` | `/` 200 | ✅ | |
-| couchdb | `couchdb` | `/` 200 | ✅ | set a real password before exposing |
-| freshrss | `rss` | `/` 200 | ✅ | |
-| n8n | `n8n` | `/healthz` 200 | ✅ | fixed: memory 512m→1024m (was OOM crash-loop) |
-| stirling-pdf | `pdf` | `/api/v1/info/status` 200 | ✅ | fixed: JVM metaspace + memory 2g + health path (`/` returns 401 via its own login) |
-| jellyfin | `media` | `/health` 200 | ✅ | |
-| nextcloud | `cloud` | `/status.php` 200 | ✅ | |
-| homeassistant | `ha` | `/api/` 401 | ✅ | 401 is the healthy signal (no token) |
-| it-tools | `tools` | `/` 200 | ✅ | dev utilities (static) |
-| cyberchef | `cyberchef` | `/` 200 | ✅ | dev utilities (static) |
-| adminer | `db` | `/` 200 | ✅ | DB web UI |
-| gatus | `gatus` | `/health` 200 | ✅ | status page; add checks in the config volume |
-| ghost | `blog` | `/ghost/api/v4/admin/site/` 200 | 🔜 | needs external **MySQL** |
-| paperless | `docs` | `/api/` 200 | 🔜 | needs **Redis** (+ a database) |
-| immich | `photos` | `/api/server-info/ping` 200 | 🔜 | needs **Postgres + Redis** |
-| umami | `analytics` | `/api/heartbeat` 200 | 🔜 | needs **PostgreSQL** |
-| outline | `wiki` | `/_health` 200 | 🔜 | needs **PostgreSQL + Redis** |
+| excalidraw | `draw` | `/` 200 | yes | static |
+| memos | `memos` | `/` 200 | yes | sqlite |
+| uptime-kuma | `status` | `/` 200 | yes | sqlite |
+| vaultwarden | `vault` | `/alive` 200 | yes | sqlite |
+| gitea | `git` | `/api/healthz` 200 | yes | sqlite |
+| filebrowser | `files` | `/` 200 | yes | fixed: internal_port 8080→80 |
+| actual-budget | `budget` | `/` 200 | yes | |
+| silverbullet | `notes` | `/` 200 | yes | |
+| couchdb | `couchdb` | `/` 200 | yes | set a real password before exposing |
+| freshrss | `rss` | `/` 200 | yes | |
+| n8n | `n8n` | `/healthz` 200 | yes | fixed: memory 512m→1024m (was OOM crash-loop) |
+| stirling-pdf | `pdf` | `/api/v1/info/status` 200 | yes | fixed: JVM metaspace + memory 2g + health path (`/` returns 401 via its own login) |
+| jellyfin | `media` | `/health` 200 | yes | |
+| nextcloud | `cloud` | `/status.php` 200 | yes | |
+| homeassistant | `ha` | `/api/` 401 | yes | 401 is the healthy signal (no token) |
+| it-tools | `tools` | `/` 200 | yes | dev utilities (static) |
+| cyberchef | `cyberchef` | `/` 200 | yes | dev utilities (static) |
+| adminer | `db` | `/` 200 | yes | DB web UI |
+| gatus | `gatus` | `/health` 200 | yes | status page; add checks in the config volume |
+| ghost | `blog` | `/ghost/api/v4/admin/site/` 200 | soon | needs external **MySQL** |
+| paperless | `docs` | `/api/` 200 | soon | needs **Redis** (+ a database) |
+| immich | `photos` | `/api/server-info/ping` 200 | soon | needs **Postgres + Redis** |
+| umami | `analytics` | `/api/heartbeat` 200 | soon | needs **PostgreSQL** |
+| outline | `wiki` | `/_health` 200 | soon | needs **PostgreSQL + Redis** |
 
 (Removed: `shiori` — bookmarks, not wanted.)
 

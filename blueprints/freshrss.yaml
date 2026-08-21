@@ -1,7 +1,6 @@
 id: freshrss
 name: FreshRSS
 description: Self-hosted RSS and Atom feed aggregator. Follow your favourite blogs and news sites without algorithmic filtering.
-icon: "📰"
 category: productivity
 
 route:

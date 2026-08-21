@@ -1,7 +1,6 @@
 id: nextcloud
 name: Nextcloud
 description: Your own cloud storage, calendar, contacts, and collaboration suite. Like Dropbox and Google Drive, but self-hosted.
-icon: "☁️"
 category: storage
 
 route:

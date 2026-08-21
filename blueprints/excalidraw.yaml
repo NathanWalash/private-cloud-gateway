@@ -1,7 +1,6 @@
 id: excalidraw
 name: Excalidraw
 description: Virtual whiteboard for sketching diagrams, wireframes, and ideas. Collaborative, hand-drawn style, no account needed.
-icon: "✏️"
 category: utilities
 
 route:
