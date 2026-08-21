@@ -1,0 +1,32 @@
+id: umami
+name: Umami
+description: Privacy-friendly, cookie-free web analytics for your own sites — a lightweight self-hosted alternative to Google Analytics.
+icon: "📊"
+category: productivity
+
+# Coming soon: Umami needs an external PostgreSQL database, which the
+# single-container model can't provision yet.
+coming_soon: true
+
+route:
+  subdomain: analytics
+  internal_port: 3000
+
+container:
+  image: ghcr.io/umami-software/umami:postgresql-v2.14.0
+  environment: []
+  volumes: []
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /api/heartbeat
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: false
+
+resources:
+  memory_limit: 512m

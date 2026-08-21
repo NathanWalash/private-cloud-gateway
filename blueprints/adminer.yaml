@@ -1,0 +1,29 @@
+id: adminer
+name: Adminer
+description: Lightweight web UI for managing SQL databases (MySQL, PostgreSQL, SQLite, and more). Connect to any database you run on your server.
+icon: "🗄️"
+category: utilities
+
+route:
+  subdomain: db
+  internal_port: 8080
+
+container:
+  image: adminer:5.4.0
+  environment: []
+  volumes: []
+
+lifecycle:
+  policy: scale-to-zero
+  sleep_after_minutes: 30
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: false
+
+resources:
+  memory_limit: 256m

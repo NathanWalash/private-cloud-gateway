@@ -28,12 +28,13 @@ per-app check, not a per-PR gate (it pulls images and starts containers).
 ## Status
 
 Legend: ✅ verified (full lifecycle: install → running → routed → healthy →
-uninstalled) · ❌ does not work as a single container
+uninstalled) · 🔜 coming soon (listed, install blocked — needs an external DB)
 
 Last verified: 2026-08-21 (local dev stack).
 
-**16 of 19 verified working.** The 3 failures all need external databases the
-single-container blueprint model can't provide (see below).
+**19 of 24 verified working; 5 coming soon.** Every ✅ app passed the full
+lifecycle. The 🔜 apps need an external database the single-container model
+can't provision yet (see below).
 
 | App | Subdomain | Health check | Status | Notes |
 |---|---|---|---|---|
@@ -42,7 +43,6 @@ single-container blueprint model can't provide (see below).
 | uptime-kuma | `status` | `/` 200 | ✅ | sqlite |
 | vaultwarden | `vault` | `/alive` 200 | ✅ | sqlite |
 | gitea | `git` | `/api/healthz` 200 | ✅ | sqlite |
-| shiori | `bookmarks` | `/` 200 | ✅ | sqlite |
 | filebrowser | `files` | `/` 200 | ✅ | fixed: internal_port 8080→80 |
 | actual-budget | `budget` | `/` 200 | ✅ | |
 | silverbullet | `notes` | `/` 200 | ✅ | |
@@ -53,16 +53,25 @@ single-container blueprint model can't provide (see below).
 | jellyfin | `media` | `/health` 200 | ✅ | |
 | nextcloud | `cloud` | `/status.php` 200 | ✅ | |
 | homeassistant | `ha` | `/api/` 401 | ✅ | 401 is the healthy signal (no token) |
-| ghost | `blog` | `/ghost/api/v4/admin/site/` 200 | ❌ | crash-loops — Ghost needs an external **MySQL** |
-| paperless | `docs` | `/api/` 200 | ❌ | needs **Redis** (+ a database) |
-| immich | `photos` | `/api/server-info/ping` 200 | ❌ | needs **Postgres + Redis** (`DB_HOSTNAME=localhost` in its own container) |
+| it-tools | `tools` | `/` 200 | ✅ | dev utilities (static) |
+| cyberchef | `cyberchef` | `/` 200 | ✅ | dev utilities (static) |
+| adminer | `db` | `/` 200 | ✅ | DB web UI |
+| gatus | `gatus` | `/health` 200 | ✅ | status page; add checks in the config volume |
+| ghost | `blog` | `/ghost/api/v4/admin/site/` 200 | 🔜 | needs external **MySQL** |
+| paperless | `docs` | `/api/` 200 | 🔜 | needs **Redis** (+ a database) |
+| immich | `photos` | `/api/server-info/ping` 200 | 🔜 | needs **Postgres + Redis** |
+| umami | `analytics` | `/api/heartbeat` 200 | 🔜 | needs **PostgreSQL** |
+| outline | `wiki` | `/_health` 200 | 🔜 | needs **PostgreSQL + Redis** |
 
-## Not supported as single containers (ghost, paperless, immich)
+(Removed: `shiori` — bookmarks, not wanted.)
 
-These three are **multi-container apps**: they expect an external database (and
-Redis) that the current one-container-per-blueprint model doesn't provision.
-`ghost` crash-loops connecting to MySQL at `127.0.0.1:3306`; `immich`/`paperless`
-similarly expect Postgres/Redis. They cannot work as bundled today.
+## Coming soon — need external databases (multi-container)
+
+These apps expect an external database (and sometimes Redis) that the current
+one-container-per-blueprint model doesn't provision. `ghost` crash-loops
+connecting to MySQL at `127.0.0.1:3306`; `immich`/`paperless`/`umami`/`outline`
+similarly expect Postgres/Redis. They are marked `coming_soon: true` — listed in
+the marketplace but install is blocked — and cannot work as bundled today.
 
 Options (a v1 decision):
 

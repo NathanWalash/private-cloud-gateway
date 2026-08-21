@@ -1,0 +1,29 @@
+id: gatus
+name: Gatus
+description: Automated status page and uptime monitoring, configured as code. Track endpoints, latency, and uptime with alerting. Add your checks in the config volume.
+icon: "📡"
+category: monitoring
+
+route:
+  subdomain: gatus
+  internal_port: 8080
+
+container:
+  image: twinproduction/gatus:v5.28.0
+  environment: []
+  volumes:
+    - pcg-gatus-config:/config
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /health
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: false
+
+resources:
+  memory_limit: 256m
