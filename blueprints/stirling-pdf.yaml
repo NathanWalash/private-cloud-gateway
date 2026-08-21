@@ -13,6 +13,9 @@ container:
   environment:
     - DOCKER_ENABLE_SECURITY=false
     - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
+    # The image caps JVM metaspace at 128m, which is too small for Stirling v2
+    # (Spring Boot 4) — it OOMs on Metaspace and restart-loops. Raise it.
+    - JAVA_TOOL_OPTIONS=-XX:MaxMetaspaceSize=512m -XX:MaxRAMPercentage=60
   volumes: []
 
 lifecycle:
@@ -20,7 +23,8 @@ lifecycle:
   sleep_after_minutes: 15
 
 health:
-  path: /
+  # "/" returns 401 (Stirling v2 has its own login); use the public status API.
+  path: /api/v1/info/status
   expected_status: 200
   timeout_seconds: 30
 
@@ -28,4 +32,4 @@ backup:
   enabled: false
 
 resources:
-  memory_limit: 1g
+  memory_limit: 2g
