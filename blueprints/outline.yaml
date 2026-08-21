@@ -1,0 +1,32 @@
+id: outline
+name: Outline
+description: A fast, collaborative knowledge base and wiki for your projects — documents, notes, and great search. Self-hosted team documentation.
+icon: "📖"
+category: productivity
+
+# Coming soon: Outline needs external PostgreSQL + Redis, which the
+# single-container model can't provision yet.
+coming_soon: true
+
+route:
+  subdomain: wiki
+  internal_port: 3000
+
+container:
+  image: outlinewiki/outline:0.82.0
+  environment: []
+  volumes: []
+
+lifecycle:
+  policy: always-on
+
+health:
+  path: /_health
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: false
+
+resources:
+  memory_limit: 512m

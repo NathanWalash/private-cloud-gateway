@@ -1,0 +1,29 @@
+id: it-tools
+name: IT Tools
+description: A big collection of handy developer utilities — encoders, converters, formatters, generators, cron parsers, and more. Runs entirely in your browser.
+icon: "🧰"
+category: utilities
+
+route:
+  subdomain: tools
+  internal_port: 80
+
+container:
+  image: ghcr.io/corentinth/it-tools:2024.10.22-7ca5933
+  environment: []
+  volumes: []
+
+lifecycle:
+  policy: scale-to-zero
+  sleep_after_minutes: 30
+
+health:
+  path: /
+  expected_status: 200
+  timeout_seconds: 10
+
+backup:
+  enabled: false
+
+resources:
+  memory_limit: 256m
