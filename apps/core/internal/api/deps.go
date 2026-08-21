@@ -22,6 +22,8 @@ type dockerManager interface {
 	LogsFollow(ctx context.Context, containerName string) (io.ReadCloser, error)
 	UpdateImage(ctx context.Context, image string) error
 	CopyFromContainer(ctx context.Context, containerName, srcPath string) (io.ReadCloser, error)
+	CopyToContainer(ctx context.Context, containerName, destDir string, tarball io.Reader) error
+	ExecCapture(ctx context.Context, containerName string, cmd []string, out io.Writer) error
 }
 
 // caddyManager is the subset of *caddy.Manager the API depends on.

@@ -47,6 +47,8 @@ func (f *fakeDocker) UpdateImage(context.Context, string) error { return nil }
 func (f *fakeDocker) CopyFromContainer(context.Context, string, string) (io.ReadCloser, error) {
 	return nil, nil
 }
+func (f *fakeDocker) CopyToContainer(context.Context, string, string, io.Reader) error { return nil }
+func (f *fakeDocker) ExecCapture(context.Context, string, []string, io.Writer) error   { return nil }
 
 type fakeCaddy struct{}
 

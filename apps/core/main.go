@@ -263,9 +263,11 @@ func runScheduledBackups(ctx context.Context, interval time.Duration, dbPath, bl
 			passphrase := os.Getenv("CLOUD_CORE_BACKUP_PASSPHRASE")
 			destPath := filepath.Join(backupDir, backup.FileName(time.Now()))
 
-			// Collect volumes from running apps via blueprints directory
+			// Collect volumes and database dumps from running apps via blueprints.
 			var volumes []backup.AppVolume
+			var dumps []backup.ServiceDump
 			var vr backup.VolumeReader
+			var df backup.ServiceDumper
 			if dm != nil {
 				entries, _ := os.ReadDir(blueprintDir)
 				for _, e := range entries {
@@ -277,28 +279,43 @@ func runScheduledBackups(ctx context.Context, interval time.Duration, dbPath, bl
 						continue
 					}
 					bp, err := blueprint.Parse(data)
-					if err != nil || !bp.Backup.Enabled {
+					if err != nil {
 						continue
 					}
 					containerName := bp.ContainerName()
-					status := dm.Status(context.Background(), containerName)
-					if status != "running" {
+					if dm.Status(context.Background(), containerName) != "running" {
 						continue
 					}
-					for _, p := range bp.Backup.ContainerPaths {
-						volumes = append(volumes, backup.AppVolume{
+					if bp.Backup.Enabled {
+						for _, p := range bp.Backup.ContainerPaths {
+							volumes = append(volumes, backup.AppVolume{
+								AppID:         bp.ID,
+								ContainerName: containerName,
+								ContainerPath: p,
+							})
+						}
+					}
+					for _, s := range bp.Services {
+						if len(s.Backup.Dump) == 0 {
+							continue
+						}
+						dumps = append(dumps, backup.ServiceDump{
 							AppID:         bp.ID,
-							ContainerName: containerName,
-							ContainerPath: p,
+							Service:       s.Name,
+							ContainerName: "pcg-" + bp.ID + "-" + s.Name,
+							Command:       s.Backup.Dump,
 						})
 					}
 				}
 				vr = func(cn, cp string) (io.ReadCloser, error) {
 					return dm.CopyFromContainer(context.Background(), cn, cp)
 				}
+				df = func(cn string, cmd []string, out io.Writer) error {
+					return dm.ExecCapture(context.Background(), cn, cmd, out)
+				}
 			}
 
-			if err := backup.Create(dbPath, blueprintDir, destPath, passphrase, volumes, vr); err != nil {
+			if err := backup.Create(dbPath, blueprintDir, destPath, passphrase, volumes, vr, dumps, df); err != nil {
 				slog.Error("scheduled backup failed", "err", err)
 			} else {
 				slog.Info("scheduled backup completed", "file", filepath.Base(destPath), "volumes", len(volumes))
