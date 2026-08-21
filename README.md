@@ -35,14 +35,20 @@ Free box is plenty.
 - **One login in front of everything.** Caddy verifies your session before any
   app is reachable; app containers are never exposed directly to the internet.
 - **Real authentication.** bcrypt password hashing, TOTP two-factor with backup
-  codes, hardened session cookies, and per-IP login rate limiting.
-- **Apps in a couple of clicks.** 19 built-in blueprints (Nextcloud, Immich,
-  Jellyfin, Vaultwarden, Paperless-ngx, n8n…); adding one is a single YAML file.
+  codes, hardened session cookies, per-IP login rate limiting, and a CSRF
+  origin check on every state-changing request.
+- **Apps in a couple of clicks.** 22 built-in apps, each verified end-to-end
+  (Nextcloud, Jellyfin, Gitea, Vaultwarden, n8n…); adding one is a single YAML
+  blueprint.
+- **Multi-container apps.** A blueprint can declare private database/Redis
+  sidecars, created and networked with the app automatically (Ghost, Umami,
+  Paperless-ngx work this way). Sidecars are never exposed — only the app is.
 - **Hardened by default.** A one-time setup token closes the first-run window,
-  HSTS + a full set of security headers, least-privilege containers, and an
-  SSRF-guarded uptime monitor.
-- **Encrypted, consistent backups.** AES-256-GCM archives (WAL-checkpointed so
-  no recent writes are lost) with optional off-site S3/R2 upload.
+  HSTS + a full set of security headers, least-privilege containers
+  (no-new-privileges), named-volumes-only, and an SSRF-guarded uptime monitor.
+- **Encrypted, consistent backups.** AES-256-GCM archives (WAL-checkpointed,
+  engine-native `pg_dump`/`mysqldump` for sidecar databases), automatic
+  retention, scheduled daily, with optional off-site S3/R2 upload.
 - **One binary, no runtime deps.** A Go core (pure-Go SQLite, no CGO) with the
   React dashboard embedded — plus Caddy and Docker.
 - **Deliberate, versioned deploys.** Production runs a pinned release image and
