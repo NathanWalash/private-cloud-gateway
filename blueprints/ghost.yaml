@@ -3,21 +3,37 @@ name: Ghost
 description: Professional publishing platform. Create a blog, newsletter, or membership site with a clean modern editor.
 category: productivity
 
-# Coming soon: Ghost requires an external MySQL database, which the
-# single-container model can't provision yet. Listed but not installable.
-coming_soon: true
-
 route:
   subdomain: blog
   internal_port: 2368
 
 container:
-  image: ghost:6.57.1
+  image: ghost:6-alpine
   environment:
     - url=${SCHEME}://blog.${DOMAIN}
     - NODE_ENV=production
+    - database__client=mysql
+    - database__connection__host=db
+    - database__connection__user=ghost
+    - database__connection__password=ghost
+    - database__connection__database=ghost
   volumes:
     - pcg-ghost-content:/var/lib/ghost/content
+
+services:
+  - name: db
+    image: mysql:8.4
+    environment:
+      - MYSQL_ROOT_PASSWORD=ghost-root
+      - MYSQL_DATABASE=ghost
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=ghost
+    volumes:
+      - pcg-ghost-db:/var/lib/mysql
+    memory_limit: 1024m
+    backup:
+      dump: ["mysqldump", "-u", "ghost", "-pghost", "ghost"]
+      restore: ["mysql", "-u", "ghost", "-pghost", "ghost"]
 
 lifecycle:
   policy: always-on

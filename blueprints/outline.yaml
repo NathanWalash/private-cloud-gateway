@@ -3,8 +3,10 @@ name: Outline
 description: A fast, collaborative knowledge base and wiki for your projects — documents, notes, and great search. Self-hosted team documentation.
 category: productivity
 
-# Coming soon: Outline needs external PostgreSQL + Redis, which the
-# single-container model can't provision yet.
+# Coming soon: beyond Postgres + Redis, Outline requires an external
+# authentication provider (OIDC/Google/Slack) to log in — there's no built-in
+# email/password. It can't be used standalone until the gateway can act as an
+# OIDC provider for it, so it stays listed-but-not-installable.
 coming_soon: true
 
 route:

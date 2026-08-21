@@ -3,8 +3,10 @@ name: Immich
 description: High-performance self-hosted photo and video backup solution. Works with the Immich mobile app for automatic backup.
 category: storage
 
-# Coming soon: Immich needs external Postgres + Redis, which the single-container
-# model can't provision yet. Listed but not installable.
+# Coming soon: Immich needs more than plain sidecars — a *vector-enabled*
+# Postgres (the immich-app/postgres image with the VectorChord extension), Redis,
+# and a separate machine-learning service. Once verified against the current
+# multi-container support it can graduate; until then it stays not-installable.
 coming_soon: true
 
 route:

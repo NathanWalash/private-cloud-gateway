@@ -3,30 +3,35 @@ name: Paperless-ngx
 description: Transform physical documents into a searchable archive. Scan, upload, and auto-tag documents with OCR.
 category: productivity
 
-# Coming soon: Paperless-ngx needs an external Redis (and database), which the
-# single-container model can't provision yet. Listed but not installable.
-coming_soon: true
-
 route:
   subdomain: docs
   internal_port: 8000
 
 container:
-  image: ghcr.io/paperless-ngx/paperless-ngx:3.0.5
+  image: ghcr.io/paperless-ngx/paperless-ngx:2.14
   environment:
+    - PAPERLESS_REDIS=redis://redis:6379
+    - PAPERLESS_URL=${SCHEME}://docs.${DOMAIN}
     - PAPERLESS_SECRET_KEY=changeme-use-openssl-rand-hex-32
-    - PAPERLESS_ALLOWED_HOSTS=*
     - PAPERLESS_TIME_ZONE=UTC
+    - PAPERLESS_ADMIN_USER=admin
+    - PAPERLESS_ADMIN_PASSWORD=changeme
   volumes:
     - pcg-paperless-data:/usr/src/paperless/data
     - pcg-paperless-media:/usr/src/paperless/media
     - pcg-paperless-consume:/usr/src/paperless/consume
 
+services:
+  - name: redis
+    image: redis:7-alpine
+    environment: []
+    volumes: []
+
 lifecycle:
   policy: always-on
 
 health:
-  path: /api/
+  path: /
   expected_status: 200
   timeout_seconds: 30
 

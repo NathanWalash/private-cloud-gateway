@@ -28,14 +28,14 @@ per-app check, not a per-PR gate (it pulls images and starts containers).
 ## Status
 
 Status column: **yes** = verified (full lifecycle: install -> running -> routed
--> healthy -> uninstalled) · **soon** = coming soon (listed, install blocked,
-needs an external DB).
+-> healthy -> uninstalled) · **soon** = coming soon (listed, install blocked).
 
 Last verified: 2026-08-21 (local dev stack).
 
-**19 of 24 verified working; 5 coming soon.** Every "yes" app passed the full
-lifecycle. The "soon" apps need an external database the single-container model
-can't provision yet (see below).
+**22 of 24 verified working; 2 coming soon.** Every "yes" app passed the full
+lifecycle. Multi-container support (v0.8) let umami, ghost, and paperless
+graduate with sidecar databases. The 2 remaining "soon" apps need more than
+plain sidecars (see below).
 
 | App | Subdomain | Health check | Status | Notes |
 |---|---|---|---|---|
@@ -58,27 +58,24 @@ can't provision yet (see below).
 | cyberchef | `cyberchef` | `/` 200 | yes | dev utilities (static) |
 | adminer | `db` | `/` 200 | yes | DB web UI |
 | gatus | `gatus` | `/health` 200 | yes | status page; add checks in the config volume |
-| ghost | `blog` | `/ghost/api/v4/admin/site/` 200 | soon | needs external **MySQL** |
-| paperless | `docs` | `/api/` 200 | soon | needs **Redis** (+ a database) |
-| immich | `photos` | `/api/server-info/ping` 200 | soon | needs **Postgres + Redis** |
-| umami | `analytics` | `/api/heartbeat` 200 | soon | needs **PostgreSQL** |
-| outline | `wiki` | `/_health` 200 | soon | needs **PostgreSQL + Redis** |
+| umami | `analytics` | `/api/heartbeat` 200 | yes | + Postgres sidecar (multi-container) |
+| ghost | `blog` | `/ghost/api/v4/admin/site/` 200 | yes | + MySQL sidecar (multi-container) |
+| paperless | `docs` | `/` 200 | yes | + Redis sidecar (multi-container) |
+| outline | `wiki` | `/_health` 200 | soon | Postgres + Redis AND an external auth provider |
+| immich | `photos` | `/api/server-info/ping` 200 | soon | vector-enabled Postgres + Redis + ML service |
 
 (Removed: `shiori` — bookmarks, not wanted.)
 
-## Coming soon — need external databases (multi-container)
+## Coming soon — need more than plain sidecars
 
-These apps expect an external database (and sometimes Redis) that the current
-one-container-per-blueprint model doesn't provision. `ghost` crash-loops
-connecting to MySQL at `127.0.0.1:3306`; `immich`/`paperless`/`umami`/`outline`
-similarly expect Postgres/Redis. They are marked `coming_soon: true` — listed in
-the marketplace but install is blocked — and cannot work as bundled today.
+Multi-container support (v0.8, see `docs/13-multi-container-apps.md`) lets a
+blueprint declare private sidecar databases, which is how umami, ghost, and
+paperless now work. Two apps need more than that and stay `coming_soon: true`
+(listed but install blocked):
 
-Options (a v1 decision):
-
-1. **Quarantine for v1** — remove them from the bundled set (or hide behind an
-   "experimental/unsupported" flag) so users don't install a broken app.
-2. **Add multi-container blueprint support post-v1** — let a blueprint declare
-   sidecar services (Postgres/Redis) on the app's private network and point the
-   app's env at them. The blueprint schema already has a `depends_on` field to
-   build on.
+- **outline** — beyond Postgres + Redis it requires an external authentication
+  provider (OIDC/Google/Slack); there is no built-in login. It graduates once
+  the gateway can act as an OIDC provider for it.
+- **immich** — needs a *vector-enabled* Postgres (the `immich-app/postgres`
+  image with the VectorChord extension), Redis, and a separate machine-learning
+  service. Achievable with the current sidecar model but not yet verified.
