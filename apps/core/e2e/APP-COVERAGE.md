@@ -65,6 +65,7 @@ Redis) that the current one-container-per-blueprint model doesn't provision.
 similarly expect Postgres/Redis. They cannot work as bundled today.
 
 Options (a v1 decision):
+
 1. **Quarantine for v1** — remove them from the bundled set (or hide behind an
    "experimental/unsupported" flag) so users don't install a broken app.
 2. **Add multi-container blueprint support post-v1** — let a blueprint declare
