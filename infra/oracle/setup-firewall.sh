@@ -28,6 +28,25 @@ ufw allow 443/udp comment "HTTP/3 (QUIC)"
 ufw --force enable
 ufw status verbose
 
+# Oracle Cloud Ubuntu images ship iptables rules (netfilter-persistent) that
+# REJECT inbound 80/443 in the INPUT chain regardless of UFW. Insert explicit
+# ACCEPT rules ahead of that REJECT and persist them, or the site stays
+# unreachable and Let's Encrypt HTTP-01 fails.
+if command -v iptables >/dev/null 2>&1; then
+  echo "Opening 80/443 in iptables (Oracle default INPUT REJECT)..."
+  iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+  iptables -I INPUT -p tcp --dport 443 -j ACCEPT
+  iptables -I INPUT -p udp --dport 443 -j ACCEPT
+  if command -v netfilter-persistent >/dev/null 2>&1; then
+    netfilter-persistent save || true
+  fi
+fi
+
 echo ""
-echo "Firewall configured. Public ports: 22 (SSH), 80 (HTTP), 443 (HTTPS)."
-echo "All other ports are blocked."
+echo "Host firewall configured. Public ports: 22 (SSH), 80 (HTTP), 443 (HTTPS)."
+echo ""
+echo "IMPORTANT: the host firewall is only half of it. In the Oracle Cloud"
+echo "console you MUST also add ingress rules for TCP 80 and 443 to your VCN's"
+echo "Security List (or the instance NSG) — only 22 is allowed by default."
+echo "Without that, the site is unreachable from the internet and HTTPS can't"
+echo "be issued."

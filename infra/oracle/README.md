@@ -4,15 +4,32 @@ Deploy Private Cloud Gateway to a fresh Oracle Cloud Ubuntu VM.
 
 ## Prerequisites
 
-- Oracle Cloud Always Free tier VM (ARM or AMD), Ubuntu 22.04+
+- Oracle Cloud Always Free tier VM, Ubuntu 22.04+. **Recommended: the ARM
+  `VM.Standard.A1.Flex` shape with ~4 OCPU / 24 GB RAM** (also free). The 1 GB
+  `E2.1.Micro` shape is too small once you run the multi-container apps
+  (Ghost+MySQL, Paperless+Redis) — they will OOM.
 - SSH access and public IPv4
 - Custom domain with DNS access
+
+## Open ports in the Oracle console (do this first)
+
+**This is the #1 first-deploy gotcha.** A stock Oracle VM blocks inbound 80/443
+at the cloud level, which no command on the box can fix. In the Oracle Cloud
+console, open your VCN's **Security List** (or the instance's NSG) and add
+**ingress rules for TCP 80 and TCP 443** (source `0.0.0.0/0`). Only port 22 is
+allowed by default. Without this the site is unreachable and Let's Encrypt
+cannot issue certificates. (`setup-firewall.sh`, run by the installer, handles
+the host-level UFW + iptables rules — but not the cloud Security List.)
 
 ## Quick start
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/NathanWalash/private-cloud-gateway/main/install.sh | sudo bash
 ```
+
+The installer pins the latest release, generates all secrets (session, setup
+token, backup passphrase — it prints the setup token and passphrase; save them),
+and starts the service.
 
 ## DNS setup
 

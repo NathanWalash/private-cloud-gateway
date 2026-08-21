@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	apiPkg "github.com/NathanWalash/private-cloud-gateway/apps/core/internal/api"
@@ -211,6 +212,17 @@ func main() {
 	}
 }
 
+// backupKeep is how many backup archives to retain (env CLOUD_CORE_BACKUP_KEEP,
+// default 7; 0 keeps all).
+func backupKeep() int {
+	if v := os.Getenv("CLOUD_CORE_BACKUP_KEEP"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return 7
+}
+
 func setupLogging(env string) {
 	var handler slog.Handler
 	opts := &slog.HandlerOptions{Level: slog.LevelInfo}
@@ -319,6 +331,10 @@ func runScheduledBackups(ctx context.Context, interval time.Duration, dbPath, bl
 				slog.Error("scheduled backup failed", "err", err)
 			} else {
 				slog.Info("scheduled backup completed", "file", filepath.Base(destPath), "volumes", len(volumes))
+				// Retention: keep the newest N archives so backups can't fill the disk.
+				if err := backup.Prune(backupDir, backupKeep()); err != nil {
+					slog.Warn("backup prune failed", "err", err)
+				}
 				// Optional S3/R2 off-site upload
 				uploadBackupToS3(destPath)
 			}

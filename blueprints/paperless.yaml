@@ -26,6 +26,7 @@ services:
     image: redis:7-alpine
     environment: []
     volumes: []
+    memory_limit: 256m
 
 lifecycle:
   policy: always-on

@@ -22,6 +22,8 @@ const ICONS_BY_ID: Record<string, PhosphorIcon> = {
   gatus:           Pulse,
   umami:           ChartBar,
   outline:         FileText,
+  ghost:           FileText,
+  paperless:       FileText,
 }
 
 const ICONS_BY_CATEGORY: Record<string, PhosphorIcon> = {
