@@ -82,3 +82,75 @@ func TestBuildCreateBody_AllowPrivilegeEscalation(t *testing.T) {
 		t.Error("no-new-privileges should be off when escalation is explicitly allowed")
 	}
 }
+
+func TestNameHelpers(t *testing.T) {
+	if got := appNetwork("immich"); got != "pcg-net-immich" {
+		t.Errorf("appNetwork = %q", got)
+	}
+	if got := serviceContainerName("immich", "db"); got != "pcg-immich-db" {
+		t.Errorf("serviceContainerName = %q", got)
+	}
+	if got := deriveAppID("pcg-immich"); got != "immich" {
+		t.Errorf("deriveAppID = %q", got)
+	}
+}
+
+func TestBuildCreateBody_MultiContainerNetworks(t *testing.T) {
+	bp := &blueprint.Blueprint{
+		ID:        "umami",
+		Container: blueprint.Container{Image: "umami:latest"},
+		Services: []blueprint.Service{
+			{Name: "db", Image: "postgres:16"},
+		},
+	}
+	body := buildCreateBody(bp)
+
+	// App joins the per-app network (primary, so it resolves sidecars) AND the
+	// shared network (so Caddy can reach it).
+	if body.HostConfig.NetworkMode != appNetwork("umami") {
+		t.Errorf("primary network = %q, want %q", body.HostConfig.NetworkMode, appNetwork("umami"))
+	}
+	if _, ok := body.NetworkingConfig.EndpointsConfig[appNetwork("umami")]; !ok {
+		t.Error("app not attached to per-app network")
+	}
+	if _, ok := body.NetworkingConfig.EndpointsConfig[privateNetwork]; !ok {
+		t.Error("app not attached to shared network")
+	}
+	if body.Labels["pcg.role"] != "app" {
+		t.Errorf("app role label = %q", body.Labels["pcg.role"])
+	}
+}
+
+func TestBuildCreateBody_SingleContainerUnchanged(t *testing.T) {
+	bp := &blueprint.Blueprint{ID: "memos", Container: blueprint.Container{Image: "memos:latest"}}
+	body := buildCreateBody(bp)
+	if body.HostConfig.NetworkMode != privateNetwork {
+		t.Errorf("single-container primary network = %q, want %q", body.HostConfig.NetworkMode, privateNetwork)
+	}
+	if len(body.NetworkingConfig.EndpointsConfig) != 1 {
+		t.Errorf("single-container should join exactly one network, got %d", len(body.NetworkingConfig.EndpointsConfig))
+	}
+}
+
+func TestBuildServiceCreateBody(t *testing.T) {
+	body := buildServiceCreateBody("umami", blueprint.Service{
+		Name: "db", Image: "postgres:16", Volumes: []string{"pcg-umami-db:/var/lib/postgresql/data"},
+	})
+	// Sidecar joins only the per-app network, aliased by its service name.
+	if len(body.NetworkingConfig.EndpointsConfig) != 1 {
+		t.Fatalf("service should join exactly one network, got %d", len(body.NetworkingConfig.EndpointsConfig))
+	}
+	ep := body.NetworkingConfig.EndpointsConfig[appNetwork("umami")]
+	if ep == nil || !slices.Contains(ep.Aliases, "db") {
+		t.Errorf("service missing 'db' alias on per-app network: %+v", ep)
+	}
+	if _, onShared := body.NetworkingConfig.EndpointsConfig[privateNetwork]; onShared {
+		t.Error("sidecar must NOT be on the shared network")
+	}
+	if body.Labels["pcg.role"] != "service" {
+		t.Errorf("service role label = %q", body.Labels["pcg.role"])
+	}
+	if !slices.Contains(body.HostConfig.SecurityOpt, "no-new-privileges:true") {
+		t.Error("service should get no-new-privileges by default")
+	}
+}
