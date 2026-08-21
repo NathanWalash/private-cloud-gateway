@@ -167,6 +167,10 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 	for _, msg := range rendered.WeakSecrets() {
 		slog.Warn("weak secret in blueprint", "app", bp.ID, "detail", msg)
 	}
+	// Pulling a large image can take minutes — longer than the server's default
+	// WriteTimeout — which would drop the response mid-install and surface as a
+	// 502 even though the install succeeds. Extend this request's write deadline.
+	extendWriteDeadline(w)
 	if err := h.docker.Install(r.Context(), rendered); err != nil {
 		slog.Error("docker install failed", "app", bp.ID, "err", err)
 		jsonErr(w, "app installation failed", http.StatusInternalServerError)
@@ -208,6 +212,13 @@ func (h *Handler) Install(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_, _ = fmt.Fprintf(w, `{"id":%d,"status":"running"}`, id)
+}
+
+// extendWriteDeadline pushes this request's response write deadline out past the
+// server's default WriteTimeout, for handlers that do long work (image pulls)
+// before writing their response. Best-effort — ignored if unsupported.
+func extendWriteDeadline(w http.ResponseWriter) {
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(10 * time.Minute))
 }
 
 // DELETE /api/apps/:id.

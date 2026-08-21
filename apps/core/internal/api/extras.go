@@ -79,6 +79,9 @@ func (h *Handler) UpdateApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("updating app", "id", id, "image", image)
+	// Image pulls can exceed the default WriteTimeout; extend it so the response
+	// isn't dropped mid-update (a 502 despite success).
+	extendWriteDeadline(w)
 	if err := h.docker.UpdateImage(r.Context(), image); err != nil {
 		jsonErr(w, "image pull failed", http.StatusInternalServerError)
 		return
