@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -107,5 +108,47 @@ func TestInstallRendersDomainAndScheme(t *testing.T) {
 	}
 	if !strings.Contains(env, "WEBHOOK_URL=https://n8n.example.com/") {
 		t.Errorf("${SCHEME}/${DOMAIN} not substituted: %q", env)
+	}
+}
+
+func TestInstallRejectsComingSoon(t *testing.T) {
+	tmp := t.TempDir()
+	yaml := "id: ghost\n" +
+		"name: Ghost\n" +
+		"coming_soon: true\n" +
+		"container:\n" +
+		"  image: ghost:6\n" +
+		"route:\n" +
+		"  subdomain: blog\n" +
+		"  internal_port: 2368\n"
+	if err := os.WriteFile(filepath.Join(tmp, "ghost.yaml"), []byte(yaml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	database, err := db.Open(filepath.Join(tmp, "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	if err := db.Migrate(database); err != nil {
+		t.Fatal(err)
+	}
+
+	fd := &fakeDocker{}
+	h := &Handler{
+		db: database, startTime: time.Now(), version: "test",
+		docker: fd, caddy: fakeCaddy{}, blueprintDir: tmp,
+		cookieDomain: "example.com", scheme: "https",
+	}
+
+	body, _ := json.Marshal(map[string]string{"blueprint_id": "ghost"})
+	rec := httptest.NewRecorder()
+	h.Install(rec, httptest.NewRequest("POST", "/api/apps/install", bytes.NewReader(body)))
+
+	if rec.Code != http.StatusConflict {
+		t.Errorf("coming-soon install: got %d, want 409", rec.Code)
+	}
+	if fd.installed != nil {
+		t.Error("docker.Install must not be called for a coming-soon app")
 	}
 }

@@ -111,11 +111,14 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
                 <button
                   key={bp.id}
                   type="button"
+                  disabled={bp.coming_soon}
                   onClick={() => setSelected(selected === bp.id ? null : bp.id)}
                   className={`text-left p-4 rounded-xl border transition-all ${
-                    selected === bp.id
-                      ? 'border-accent bg-accent/10 ring-1 ring-accent/30'
-                      : 'border-border bg-card/50 hover:border-text-muted hover:bg-card'
+                    bp.coming_soon
+                      ? 'border-border bg-card/30 opacity-60 cursor-not-allowed'
+                      : selected === bp.id
+                        ? 'border-accent bg-accent/10 ring-1 ring-accent/30'
+                        : 'border-border bg-card/50 hover:border-text-muted hover:bg-card'
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -128,11 +131,15 @@ export default function MarketplaceDialog({ blueprints, onClose, onInstalled }: 
                         <p className="text-xs text-text-muted capitalize">{bp.category}</p>
                       </div>
                     </div>
-                    {selected === bp.id && (
+                    {bp.coming_soon ? (
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full shrink-0">
+                        Coming soon
+                      </span>
+                    ) : selected === bp.id ? (
                       <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center shrink-0">
                         <Check className="w-3 h-3 text-white" />
                       </div>
-                    )}
+                    ) : null}
                   </div>
                   {bp.description && (
                     <p className="text-xs text-text-muted line-clamp-2 mt-1">{bp.description}</p>

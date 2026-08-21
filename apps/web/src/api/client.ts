@@ -25,6 +25,7 @@ export interface Blueprint {
   icon: string
   category: string
   depends_on?: string[]
+  coming_soon?: boolean
 }
 
 export interface ServerStatus {

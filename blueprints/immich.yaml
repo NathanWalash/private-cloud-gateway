@@ -4,6 +4,10 @@ description: High-performance self-hosted photo and video backup solution. Works
 icon: "📷"
 category: storage
 
+# Coming soon: Immich needs external Postgres + Redis, which the single-container
+# model can't provision yet. Listed but not installable.
+coming_soon: true
+
 route:
   subdomain: photos
   internal_port: 2283
