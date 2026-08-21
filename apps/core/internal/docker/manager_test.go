@@ -1,7 +1,9 @@
 package docker
 
 import (
+	"bytes"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/blueprint"
@@ -152,5 +154,70 @@ func TestBuildServiceCreateBody(t *testing.T) {
 	}
 	if !slices.Contains(body.HostConfig.SecurityOpt, "no-new-privileges:true") {
 		t.Error("service should get no-new-privileges by default")
+	}
+}
+
+// frame builds one Docker multiplexed-stream frame (8-byte header + payload).
+func frame(streamType byte, payload string) []byte {
+	b := make([]byte, 8+len(payload))
+	b[0] = streamType
+	n := len(payload)
+	b[4] = byte(n >> 24)
+	b[5] = byte(n >> 16)
+	b[6] = byte(n >> 8)
+	b[7] = byte(n)
+	copy(b[8:], payload)
+	return b
+}
+
+func TestDemuxStream(t *testing.T) {
+	var in []byte
+	in = append(in, frame(1, "hello ")...)    // stdout
+	in = append(in, frame(2, "a warning")...) // stderr
+	in = append(in, frame(1, "world")...)     // stdout
+
+	var stdout, stderr strings.Builder
+	if err := demuxStream(bytes.NewReader(in), &stdout, &stderr); err != nil {
+		t.Fatalf("demuxStream: %v", err)
+	}
+	if stdout.String() != "hello world" {
+		t.Errorf("stdout = %q, want %q", stdout.String(), "hello world")
+	}
+	if stderr.String() != "a warning" {
+		t.Errorf("stderr = %q, want %q", stderr.String(), "a warning")
+	}
+}
+
+func TestDemuxStream_Truncated(t *testing.T) {
+	// A frame claiming 100 bytes but only 3 present must error, not hang/panic.
+	f := frame(1, "")
+	f[7] = 100
+	f = append(f, []byte("abc")...)
+	var out, errb strings.Builder
+	if err := demuxStream(bytes.NewReader(f), &out, &errb); err == nil {
+		t.Error("expected error on truncated frame")
+	}
+}
+
+func TestDrainPullStream(t *testing.T) {
+	// A normal progress stream ends cleanly.
+	ok := `{"status":"Pulling from lib/x"}
+{"status":"Download complete"}
+`
+	if err := drainPullStream(strings.NewReader(ok), "lib/x"); err != nil {
+		t.Errorf("clean stream: unexpected error %v", err)
+	}
+
+	// Docker reports a failed pull as an {"error":...} object with HTTP 200 —
+	// this MUST surface as an error (regression guard for silent pull failures).
+	bad := `{"status":"Pulling"}
+{"errorDetail":{"message":"manifest unknown"},"error":"manifest unknown"}
+`
+	err := drainPullStream(strings.NewReader(bad), "lib/nope")
+	if err == nil {
+		t.Fatal("expected error from a failed pull stream")
+	}
+	if !strings.Contains(err.Error(), "manifest unknown") {
+		t.Errorf("error should include the docker message, got %v", err)
 	}
 }
