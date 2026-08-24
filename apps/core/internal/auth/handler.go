@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/subtle"
 	"database/sql"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/notify"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -22,6 +24,7 @@ type Handler struct {
 	cookieDomain string
 	secure       bool   // set the Secure flag on cookies (true in production HTTPS)
 	setupToken   string // if non-empty, required to complete first-run setup
+	notifier     *notify.Service
 }
 
 func NewHandler(db *sql.DB, loginURL, cookieDomain string, secure bool, setupToken string) *Handler {
@@ -31,6 +34,9 @@ func NewHandler(db *sql.DB, loginURL, cookieDomain string, secure bool, setupTok
 		cookieDomain: cookieDomain,
 		secure:       secure,
 		setupToken:   setupToken,
+		// Reads channel config from settings at send time; used to alert on events
+		// like an account lockout. No-op until a channel is configured.
+		notifier: notify.New(db),
 	}
 }
 
@@ -164,6 +170,20 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Per-account lockout: an account with too many recent failures is temporarily
+	// blocked regardless of source IP (stops distributed brute-force on one user).
+	acctKey := strings.ToLower(strings.TrimSpace(email))
+	if accountLocker.locked(acctKey) {
+		slog.Warn("login blocked: account temporarily locked", "ip", ip)
+		if isJSON(r) {
+			w.Header().Set("Content-Type", "application/json")
+			http.Error(w, `{"error":"account temporarily locked after repeated failures"}`, http.StatusTooManyRequests)
+		} else {
+			http.Error(w, "account temporarily locked", http.StatusTooManyRequests)
+		}
+		return
+	}
+
 	var userID int64
 	var hash string
 	err := h.db.QueryRow(
@@ -172,6 +192,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		slog.Info("login failed", "reason", "user not found", "ip", ip)
 		auditLog(h.db, "login.fail", email, "user not found")
+		h.registerLoginFailure(acctKey, email)
 		h.loginError(w, r)
 		return
 	}
@@ -184,9 +205,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
 		slog.Info("login failed", "reason", "wrong password", "ip", ip)
 		auditLog(h.db, "login.fail", email, "wrong password")
+		h.registerLoginFailure(acctKey, email)
 		h.loginError(w, r)
 		return
 	}
+
+	// Successful credential check — clear the failure streak for this account.
+	accountLocker.recordSuccess(acctKey)
 
 	// Check if TOTP is enabled for this user.
 	var totpSecret string
@@ -321,6 +346,20 @@ func (h *Handler) loginError(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 	} else {
 		http.Redirect(w, r, h.loginURL+"?error=1", http.StatusSeeOther)
+	}
+}
+
+// registerLoginFailure records a failed login attempt and, when it trips the
+// per-account lockout, audit-logs it and fires a notification (a no-op unless a
+// notification channel is configured).
+func (h *Handler) registerLoginFailure(key, email string) {
+	if accountLocker.recordFail(key) {
+		slog.Warn("account locked after repeated login failures", "email", email)
+		auditLog(h.db, "account.locked", email, "locked after repeated failed logins")
+		if h.notifier != nil {
+			h.notifier.Notify(context.Background(), notify.EventLoginFail,
+				"Account locked", email+" was locked after repeated failed logins")
+		}
 	}
 }
 

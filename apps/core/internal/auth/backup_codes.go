@@ -30,7 +30,9 @@ func GenerateBackupCodes(db *sql.DB, userID int64) ([]string, error) {
 			return nil, fmt.Errorf("generate code: %w", err)
 		}
 		plain := fmt.Sprintf("%010d", n.Int64())
-		hash, err := bcrypt.GenerateFromPassword([]byte(plain), bcrypt.MinCost)
+		// DefaultCost for consistency with account passwords. Only 8 codes are
+		// generated, so the extra cost at generate/verify time is negligible.
+		hash, err := bcrypt.GenerateFromPassword([]byte(plain), bcrypt.DefaultCost)
 		if err != nil {
 			return nil, err
 		}

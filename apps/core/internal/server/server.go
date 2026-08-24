@@ -215,8 +215,10 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		// Permissions policy — deny browser features we don't use
 		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-		// Content security policy — SPA only loads from same origin
-		if r.Header.Get("Accept") != "" && !isAPIPath(r.URL.Path) {
+		// Content security policy — the SPA only loads from its own origin. Send it
+		// on every non-API response unconditionally (previously it was skipped when
+		// the Accept header was absent, leaving some HTML responses without a CSP).
+		if !isAPIPath(r.URL.Path) {
 			h.Set("Content-Security-Policy",
 				"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'")
 		}

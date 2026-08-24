@@ -48,6 +48,24 @@ if ! docker compose version &>/dev/null; then
 fi
 success "Docker Compose: $(docker compose version --short)"
 
+# ── Ensure swap (OOM insurance on small VMs) ──────────────────────────────────
+# Multi-container apps can OOM on a low-RAM instance. If there's little memory and
+# no swap, add a 2GB swapfile so a spike degrades gracefully instead of OOM-killing.
+mem_mb=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')
+swap_mb=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}')
+if [ "${swap_mb:-0}" -eq 0 ] && [ "${mem_mb:-9999}" -lt 4096 ]; then
+  info "Low memory (${mem_mb}MB) and no swap — creating a 2GB swapfile..."
+  if fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 2>/dev/null; then
+    chmod 600 /swapfile
+    mkswap /swapfile >/dev/null 2>&1
+    swapon /swapfile
+    grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    success "2GB swapfile enabled"
+  else
+    warn "Could not create a swapfile; continuing without swap"
+  fi
+fi
+
 # ── Collect configuration ────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -67,6 +85,19 @@ read -rp "  Admin email for Let's Encrypt (cert expiry notices): " ADMIN_EMAIL
 SESSION_SECRET=$(openssl rand -hex 32)
 SETUP_TOKEN=$(openssl rand -hex 16)
 BACKUP_PASSPHRASE=$(openssl rand -hex 24)
+
+# ── Preflight: DNS points here? ───────────────────────────────────────────────
+# Caddy issues HTTPS via Let's Encrypt HTTP-01, which needs home.$DOMAIN (and app
+# subdomains) resolving to THIS host with ports 80/443 reachable. Warn early —
+# certs silently fail to issue otherwise. (getent uses the system resolver, so no
+# extra package is required.)
+PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me 2>/dev/null || echo "")
+RESOLVED=$(getent ahostsv4 "home.$DOMAIN" 2>/dev/null | awk '{print $1; exit}')
+if [ -z "$RESOLVED" ]; then
+  warn "home.$DOMAIN does not resolve yet — create DNS 'A $DOMAIN → ${PUBLIC_IP:-<this IP>}' and 'A *.$DOMAIN → same' before certs can issue."
+elif [ -n "$PUBLIC_IP" ] && [ "$RESOLVED" != "$PUBLIC_IP" ]; then
+  warn "home.$DOMAIN resolves to $RESOLVED, not this host ($PUBLIC_IP) — HTTPS will fail until DNS points here."
+fi
 
 echo ""
 
@@ -95,8 +126,10 @@ fi
 # immutable image instead of a floating :latest.
 info "Resolving latest release..."
 PCG_VERSION=$(curl -fsSL https://api.github.com/repos/NathanWalash/private-cloud-gateway/releases/latest 2>/dev/null \
-  | grep -m1 '"tag_name"' | cut -d'"' -f4)
-[ -z "$PCG_VERSION" ] && PCG_VERSION=latest
+  | jq -r '.tag_name // empty')
+if [ -z "$PCG_VERSION" ]; then
+  error "Could not resolve the latest release tag (GitHub API rate-limited or offline). Re-run shortly — refusing to fall back to a floating :latest image, which would defeat pinning."
+fi
 info "Deploying version $PCG_VERSION"
 
 # ── Write .env ───────────────────────────────────────────────────────────────
@@ -206,10 +239,10 @@ echo -e "      ${GREEN}$BACKUP_PASSPHRASE${NC}"
 echo "  Stored in $INSTALL_DIR/.env (CLOUD_CORE_BACKUP_PASSPHRASE)."
 echo ""
 echo "  Next steps:"
-echo "  1. In the Oracle Cloud console, add ingress rules to your subnet's"
-echo "     Security List for TCP 80 and 443 (only 22 is open by default),"
-echo "     or the site is unreachable and HTTPS can't be issued."
-echo "  2. Point DNS: A $DOMAIN → $(curl -s --max-time 5 ifconfig.me 2>/dev/null || echo 'YOUR_IP')"
+echo -e "  ${YELLOW}1. REQUIRED — In the Oracle Cloud console, add VCN/subnet Security List"
+echo "     ingress rules for TCP 80 and 443 (only 22 is open by default). Until"
+echo -e "     you do, the site is unreachable and HTTPS cannot be issued.${NC}"
+echo "  2. Point DNS: A $DOMAIN → ${PUBLIC_IP:-YOUR_IP}"
 echo "     and:        A *.$DOMAIN → same IP"
 echo "  3. Visit https://home.$DOMAIN to complete setup (enter the token above)"
 echo ""

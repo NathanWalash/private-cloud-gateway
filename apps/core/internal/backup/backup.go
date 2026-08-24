@@ -6,11 +6,13 @@ package backup
 import (
 	"archive/tar"
 	"archive/zip"
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -66,9 +68,18 @@ const (
 	maxDumpBytes = 512 << 20 // cap a single decompressed dump.sql (zip-bomb guard)
 	keyLen       = 32        // AES-256
 	saltLen      = 32
-	iterations   = 100_000
-	archiveExt   = ".pcg-backup"
+	// iterations is the PBKDF2-HMAC-SHA256 round count for NEW backups (OWASP
+	// 2023 guidance). Older archives used legacyIterations and carry no header.
+	iterations       = 600_000
+	legacyIterations = 100_000
+	maxIterations    = 10_000_000 // sanity cap so a crafted header can't DoS decrypt
+	kdfVersion       = 1
+	archiveExt       = ".pcg-backup"
 )
+
+// kdfMagic marks the versioned encryption header (v0.8.3+). Pre-v0.8.3 archives
+// have no header and begin directly with the 32-byte salt.
+var kdfMagic = []byte("PCGB")
 
 // Create builds a backup archive at destPath.
 // volumes and readVolume may be nil — if so, volume backup is skipped.
@@ -287,7 +298,12 @@ func Restore(srcPath, passphrase, dbDest, blueprintsDest string) error {
 		reader = f
 	}
 
-	// Read all into memory to get the zip
+	// The zip reader needs a ReaderAt, so the whole (decrypted) archive is held in
+	// memory here. MEMORY COST: peak usage is roughly the archive size — fine for
+	// the DB + blueprints, but a restore that includes large app-volume tarballs
+	// can spike RAM on a small VM. The inbound upload is capped at 64MB
+	// (api.BackupRestore); if archives grow much larger, switch to a temp-file-
+	// backed ReaderAt instead of io.ReadAll.
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return fmt.Errorf("read backup: %w", err)
@@ -384,8 +400,8 @@ func writeToPath(r io.Reader, dst string) error {
 	return err
 }
 
-// encryptStream encrypts src using AES-256-GCM + PBKDF2.
-// Format: [32-byte salt][12-byte nonce][ciphertext+GCM tag].
+// encryptStream encrypts src using AES-256-GCM with a PBKDF2-derived key.
+// Format: "PCGB" | version(1) | iterations(uint32 BE) | salt(32) | nonce+ciphertext+tag.
 func encryptStream(src io.Reader, dst io.Writer, passphrase string) error {
 	salt := make([]byte, saltLen)
 	if _, err := rand.Read(salt); err != nil {
@@ -404,8 +420,14 @@ func encryptStream(src io.Reader, dst io.Writer, passphrase string) error {
 	if err != nil {
 		return err
 	}
-
 	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
+
+	header := append([]byte{}, kdfMagic...)
+	header = append(header, kdfVersion)
+	header = binary.BigEndian.AppendUint32(header, uint32(iterations))
+	if _, err := dst.Write(header); err != nil {
+		return err
+	}
 	if _, err := dst.Write(salt); err != nil {
 		return err
 	}
@@ -413,14 +435,41 @@ func encryptStream(src io.Reader, dst io.Writer, passphrase string) error {
 	return err
 }
 
-// decryptStream decrypts an AES-256-GCM stream.
+// decryptStream decrypts a stream produced by encryptStream. It reads the
+// versioned header when present and falls back to the pre-v0.8.3 header-less
+// format (salt-first, legacyIterations) so older backups still restore.
 func decryptStream(src io.Reader, passphrase string) (io.Reader, error) {
-	salt := make([]byte, saltLen)
-	if _, err := io.ReadFull(src, salt); err != nil {
-		return nil, fmt.Errorf("read salt: %w", err)
+	head := make([]byte, len(kdfMagic))
+	if _, err := io.ReadFull(src, head); err != nil {
+		return nil, fmt.Errorf("read header: %w", err)
 	}
 
-	key := pbkdf2.Key([]byte(passphrase), salt, iterations, keyLen, sha256.New)
+	salt := make([]byte, saltLen)
+	iters := legacyIterations
+	if bytes.Equal(head, kdfMagic) {
+		meta := make([]byte, 1+4) // version + iterations
+		if _, err := io.ReadFull(src, meta); err != nil {
+			return nil, fmt.Errorf("read header: %w", err)
+		}
+		if meta[0] != kdfVersion {
+			return nil, fmt.Errorf("unsupported backup format version %d", meta[0])
+		}
+		iters = int(binary.BigEndian.Uint32(meta[1:]))
+		if iters <= 0 || iters > maxIterations {
+			return nil, fmt.Errorf("invalid iteration count %d", iters)
+		}
+		if _, err := io.ReadFull(src, salt); err != nil {
+			return nil, fmt.Errorf("read salt: %w", err)
+		}
+	} else {
+		// Old format: the bytes we read are the start of the 32-byte salt.
+		copy(salt, head)
+		if _, err := io.ReadFull(src, salt[len(head):]); err != nil {
+			return nil, fmt.Errorf("read salt: %w", err)
+		}
+	}
+
+	key := pbkdf2.Key([]byte(passphrase), salt, iters, keyLen, sha256.New)
 	block, _ := aes.NewCipher(key)
 	gcm, _ := cipher.NewGCM(block)
 

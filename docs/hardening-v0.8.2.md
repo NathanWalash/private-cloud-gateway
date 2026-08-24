@@ -153,7 +153,9 @@ Each item: **problem**, **fix**, **acceptance check**.
 
 ## Delivery
 
-- Tier 1 → one PR, branch `harden/v0.8.2`, released as **v0.8.2**. Do a dry-run
-  deploy on a scratch VM with Let's Encrypt **staging** before the real domain.
-- Tier 2 → follow-up PR (v0.8.3).
-- Tier 3 → post-launch, as capacity allows.
+- Tier 1 → **shipped in v0.8.2** (#79).
+- Tier 2 → **shipped in v0.8.2** (#80).
+- Tier 3 → **shipped in v0.8.3** (this batch): T3.1–T3.10 all done.
+
+Recommended before the real domain: a dry-run deploy on a scratch VM with Let's
+Encrypt **staging**.
