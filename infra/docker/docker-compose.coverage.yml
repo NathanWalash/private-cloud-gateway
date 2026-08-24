@@ -1,0 +1,24 @@
+# Coverage overlay for the core service.
+#
+# Layer this on top of docker-compose.yml to run a coverage-instrumented build
+# of the Go core, so the E2E suite's exercise of the HTTP handlers and Docker
+# lifecycle code can be measured and merged with the unit-test coverage. Driven
+# by scripts/coverage.sh — not used by normal dev, CI-build, or release runs.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.coverage.yml up -d --build
+#
+# The instrumented binary flushes coverage to $GOCOVERDIR when it shuts down
+# gracefully (the core already handles SIGTERM), which happens on `compose down`.
+# The counters land in ./.coverage/e2e on the host via the bind mount below.
+
+services:
+  core:
+    build:
+      args:
+        # Instrument every package in the module so cross-package coverage
+        # (handlers exercising docker/blueprint/etc.) is attributed correctly.
+        COVERPKG: ./...
+    environment:
+      GOCOVERDIR: /coverage
+    volumes:
+      - ../../.coverage/e2e:/coverage
