@@ -54,6 +54,27 @@ func TestSecurityHeaders_API_NoCSP(t *testing.T) {
 	}
 }
 
+// TestSecurityHeaders_CSPWithoutAccept verifies a non-API response carries a CSP
+// even when the request sends no Accept header (the Go client sends none) — the
+// case that previously slipped through with no CSP.
+func TestSecurityHeaders_CSPWithoutAccept(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Close()
+
+	req, _ := http.NewRequestWithContext(context.Background(), "GET", ts.URL+"/healthz", nil)
+	resp, err := noRedirect().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if csp := resp.Header.Get("Content-Security-Policy"); csp == "" {
+		t.Error("non-API response should carry a Content-Security-Policy header")
+	} else if !strings.Contains(csp, "default-src 'self'") {
+		t.Errorf("unexpected CSP: %q", csp)
+	}
+}
+
 // TestInstall_RejectsBlueprintIDPathTraversal checks that the install endpoint
 // rejects blueprint IDs containing path traversal sequences.
 func TestInstall_RejectsBlueprintIDPathTraversal(t *testing.T) {

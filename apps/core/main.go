@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -233,6 +234,14 @@ func adoptRestoredDB(dbPath string) error {
 		}
 		return err
 	}
+	// Verify the staged DB is a valid, uncorrupted SQLite file BEFORE deleting the
+	// live one. If it fails, discard it and keep the current database — a bad
+	// restore must never leave the service unbootable or lose existing data.
+	if err := checkDBIntegrity(staged); err != nil {
+		slog.Error("staged restore failed integrity check — discarding, keeping current database", "err", err)
+		_ = os.Remove(staged)
+		return nil
+	}
 	// Remove the current DB and its WAL/SHM so no stale frames survive the swap.
 	for _, p := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
 		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
@@ -243,6 +252,23 @@ func adoptRestoredDB(dbPath string) error {
 		return err
 	}
 	slog.Info("adopted restored database", "path", dbPath)
+	return nil
+}
+
+// checkDBIntegrity opens a SQLite file read-only and runs PRAGMA integrity_check.
+func checkDBIntegrity(path string) error {
+	d, err := sql.Open("sqlite", path+"?mode=ro")
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	var res string
+	if err := d.QueryRow("PRAGMA integrity_check").Scan(&res); err != nil {
+		return err
+	}
+	if res != "ok" {
+		return fmt.Errorf("integrity_check: %s", res)
+	}
 	return nil
 }
 
