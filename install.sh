@@ -116,7 +116,10 @@ CLOUD_CORE_ADMIN_EMAIL=$ADMIN_EMAIL
 
 CLOUD_CORE_DATABASE_PATH=/data/cloud-core.db
 CLOUD_CORE_SESSION_SECRET=$SESSION_SECRET
-CLOUD_CORE_CADDY_ADMIN=caddy:2019
+# Caddy's admin API is bound to a Unix socket shared only with core (see
+# docker-compose.prod.yml), so app containers can't reach it. Point core at the
+# socket path (an absolute path selects the socket transport).
+CLOUD_CORE_CADDY_ADMIN=/run/pcg/caddy-admin.sock
 
 # Setup token — required to claim the admin account on first run.
 # This closes the first-run race: without it, anyone reaching the exposed
