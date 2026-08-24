@@ -8,9 +8,11 @@
 	# Let's Encrypt will email this address about cert expiry.
 	email {$CLOUD_CORE_ADMIN_EMAIL}
 
-	# Admin API bound to all interfaces — Core reaches it via Docker network.
-	# Never expose port 2019 publicly (handled by firewall / no host binding).
-	admin :2019
+	# Admin API bound to a Unix socket on a volume shared ONLY with Core.
+	# This keeps it off the shared Docker network: app containers (which join
+	# cloud_core_private alongside Caddy) cannot reach it, so a compromised app
+	# image can't POST /load and rewrite the gateway. There is no TCP :2019.
+	admin unix//run/pcg/caddy-admin.sock
 }
 
 # Dashboard — Caddy gets a cert for this automatically.
