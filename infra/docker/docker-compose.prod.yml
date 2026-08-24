@@ -31,6 +31,8 @@ services:
       - /opt/pcg/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+      # Admin API socket, shared only with core (not with app containers).
+      - caddy_admin:/run/pcg
     networks:
       - public
       - private
@@ -51,11 +53,17 @@ services:
     env_file: /opt/pcg/.env
     environment:
       CLOUD_CORE_ENV: production
+      # Reach Caddy's admin API over the shared Unix socket, not caddy:2019 —
+      # the socket is on a volume app containers don't mount. An absolute path
+      # switches the caddy manager to a Unix-socket transport.
+      CLOUD_CORE_CADDY_ADMIN: /run/pcg/caddy-admin.sock
     volumes:
       - core_data:/data
       - core_backups:/backups
       - /var/run/docker.sock:/var/run/docker.sock
       - /opt/pcg/blueprints:/blueprints:ro
+      # Admin API socket, shared only with caddy.
+      - caddy_admin:/run/pcg
     networks:
       - private
       - public
@@ -100,3 +108,6 @@ volumes:
       type: none
       o: bind
       device: /opt/pcg/backups
+  # Ephemeral volume carrying only the Caddy admin socket, shared caddy↔core.
+  caddy_admin:
+    driver: local

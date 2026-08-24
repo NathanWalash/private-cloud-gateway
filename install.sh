@@ -162,15 +162,24 @@ bash "$INSTALL_DIR/infra/oracle/setup-firewall.sh"
 info "Starting Private Cloud Gateway..."
 systemctl start "$SERVICE_NAME"
 
-# Wait for health
-for i in $(seq 1 30); do
-  if curl -sf "http://localhost:8080/healthz" &>/dev/null; then
-    break
+# Wait for health. Core only exposes :8080 on the Docker network (never on the
+# host — only Caddy binds host ports), so probe the container's health status
+# directly, the same way deploy.sh does.
+COMPOSE_FILE="$INSTALL_DIR/infra/docker/docker-compose.prod.yml"
+healthy=false
+for _ in $(seq 1 30); do
+  cid="$(docker compose -f "$COMPOSE_FILE" --env-file "$INSTALL_DIR/.env" ps -q core 2>/dev/null)"
+  if [ -n "$cid" ]; then
+    status="$(docker inspect --format '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo starting)"
+    if [ "$status" = "healthy" ]; then
+      healthy=true
+      break
+    fi
   fi
-  sleep 2
+  sleep 3
 done
 
-if curl -sf "http://localhost:8080/healthz" &>/dev/null; then
+if [ "$healthy" = true ]; then
   success "Service is healthy"
 else
   warn "Service may still be starting. Check: sudo journalctl -u $SERVICE_NAME -f"

@@ -298,9 +298,15 @@ func Restore(srcPath, passphrase, dbDest, blueprintsDest string) error {
 		return fmt.Errorf("open zip: %w", err)
 	}
 
+	dbWritten := false
 	for _, file := range zr.File {
 		rc, err := file.Open()
 		if err != nil {
+			// The database is mandatory — a failure to read it is fatal, not
+			// best-effort, so we don't report a bogus success on a corrupt archive.
+			if file.Name == dbFile {
+				return fmt.Errorf("restore db: open archive entry: %w", err)
+			}
 			continue
 		}
 
@@ -310,11 +316,15 @@ func Restore(srcPath, passphrase, dbDest, blueprintsDest string) error {
 				rc.Close()
 				return fmt.Errorf("restore db: %w", err)
 			}
+			dbWritten = true
 		case filepath.Dir(file.Name) == bpDir:
 			dst := filepath.Join(blueprintsDest, filepath.Base(file.Name))
 			_ = writeToPath(rc, dst) // best-effort blueprint restore
 		}
 		rc.Close()
+	}
+	if !dbWritten {
+		return fmt.Errorf("restore: archive contains no %s — nothing restored", dbFile)
 	}
 	return nil
 }

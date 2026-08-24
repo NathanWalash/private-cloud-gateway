@@ -126,6 +126,10 @@ func (h *Handler) serviceDumper(containerName string, cmd []string, out io.Write
 // BackupCreate triggers a backup (DB + blueprints + app volumes).
 // POST /api/backup/create.
 func (h *Handler) BackupCreate(w http.ResponseWriter, r *http.Request) {
+	// Backing up app volumes + engine dumps (pg_dump/mysqldump) can take longer
+	// than the server's default WriteTimeout, which would drop the response even
+	// though the backup file was written. Extend this request's write deadline.
+	extendWriteDeadline(w)
 	if err := os.MkdirAll(h.backupDir(), 0o700); err != nil {
 		jsonErr(w, "cannot create backup dir", http.StatusInternalServerError)
 		return
@@ -182,6 +186,9 @@ func (h *Handler) BackupList(w http.ResponseWriter, _ *http.Request) {
 // SafeEscape creates a backup and streams it directly to the browser.
 // GET /api/backup/safe-escape.
 func (h *Handler) SafeEscape(w http.ResponseWriter, r *http.Request) {
+	// Building + streaming a full archive (volumes + engine dumps) can exceed the
+	// default WriteTimeout; extend the deadline so the download isn't truncated.
+	extendWriteDeadline(w)
 	name := backup.FileName(time.Now())
 	tmpPath := filepath.Join(os.TempDir(), name)
 	defer os.Remove(tmpPath)
@@ -261,8 +268,14 @@ func (h *Handler) BackupRestore(w http.ResponseWriter, r *http.Request) {
 	}
 	tmp.Close()
 
-	// Restore DB and blueprints
-	if err := backup.Restore(tmp.Name(), passphrase, h.dbPath(), h.blueprintDir); err != nil {
+	// Restore the database to a staging path — NOT over the live file. The server
+	// holds cloud-core.db open in WAL mode, and background writers (health poll,
+	// cleanup) run concurrently; overwriting it in place risks corruption. The
+	// staged DB is atomically adopted on the next start (hence "restart required").
+	// Blueprints are plain YAML read on demand, so restoring them in place is safe.
+	staged := h.dbPath() + ".restored"
+	if err := backup.Restore(tmp.Name(), passphrase, staged, h.blueprintDir); err != nil {
+		_ = os.Remove(staged)
 		slog.Error("restore failed", "err", err)
 		jsonErr(w, "restore failed", http.StatusInternalServerError)
 		return

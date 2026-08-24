@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -22,30 +23,56 @@ type AppRoute struct {
 // Manager reloads Caddy config dynamically.
 type Manager struct {
 	adminAddr    string
+	baseURL      string // "http://host:port" or "http://unix" for a socket
 	cookieDomain string
 	https        bool   // production HTTPS mode
 	adminEmail   string // Let's Encrypt email (required for HTTPS mode)
 	client       *http.Client
 }
 
+// adminTransport builds the HTTP client and base URL for the admin endpoint.
+// If adminAddr is an absolute path it is treated as a Unix-domain socket — in
+// production the admin API is bound to a socket shared only with Core, so app
+// containers on the gateway's private network cannot reach it (they could
+// otherwise POST /load and rewrite the whole gateway). Otherwise it's host:port.
+func adminTransport(adminAddr string) (*http.Client, string) {
+	if strings.HasPrefix(adminAddr, "/") {
+		sock := adminAddr
+		return &http.Client{
+			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+					var d net.Dialer
+					return d.DialContext(ctx, "unix", sock)
+				},
+			},
+		}, "http://unix"
+	}
+	return &http.Client{Timeout: 10 * time.Second}, "http://" + adminAddr
+}
+
 // New creates a Manager in local-dev mode (HTTP only, auto_https off).
 func New(adminAddr, cookieDomain, _ string) *Manager {
+	client, baseURL := adminTransport(adminAddr)
 	return &Manager{
 		adminAddr:    adminAddr,
+		baseURL:      baseURL,
 		cookieDomain: cookieDomain,
 		https:        false,
-		client:       &http.Client{Timeout: 10 * time.Second},
+		client:       client,
 	}
 }
 
 // NewProduction creates a Manager in production mode (HTTPS via Let's Encrypt).
 func NewProduction(adminAddr, cookieDomain, adminEmail string) *Manager {
+	client, baseURL := adminTransport(adminAddr)
 	return &Manager{
 		adminAddr:    adminAddr,
+		baseURL:      baseURL,
 		cookieDomain: cookieDomain,
 		https:        true,
 		adminEmail:   adminEmail,
-		client:       &http.Client{Timeout: 10 * time.Second},
+		client:       client,
 	}
 }
 
@@ -60,7 +87,7 @@ func (m *Manager) ReloadAll(ctx context.Context, apps []AppRoute) error {
 	config := m.buildCaddyfile(apps)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"http://"+m.adminAddr+"/load",
+		m.baseURL+"/load",
 		strings.NewReader(config),
 	)
 	if err != nil {

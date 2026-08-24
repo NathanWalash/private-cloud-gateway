@@ -25,6 +25,11 @@ cd "$INSTALL_DIR"
 previous="$(grep -E '^PCG_VERSION=' "$ENV_FILE" 2>/dev/null | cut -d= -f2 || true)"
 echo "==> Deploying $VERSION (current: ${previous:-unset})"
 
+# install.sh clones with --depth 1, so tag objects may be missing; un-shallow
+# first (no-op on a complete clone) or the checkout below fails on first deploy.
+if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+  git fetch --unshallow --quiet origin || true
+fi
 git fetch --tags --force --quiet origin
 if ! git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
   echo "error: release tag '$VERSION' not found" >&2

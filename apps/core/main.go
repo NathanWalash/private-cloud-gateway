@@ -47,6 +47,14 @@ func main() {
 		slog.Warn("CLOUD_CORE_BACKUP_PASSPHRASE is not set — backups will be UNENCRYPTED; set it in .env and restart")
 	}
 
+	// A restore stages the new database at <dbPath>.restored rather than
+	// overwriting the live file. Adopt it here — before anything opens the DB —
+	// so the swap happens with no open handles (corruption-safe).
+	if err := adoptRestoredDB(cfg.dbPath); err != nil {
+		slog.Error("adopt restored database", "err", err)
+		os.Exit(1)
+	}
+
 	database, err := db.Open(cfg.dbPath)
 	if err != nil {
 		slog.Error("open database", "err", err)
@@ -210,6 +218,32 @@ func main() {
 		slog.Error("server stopped", "err", err)
 		os.Exit(1)
 	}
+}
+
+// adoptRestoredDB swaps in a database staged by a restore. The restore handler
+// writes the recovered DB to <dbPath>.restored instead of overwriting the live
+// file (which the running server holds open in WAL mode). On the next start —
+// here, before any connection is opened — we drop the old file plus its stale
+// WAL/SHM sidecars and rename the staged copy into place. No-op if none staged.
+func adoptRestoredDB(dbPath string) error {
+	staged := dbPath + ".restored"
+	if _, err := os.Stat(staged); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	// Remove the current DB and its WAL/SHM so no stale frames survive the swap.
+	for _, p := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	if err := os.Rename(staged, dbPath); err != nil {
+		return err
+	}
+	slog.Info("adopted restored database", "path", dbPath)
+	return nil
 }
 
 // backupKeep is how many backup archives to retain (env CLOUD_CORE_BACKUP_KEEP,
