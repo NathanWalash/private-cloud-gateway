@@ -51,8 +51,8 @@ success "Docker Compose: $(docker compose version --short)"
 # ── Ensure swap (OOM insurance on small VMs) ──────────────────────────────────
 # Multi-container apps can OOM on a low-RAM instance. If there's little memory and
 # no swap, add a 2GB swapfile so a spike degrades gracefully instead of OOM-killing.
-mem_mb=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')
-swap_mb=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}')
+mem_mb=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}' || true)
+swap_mb=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}' || true)
 if [ "${swap_mb:-0}" -eq 0 ] && [ "${mem_mb:-9999}" -lt 4096 ]; then
   info "Low memory (${mem_mb}MB) and no swap — creating a 2GB swapfile..."
   if fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 2>/dev/null; then
@@ -92,7 +92,10 @@ BACKUP_PASSPHRASE=$(openssl rand -hex 24)
 # certs silently fail to issue otherwise. (getent uses the system resolver, so no
 # extra package is required.)
 PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me 2>/dev/null || echo "")
-RESOLVED=$(getent ahostsv4 "home.$DOMAIN" 2>/dev/null | awk '{print $1; exit}')
+# `|| true`: getent exits non-zero when the name doesn't resolve — the common
+# fresh-install case — and under `set -euo pipefail` that would abort the whole
+# installer at this assignment before the warning below can run.
+RESOLVED=$(getent ahostsv4 "home.$DOMAIN" 2>/dev/null | awk '{print $1; exit}' || true)
 if [ -z "$RESOLVED" ]; then
   warn "home.$DOMAIN does not resolve yet — create DNS 'A $DOMAIN → ${PUBLIC_IP:-<this IP>}' and 'A *.$DOMAIN → same' before certs can issue."
 elif [ -n "$PUBLIC_IP" ] && [ "$RESOLVED" != "$PUBLIC_IP" ]; then
@@ -125,8 +128,10 @@ fi
 # Pin PCG_VERSION to the latest published release so the first boot pulls a real,
 # immutable image instead of a floating :latest.
 info "Resolving latest release..."
+# `|| true`: on a curl/API failure, keep PCG_VERSION empty so the explicit error
+# below fires (instead of set -e aborting here with curl's opaque exit code).
 PCG_VERSION=$(curl -fsSL https://api.github.com/repos/NathanWalash/private-cloud-gateway/releases/latest 2>/dev/null \
-  | jq -r '.tag_name // empty')
+  | jq -r '.tag_name // empty' || true)
 if [ -z "$PCG_VERSION" ]; then
   error "Could not resolve the latest release tag (GitHub API rate-limited or offline). Re-run shortly — refusing to fall back to a floating :latest image, which would defeat pinning."
 fi
