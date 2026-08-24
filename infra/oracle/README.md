@@ -69,7 +69,11 @@ Then replace `Caddyfile.prod` with:
 ```text
 {
     email {$CLOUD_CORE_ADMIN_EMAIL}
-    admin :2019
+    # Keep the admin API on the core-only Unix socket — never `admin :2019`,
+    # which is reachable by every app container on the shared network and lets a
+    # compromised app rewrite the gateway. The socket volume is already mounted
+    # for the caddy service in docker-compose.prod.yml.
+    admin unix//run/pcg/caddy-admin.sock
 }
 
 *.{$CLOUD_CORE_COOKIE_DOMAIN}, {$CLOUD_CORE_COOKIE_DOMAIN} {
