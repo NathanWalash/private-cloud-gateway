@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -291,8 +290,7 @@ func (h *Handler) MonitorDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // The monitor SSRF defenses live in internal/netguard (shared with notify).
-// These thin wrappers keep the call sites and tests in this package readable.
-func blockedIP(ip net.IP) bool            { return netguard.Blocked(ip) }
+// These thin wrappers keep the call sites in this package readable.
 func validateMonitorURL(raw string) error { return netguard.ValidateURL(raw) }
 func monitorClient() *http.Client         { return netguard.GuardedClient(10 * time.Second) }
 
@@ -335,11 +333,6 @@ func RunMonitorCheck(db *sql.DB, id int64, targetURL string) {
 // Notifier is a minimal interface so extras.go doesn't import the notify package directly.
 type Notifier interface {
 	Notify(ctx context.Context, event, title, detail string)
-}
-
-// PollAllMonitors checks every monitor. Called on a timer from main.go.
-func PollAllMonitors(db *sql.DB) {
-	PollAllMonitorsWithNotify(db, nil, nil)
 }
 
 // PollAllMonitorsWithNotify checks every monitor and sends Telegram notifications on state changes.

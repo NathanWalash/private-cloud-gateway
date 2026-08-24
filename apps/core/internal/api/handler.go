@@ -399,11 +399,6 @@ func (h *Handler) queryAppRoutes(ctx context.Context) ([]caddy.AppRoute, error) 
 	return routes, nil
 }
 
-// QueryAppRoutes is the exported version used by main.go for startup route sync.
-func (h *Handler) QueryAppRoutes(ctx context.Context) ([]caddy.AppRoute, error) {
-	return h.queryAppRoutes(ctx)
-}
-
 func jsonOK(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(v); err != nil {

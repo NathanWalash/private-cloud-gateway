@@ -1,36 +1,11 @@
 package api
 
 import (
-	"net"
 	"testing"
 )
 
-func TestBlockedIP(t *testing.T) {
-	blocked := []string{
-		"127.0.0.1",       // loopback
-		"::1",             // loopback v6
-		"10.1.2.3",        // private
-		"192.168.0.5",     // private
-		"172.16.4.4",      // private
-		"169.254.169.254", // cloud metadata (link-local)
-		"fe80::1",         // link-local v6
-		"fc00::1",         // unique-local v6
-		"0.0.0.0",         // unspecified
-	}
-	for _, s := range blocked {
-		if !blockedIP(net.ParseIP(s)) {
-			t.Errorf("expected %s to be blocked", s)
-		}
-	}
-
-	allowed := []string{"8.8.8.8", "1.1.1.1", "93.184.216.34", "2606:2800:220:1::"}
-	for _, s := range allowed {
-		if blockedIP(net.ParseIP(s)) {
-			t.Errorf("expected %s to be allowed", s)
-		}
-	}
-}
-
+// IP-level blocking is tested directly in internal/netguard (TestBlocked). This
+// file covers the monitor-facing URL validation wrapper.
 func TestValidateMonitorURL(t *testing.T) {
 	bad := []string{
 		"",                            // empty
