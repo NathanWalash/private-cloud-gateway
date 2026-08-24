@@ -144,6 +144,10 @@ Each item: **problem**, **fix**, **acceptance check**.
   of falling back to `:latest`.
 - **T3.9** Document the memory cost of large restores (`io.ReadAll` of the whole
   archive); consider streaming if it becomes a problem.
+- **T3.10** `adoptRestoredDB`: run `PRAGMA integrity_check` on the staged DB
+  before deleting the live file, so a corrupt staged copy can't leave the service
+  unbootable. (Staged writes are already atomic as of v0.8.2, so a *partial*
+  `.restored` can't occur; this guards against a semantically-corrupt archive.)
 
 ---
 

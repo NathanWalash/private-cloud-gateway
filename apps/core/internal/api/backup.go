@@ -273,10 +273,21 @@ func (h *Handler) BackupRestore(w http.ResponseWriter, r *http.Request) {
 	// cleanup) run concurrently; overwriting it in place risks corruption. The
 	// staged DB is atomically adopted on the next start (hence "restart required").
 	// Blueprints are plain YAML read on demand, so restoring them in place is safe.
+	//
+	// Write to a temp path and rename into place, so a crash mid-write can never
+	// leave a truncated <db>.restored that startup would then adopt over the live DB.
 	staged := h.dbPath() + ".restored"
-	if err := backup.Restore(tmp.Name(), passphrase, staged, h.blueprintDir); err != nil {
-		_ = os.Remove(staged)
+	stagedTmp := staged + ".tmp"
+	_ = os.Remove(stagedTmp)
+	if err := backup.Restore(tmp.Name(), passphrase, stagedTmp, h.blueprintDir); err != nil {
+		_ = os.Remove(stagedTmp)
 		slog.Error("restore failed", "err", err)
+		jsonErr(w, "restore failed", http.StatusInternalServerError)
+		return
+	}
+	if err := os.Rename(stagedTmp, staged); err != nil {
+		_ = os.Remove(stagedTmp)
+		slog.Error("restore staging failed", "err", err)
 		jsonErr(w, "restore failed", http.StatusInternalServerError)
 		return
 	}
