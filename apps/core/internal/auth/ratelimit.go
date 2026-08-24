@@ -78,8 +78,10 @@ func (g *accountGuard) cleanup() {
 		g.mu.Lock()
 		now := time.Now()
 		for k, e := range g.entries {
-			// Drop entries that are neither locked nor holding recent failures.
-			if now.After(e.lockUntil) && e.fails < maxAccountFails {
+			// Drop any entry whose lock window has passed. A tripped entry keeps
+			// fails >= maxAccountFails, so a "&& fails < max" guard would never
+			// reclaim it — this sweeps those too, since it's no longer locked.
+			if now.After(e.lockUntil) {
 				delete(g.entries, k)
 			}
 		}

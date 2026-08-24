@@ -193,11 +193,18 @@ func sameSiteRequest(r *http.Request, cookieDomain string) bool {
 	return host == cookieDomain || strings.HasSuffix(host, "."+cookieDomain)
 }
 
-// limitBody caps request bodies at 10 MB to prevent memory exhaustion.
+// limitBody caps request bodies to prevent memory exhaustion. Most endpoints are
+// small JSON, so the default is tight (10 MB); backup restore uploads a full
+// archive (DB + blueprints + volume tarballs) and gets a larger, still-bounded
+// cap so real backups can actually be restored (auth-only, single-user path).
 func limitBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
-			r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10 MB
+			limit := int64(10 << 20) // 10 MB
+			if r.URL.Path == "/api/backup/restore" {
+				limit = 1 << 30 // 1 GB
+			}
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
 		}
 		next.ServeHTTP(w, r)
 	})

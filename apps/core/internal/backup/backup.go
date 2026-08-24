@@ -301,9 +301,9 @@ func Restore(srcPath, passphrase, dbDest, blueprintsDest string) error {
 	// The zip reader needs a ReaderAt, so the whole (decrypted) archive is held in
 	// memory here. MEMORY COST: peak usage is roughly the archive size — fine for
 	// the DB + blueprints, but a restore that includes large app-volume tarballs
-	// can spike RAM on a small VM. The inbound upload is capped at 64MB
-	// (api.BackupRestore); if archives grow much larger, switch to a temp-file-
-	// backed ReaderAt instead of io.ReadAll.
+	// can spike RAM on a small VM. The inbound upload is bounded by the server's
+	// per-route body limit (1GB for /api/backup/restore; see server.limitBody). If
+	// archives grow larger, switch to a temp-file-backed ReaderAt instead of io.ReadAll.
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return fmt.Errorf("read backup: %w", err)
