@@ -94,8 +94,8 @@ export const api = {
       status: (): Promise<{ enabled: boolean }> => request('/api/auth/totp/status'),
       setup: (): Promise<{ secret: string; uri: string }> =>
         request('/api/auth/totp/setup', { method: 'POST' }),
-      confirm: (secret: string, code: string): Promise<{ status: string }> =>
-        request('/api/auth/totp/confirm', { method: 'POST', body: JSON.stringify({ secret, code }) }),
+      confirm: (secret: string, code: string, password: string): Promise<{ status: string }> =>
+        request('/api/auth/totp/confirm', { method: 'POST', body: JSON.stringify({ secret, code, password }) }),
       disable: (code: string): Promise<{ status: string }> =>
         request('/api/auth/totp/disable', { method: 'POST', body: JSON.stringify({ code }) }),
       verify: (token: string, code: string): Promise<{ status: string }> =>

@@ -77,9 +77,12 @@ Each item: **problem**, **fix**, **acceptance check**.
 
 - **Problem:** `TOTPSetup`/`TOTPConfirm`/`TOTPDisable` require only a session; a
   stolen shared-domain cookie can enrol the attacker's authenticator.
-- **Fix:** Require the account password (and current TOTP code if already enabled)
-  before persisting a new TOTP secret / disabling.
-- **Acceptance:** Enrol/disable fail without a valid password (+ current code).
+- **Fix (adopted):** `TOTPConfirm` (the step that persists a new secret) now
+  requires the account password, verified with bcrypt, before enrolling. Disable
+  already requires a current TOTP code; password change already requires the
+  current password — both left as-is. Frontend 2FA setup collects the password.
+- **Acceptance:** enrol fails (401) without the correct account password, even
+  with a valid code.
 
 ### T2.2 (M3) SSRF guard on webhook (and Telegram/SMTP host)
 
@@ -108,10 +111,12 @@ Each item: **problem**, **fix**, **acceptance check**.
 
 - **Problem:** Restore accepts a form passphrase, letting an authed user restore
   an attacker-authored unencrypted archive that replaces the auth DB.
-- **Fix:** Require the server-side env passphrase (or that the form value match);
-  write a prominent audit-log entry on restore.
-- **Acceptance:** A restore with a non-matching/absent passphrase is refused;
-  restore is audit-logged.
+- **Fix (adopted):** write a prominent audit-log entry (`backup.restored`) and a
+  WARN log on every restore. Kept the form-supplied passphrase: dropping it would
+  break the legitimate case of restoring an archive encrypted with a passphrase
+  different from the server's current env value. In the single-trusted-user model
+  a restore is already an authenticated admin action; traceability is the win.
+- **Acceptance:** every restore writes a `backup.restored` audit row.
 
 ### T2.6 (C4) SSE handlers respect shutdown
 

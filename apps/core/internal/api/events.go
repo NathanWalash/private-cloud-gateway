@@ -7,6 +7,18 @@ import (
 	"sync"
 )
 
+// shutdownCh is closed when the process is shutting down. Long-lived streaming
+// handlers (SSE) select on it so they return promptly instead of blocking the
+// server's graceful-shutdown drain for its full timeout.
+var (
+	shutdownCh   = make(chan struct{})
+	shutdownOnce sync.Once
+)
+
+// Shutdown signals all streaming handlers to close. Idempotent; called once from
+// the server's shutdown sequence.
+func Shutdown() { shutdownOnce.Do(func() { close(shutdownCh) }) }
+
 // AppStatusEvent is pushed over SSE whenever an app's status changes.
 type AppStatusEvent struct {
 	AppID  int64  `json:"app_id"`
@@ -79,6 +91,8 @@ func (h *Handler) AppEvents(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
+			return
+		case <-shutdownCh:
 			return
 		case ev, ok := <-ch:
 			if !ok {

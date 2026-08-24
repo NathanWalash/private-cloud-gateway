@@ -69,20 +69,29 @@ func TestTOTP_SetupConfirmDisableFlow(t *testing.T) {
 	now := time.Now()
 	code, _ := totp.GenerateCode(setup.Secret, now)
 
-	// Confirm with a wrong code is rejected and does NOT enable TOTP.
+	// Confirm requires the account password (re-auth). A wrong password is
+	// rejected even with a valid code, and does NOT enable TOTP.
 	rec = httptest.NewRecorder()
 	h.TOTPConfirm(rec, authedReq(t, db, "POST", "/api/auth/totp/confirm",
-		`{"secret":"`+setup.Secret+`","code":"000000"}`))
+		`{"secret":"`+setup.Secret+`","code":"`+code+`","password":"wrong-password"}`))
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("confirm with wrong password = %d, want 401", rec.Code)
+	}
+
+	// Confirm with a wrong code (right password) is rejected too.
+	rec = httptest.NewRecorder()
+	h.TOTPConfirm(rec, authedReq(t, db, "POST", "/api/auth/totp/confirm",
+		`{"secret":"`+setup.Secret+`","code":"000000","password":"password123"}`))
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("confirm with wrong code = %d, want 401", rec.Code)
 	}
 
-	// Confirm with the right code enables it and persists the secret.
+	// Confirm with the right code AND password enables it and persists the secret.
 	rec = httptest.NewRecorder()
 	h.TOTPConfirm(rec, authedReq(t, db, "POST", "/api/auth/totp/confirm",
-		`{"secret":"`+setup.Secret+`","code":"`+code+`"}`))
+		`{"secret":"`+setup.Secret+`","code":"`+code+`","password":"password123"}`))
 	if rec.Code != 200 {
-		t.Fatalf("confirm with valid code = %d, body=%s", rec.Code, rec.Body.String())
+		t.Fatalf("confirm with valid code+password = %d, body=%s", rec.Code, rec.Body.String())
 	}
 	var saved string
 	_ = db.QueryRow("SELECT totp_secret FROM users WHERE email='u@example.com'").Scan(&saved)

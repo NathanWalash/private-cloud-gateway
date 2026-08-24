@@ -261,13 +261,33 @@ func (bp *Blueprint) ContainerName() string {
 // production (real domain/https) without hard-coding either.
 func (bp *Blueprint) Render(domain, scheme string) *Blueprint {
 	out := *bp
+	repl := strings.NewReplacer("${DOMAIN}", domain, "${SCHEME}", scheme)
+
 	if len(bp.Container.Environment) > 0 {
-		repl := strings.NewReplacer("${DOMAIN}", domain, "${SCHEME}", scheme)
 		env := make([]string, len(bp.Container.Environment))
 		for i, e := range bp.Container.Environment {
 			env[i] = repl.Replace(e)
 		}
 		out.Container.Environment = env
+	}
+
+	// Sidecar services get the same ${DOMAIN}/${SCHEME} substitution. Copy the
+	// slice (and each rendered env) so the original blueprint — which may be
+	// cached and reused across installs — is never mutated.
+	if len(bp.Services) > 0 {
+		services := make([]Service, len(bp.Services))
+		copy(services, bp.Services)
+		for i := range services {
+			if len(services[i].Environment) == 0 {
+				continue
+			}
+			env := make([]string, len(services[i].Environment))
+			for j, e := range services[i].Environment {
+				env[j] = repl.Replace(e)
+			}
+			services[i].Environment = env
+		}
+		out.Services = services
 	}
 	return &out
 }
