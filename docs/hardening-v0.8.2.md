@@ -74,6 +74,7 @@ Each item: **problem**, **fix**, **acceptance check**.
 ## Tier 2 — before relying on features / real exposure
 
 ### T2.1 (H2) Re-authenticate before 2FA enrol/disable and password change
+
 - **Problem:** `TOTPSetup`/`TOTPConfirm`/`TOTPDisable` require only a session; a
   stolen shared-domain cookie can enrol the attacker's authenticator.
 - **Fix:** Require the account password (and current TOTP code if already enabled)
@@ -81,6 +82,7 @@ Each item: **problem**, **fix**, **acceptance check**.
 - **Acceptance:** Enrol/disable fail without a valid password (+ current code).
 
 ### T2.2 (M3) SSRF guard on webhook (and Telegram/SMTP host)
+
 - **Problem:** `WEBHOOK_URL` is POSTed with no scheme/host validation or blocked-IP
   dialer; an authed user can hit `caddy:2019`/metadata. Compounds with H1.
 - **Fix:** Route webhook sends through the monitor's blocked-IP-guarded dialer, or
@@ -89,18 +91,21 @@ Each item: **problem**, **fix**, **acceptance check**.
   is rejected or refused at dial time.
 
 ### T2.3 (C3) Render `${DOMAIN}`/`${SCHEME}` in sidecar service env
+
 - **Problem:** `Blueprint.Render` substitutes only `Container.Environment`, not
   `Services[].Environment` → sidecars get literal placeholders.
 - **Fix:** Apply the same replacer over each rendered service's environment.
 - **Acceptance:** A sidecar env using `${DOMAIN}` is substituted; unit test added.
 
 ### T2.4 (B3) `deploy.sh` re-syncs the production Caddyfile
+
 - **Problem:** deploy.sh never copies `Caddyfile.prod` to the live mount path, so
   bootstrap-Caddyfile fixes in new releases never land.
 - **Fix:** After checkout, `cp infra/caddy/Caddyfile.prod caddy/Caddyfile`.
 - **Acceptance:** A changed Caddyfile.prod reaches the running Caddy after deploy.
 
 ### T2.5 (M2) Restore: drop form-supplied passphrase override; audit-log restores
+
 - **Problem:** Restore accepts a form passphrase, letting an authed user restore
   an attacker-authored unencrypted archive that replaces the auth DB.
 - **Fix:** Require the server-side env passphrase (or that the form value match);
@@ -109,6 +114,7 @@ Each item: **problem**, **fix**, **acceptance check**.
   restore is audit-logged.
 
 ### T2.6 (C4) SSE handlers respect shutdown
+
 - **Problem:** `AppEvents`/`LogsStream` only return on request-context done, so
   `srv.Shutdown` hangs the full 30s on every restart.
 - **Fix:** Select on a server-wide shutdown signal (derive from `bgCtx`) in the
