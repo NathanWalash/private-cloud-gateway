@@ -51,6 +51,7 @@ export default function SettingsPage() {
   const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null)
   const [totpSetup, setTotpSetup] = useState<{ secret: string; uri: string } | null>(null)
   const [totpCode, setTotpCode] = useState('')
+  const [totpPassword, setTotpPassword] = useState('')
   const [totpDisableCode, setTotpDisableCode] = useState('')
   const [totpBusy, setTotpBusy] = useState(false)
   const [totpMsg, setTotpMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -88,7 +89,7 @@ export default function SettingsPage() {
     setTotpBusy(true); setTotpMsg(null)
     try {
       const r = await api.auth.totp.setup()
-      setTotpSetup(r); setTotpCode('')
+      setTotpSetup(r); setTotpCode(''); setTotpPassword('')
     } catch { setTotpMsg({ ok: false, text: 'Failed to generate setup code.' }) }
     finally { setTotpBusy(false) }
   }
@@ -97,8 +98,8 @@ export default function SettingsPage() {
     if (!totpSetup) return
     setTotpBusy(true); setTotpMsg(null)
     try {
-      await api.auth.totp.confirm(totpSetup.secret, totpCode)
-      setTotpEnabled(true); setTotpSetup(null); setTotpCode('')
+      await api.auth.totp.confirm(totpSetup.secret, totpCode, totpPassword)
+      setTotpEnabled(true); setTotpSetup(null); setTotpCode(''); setTotpPassword('')
       setTotpMsg({ ok: true, text: 'Two-factor authentication enabled.' })
     } catch (err) {
       setTotpMsg({ ok: false, text: err instanceof ApiError ? err.message : 'Invalid code.' })
@@ -272,16 +273,24 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1.5">Confirm your account password</label>
+                  <input
+                    type="password" autoComplete="current-password"
+                    className="input-field w-full mb-3"
+                    placeholder="Account password"
+                    value={totpPassword}
+                    onChange={e => setTotpPassword(e.target.value)}
+                  />
                   <label className="block text-xs font-medium text-text-muted mb-1.5">Verify — enter the 6-digit code</label>
                   <div className="flex gap-2">
                     <input
-                      type="text" inputMode="numeric" maxLength={6} autoFocus
+                      type="text" inputMode="numeric" maxLength={6}
                       className="input-field flex-1 text-center text-xl tracking-widest font-mono"
                       placeholder="000000"
                       value={totpCode}
                       onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     />
-                    <button type="button" onClick={confirmTOTP} disabled={totpBusy || totpCode.length < 6}
+                    <button type="button" onClick={confirmTOTP} disabled={totpBusy || totpCode.length < 6 || totpPassword.length === 0}
                       className="px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-lg text-sm transition-colors shrink-0 disabled:opacity-50">
                       {totpBusy ? <CircleNotch className="w-4 h-4 animate-spin" /> : 'Enable'}
                     </button>

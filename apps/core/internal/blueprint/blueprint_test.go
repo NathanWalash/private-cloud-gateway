@@ -125,3 +125,34 @@ func TestRenderDoesNotMutateOriginal(t *testing.T) {
 		t.Errorf("original mutated: %q", bp.Container.Environment[0])
 	}
 }
+
+func TestRenderSubstitutesSidecarServiceEnv(t *testing.T) {
+	bp := &blueprint.Blueprint{
+		ID:        "outline",
+		Name:      "Outline",
+		Container: blueprint.Container{Image: "outline:latest"},
+		Services: []blueprint.Service{
+			{
+				Name:  "app",
+				Image: "outline:latest",
+				Environment: []string{
+					"URL=${SCHEME}://wiki.${DOMAIN}",
+					"FORCE_HTTPS=true", // no placeholders — untouched
+				},
+			},
+		},
+	}
+
+	got := bp.Render("example.com", "https")
+
+	if got.Services[0].Environment[0] != "URL=https://wiki.example.com" {
+		t.Errorf("sidecar env not rendered: %q", got.Services[0].Environment[0])
+	}
+	if got.Services[0].Environment[1] != "FORCE_HTTPS=true" {
+		t.Errorf("non-placeholder env changed: %q", got.Services[0].Environment[1])
+	}
+	// The original blueprint's service env must be untouched (blueprints are cached).
+	if bp.Services[0].Environment[0] != "URL=${SCHEME}://wiki.${DOMAIN}" {
+		t.Errorf("original service env mutated: %q", bp.Services[0].Environment[0])
+	}
+}

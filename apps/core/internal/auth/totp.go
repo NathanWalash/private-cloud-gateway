@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/totp"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const totpPendingTTL = 5 * time.Minute
@@ -78,11 +79,25 @@ func (h *Handler) TOTPConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Secret string `json:"secret"`
-		Code   string `json:"code"`
+		Secret   string `json:"secret"`
+		Code     string `json:"code"`
+		Password string `json:"password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Secret == "" || req.Code == "" {
-		http.Error(w, `{"error":"secret and code required"}`, http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Secret == "" || req.Code == "" || req.Password == "" {
+		http.Error(w, `{"error":"secret, code and password required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Re-authenticate with the account password before enrolling a new second
+	// factor. Without this, a stolen session (cookies are shared across all app
+	// subdomains) could enrol the attacker's authenticator and lock out the user.
+	var hash string
+	if err := h.db.QueryRowContext(r.Context(), "SELECT password FROM users WHERE id=?", userID).Scan(&hash); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)) != nil {
+		http.Error(w, `{"error":"password is incorrect"}`, http.StatusUnauthorized)
 		return
 	}
 

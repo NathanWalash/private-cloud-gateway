@@ -58,6 +58,10 @@ set_version() {
 
 apply() {
   git checkout -q "$1"
+  # Re-sync the bootstrap Caddyfile from the checked-out release. Core rewrites
+  # Caddy's config at runtime, but Caddy still BOOTS from this file, so a change
+  # shipped in a release (e.g. the admin-socket binding) must land here too.
+  cp "$INSTALL_DIR/infra/caddy/Caddyfile.prod" "$INSTALL_DIR/caddy/Caddyfile"
   set_version "$1"
   compose pull core
   compose up -d

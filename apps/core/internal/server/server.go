@@ -253,6 +253,10 @@ func (s *Server) ListenAndServe(addr string) error {
 		sig := <-quit
 		slog.Info("shutting down", "signal", sig)
 
+		// Tell long-lived streaming handlers (SSE) to return so the drain below
+		// completes promptly instead of waiting out the full timeout.
+		api.Shutdown()
+
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(ctx); err != nil {

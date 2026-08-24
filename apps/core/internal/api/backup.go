@@ -291,7 +291,13 @@ func (h *Handler) BackupRestore(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	slog.Info("backup restored — restart required")
+	// A restore replaces the entire control-plane database, so record it
+	// prominently in the audit log (best-effort — never block the response).
+	_, _ = h.db.ExecContext(r.Context(),
+		"INSERT INTO audit_log (action, actor, detail) VALUES (?, ?, ?)",
+		"backup.restored", "", "restored control-plane DB from an uploaded archive")
+
+	slog.Warn("backup restored — control-plane DB replaced; restart required")
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write([]byte(`{"status":"restored","message":"Restart the service to apply the restored database."}`))
 }

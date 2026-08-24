@@ -68,11 +68,23 @@ func (h *Handler) LogsStream(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rc.Close()
 
+	// Unblock the blocking Docker read below on shutdown by closing the reader,
+	// so graceful shutdown isn't held up for its full drain timeout.
+	go func() {
+		select {
+		case <-shutdownCh:
+			_ = rc.Close()
+		case <-r.Context().Done():
+		}
+	}()
+
 	buf := make([]byte, 4096)
 	hdr := make([]byte, 8)
 	for {
 		select {
 		case <-r.Context().Done():
+			return
+		case <-shutdownCh:
 			return
 		default:
 		}

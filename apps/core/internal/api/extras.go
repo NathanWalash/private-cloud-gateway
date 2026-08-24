@@ -4,22 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"log/slog"
 
 	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/blueprint"
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/netguard"
 )
 
 // ── App logs ─────────────────────────────────────────────────────────────────
@@ -292,64 +290,11 @@ func (h *Handler) MonitorDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// blockedIP reports whether an IP is one that monitors must not reach: loopback,
-// private (RFC1918 / IPv6 ULA), link-local (incl. the cloud metadata address
-// 169.254.169.254), or the unspecified address. Blocking these prevents an
-// authenticated user from turning monitors into a server-side request forgery
-// (SSRF) tool against the host, other containers, or cloud metadata.
-func blockedIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() ||
-		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
-		ip.IsUnspecified()
-}
-
-// validateMonitorURL rejects URLs that are malformed, use a non-HTTP scheme, or
-// (when the host is a literal IP) point at a blocked address. Hostnames are
-// checked again at dial time by monitorClient, which defeats DNS rebinding.
-func validateMonitorURL(raw string) error {
-	u, err := url.ParseRequestURI(raw)
-	if err != nil {
-		return errors.New("invalid url")
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return errors.New("url must use http or https")
-	}
-	host := u.Hostname()
-	if host == "" {
-		return errors.New("invalid url")
-	}
-	if ip := net.ParseIP(host); ip != nil && blockedIP(ip) {
-		return errors.New("url points to a private or reserved address")
-	}
-	return nil
-}
-
-// monitorClient returns an HTTP client whose dialer rejects connections to
-// blocked IPs at connect time — after DNS resolution and on every redirect hop —
-// so a hostname that resolves (or rebinds) to a private address is still refused.
-func monitorClient() *http.Client {
-	dialer := &net.Dialer{
-		Timeout: 10 * time.Second,
-		Control: func(_, address string, _ syscall.RawConn) error {
-			host, _, err := net.SplitHostPort(address)
-			if err != nil {
-				return err
-			}
-			ip := net.ParseIP(host)
-			if ip == nil {
-				return fmt.Errorf("unresolvable address %q", host)
-			}
-			if blockedIP(ip) {
-				return fmt.Errorf("blocked address %s", ip)
-			}
-			return nil
-		},
-	}
-	return &http.Client{
-		Timeout:   10 * time.Second,
-		Transport: &http.Transport{DialContext: dialer.DialContext},
-	}
-}
+// The monitor SSRF defenses live in internal/netguard (shared with notify).
+// These thin wrappers keep the call sites and tests in this package readable.
+func blockedIP(ip net.IP) bool            { return netguard.Blocked(ip) }
+func validateMonitorURL(raw string) error { return netguard.ValidateURL(raw) }
+func monitorClient() *http.Client         { return netguard.GuardedClient(10 * time.Second) }
 
 // RunMonitorCheck pings a URL and records status in the DB. Safe to call in a goroutine.
 func RunMonitorCheck(db *sql.DB, id int64, targetURL string) {

@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/NathanWalash/private-cloud-gateway/apps/core/internal/netguard"
 )
 
 // Event types.
@@ -35,7 +37,11 @@ type Service struct {
 }
 
 func New(db *sql.DB) *Service {
-	return &Service{db: db, client: &http.Client{Timeout: 10 * time.Second}}
+	// Use an SSRF-guarded client: the webhook URL is operator-configurable, so a
+	// stolen session / rogue setting must not be able to POST to loopback,
+	// private, link-local, or cloud-metadata addresses. Telegram targets the
+	// public api.telegram.org, which the guard allows.
+	return &Service{db: db, client: netguard.GuardedClient(10 * time.Second)}
 }
 
 // Send dispatches a notification to all configured channels if the event is enabled.
